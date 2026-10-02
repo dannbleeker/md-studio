@@ -1,6 +1,7 @@
 import { type Editor, editorViewCtx, parserCtx } from '@milkdown/kit/core';
 import { Mark, type Node } from '@milkdown/kit/prose/model';
 import { changedRegion } from '@/domain/changedRegion';
+import { actsAtDistance, hasReferenceDefinition } from '@/domain/referenceDefinitions';
 
 /**
  * Bringing the visual pane up to date with new Markdown.
@@ -93,10 +94,6 @@ function findRun(doc: Node, run: Node[]): number {
   return found;
 }
 
-/** A link reference definition (`[id]: url`) or footnote syntax: both act at a distance. */
-const DEFINITION = /^ {0,3}\[[^\]]+\]:/m;
-const actsAtDistance = (markdown: string) => DEFINITION.test(markdown) || markdown.includes('[^');
-
 /**
  * Applies only the changed region. Returns false (having changed nothing)
  * whenever it can't be sure the result equals a full parse: the region is
@@ -111,7 +108,7 @@ export function applyIncremental(editor: Editor, oldMd: string, newMd: string): 
   // resolves against definitions elsewhere: parsing the region alone would
   // get either wrong.
   if (actsAtDistance(region.oldText) || actsAtDistance(region.newText)) return false;
-  if (DEFINITION.test(newMd) && /\[[^\]]*\]/.test(region.newText)) return false;
+  if (hasReferenceDefinition(newMd) && /\[[^\]]*\]/.test(region.newText)) return false;
   return editor.action((ctx) => {
     const view = ctx.get(editorViewCtx);
     const parse = ctx.get(parserCtx);
