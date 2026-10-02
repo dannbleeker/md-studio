@@ -1,0 +1,74 @@
+name: Rebuild book artifacts
+
+# Keeps the book downloads in sync with their source:
+#
+#   public/Writing-in-Plain-Text.epub   reflowable, e-reader friendly
+#   public/Writing-in-Plain-Text.pdf    fixed A4, cover + clickable contents
+#
+# Both are derived from docs/guide/*.md by the pure-Node builders in scripts/
+# (ported from mindmap-studio), so review happens on the Markdown and the
+# workflow commits the rebuilt binaries straight back to main. Deploy to
+# GitHub Pages re-runs after this workflow (GITHUB_TOKEN pushes trigger no
+# push event), so the live site picks up the new files.
+#
+# Loop guard: skipped when the bot itself made the triggering commit.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/guide/**.md'
+      - 'scripts/build-book-epub.mjs'
+      - 'scripts/build-book-pdf.mjs'
+      - 'scripts/lib/bookChapters.mjs'
+  workflow_dispatch:
+
+jobs:
+  rebuild:
+    name: Rebuild EPUB + PDF
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Rebuild EPUB + PDF
+        run: pnpm book
+
+      - name: Commit refreshed artifacts if changed
+        env:
+          TRIGGER_SUBJECT: ${{ github.event.head_commit.message }}
+        run: |
+          EPUB=public/Writing-in-Plain-Text.epub
+          PDF=public/Writing-in-Plain-Text.pdf
+          git add "$EPUB" "$PDF"
+          if git diff --cached --quiet; then
+            echo "Book artifacts unchanged — nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          FIRST_LINE="$(printf '%s' "${TRIGGER_SUBJECT}" | head -n 1)"
+          git commit -m "docs: rebuild book (EPUB + PDF) [skip ci]" -m "Triggered by: ${FIRST_LINE}"
+          pushed=false
+          for attempt in 1 2 3 4 5; do
+            if git pull --rebase --autostash origin main && git push origin main; then
+              pushed=true; echo "pushed on attempt $attempt"; break
+            fi
+            echo "push attempt $attempt rejected; retrying in 5s…"; sleep 5
+          done
+          if [ "$pushed" != true ]; then
+            echo "::error::book-artifact push failed after 5 attempts"; exit 1
+          fi

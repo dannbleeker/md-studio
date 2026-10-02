@@ -1,0 +1,78 @@
+name: Stats
+
+# Regenerates public/stats.json and public/stats-history.json (lines of code,
+# tests, coverage, bundle size, book progress, git story) after every push to
+# main and weekly, then commits them back if they changed. They deploy with
+# the site for a future dashboard to read.
+#
+# Loop guards: the refresh commit carries [skip ci], and paths-ignore lists
+# both generated files.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'public/stats.json'
+      - 'public/stats-history.json'
+  schedule:
+    - cron: '17 6 * * 1' # Mondays 06:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stats-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stats:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # full history for the git story
+
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # continue-on-error: a failing test should not block a stats refresh;
+      # partial coverage and the run report are still written.
+      - name: Tests with coverage + run report
+        continue-on-error: true
+        run: pnpm exec vitest run --coverage --coverage.reporter=json-summary --coverage.reporter=text-summary --reporter=json --outputFile=.tmp/vitest-report.json
+
+      - name: Build
+        run: pnpm build
+
+      - name: Build stats.json
+        run: node ./scripts/build-stats.mjs
+
+      - name: Commit refreshed stats
+        run: |
+          if [[ -n "$(git status --porcelain public/stats.json public/stats-history.json)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add public/stats.json public/stats-history.json
+            git commit -m "chore(stats): refresh stats [skip ci]"
+            pushed=false
+            for attempt in 1 2 3 4 5; do
+              if git pull --rebase --autostash origin main && git push; then
+                pushed=true; echo "pushed on attempt $attempt"; break
+              fi
+              echo "push attempt $attempt rejected; retrying in 5s…"; sleep 5
+            done
+            if [[ "$pushed" != true ]]; then
+              echo "::error::stats push failed after 5 attempts"; exit 1
+            fi
+          else
+            echo "Stats unchanged."
+          fi

@@ -1,0 +1,64 @@
+name: Mutation
+
+# Weekly mutation testing of the domain layer (src/domain) with Stryker:
+# plants small bugs in the document model, heading detection, scroll mapping,
+# text diff and fuzzy matching, and checks the domain tests catch them.
+# A full pass takes well under a minute today. The result is distilled to
+# reports/mutation/score.json (committed) for the Stats workflow; the full
+# report is uploaded as an artifact for reading surviving mutants.
+# Never part of the per-push gate.
+
+on:
+  schedule:
+    - cron: '17 4 * * 0' # Sundays 04:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mutation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Stryker (src/domain)
+        run: pnpm mutation
+
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mutation-report
+          path: reports/mutation/
+          retention-days: 30
+
+      - name: Commit mutation score
+        # Only on main: a manual run on another branch reports without committing.
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f reports/mutation/score.json
+          if git diff --cached --quiet; then
+            echo "Mutation score unchanged."
+          else
+            git commit -m "chore(stats): refresh mutation score [skip ci]"
+            git push
+          fi

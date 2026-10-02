@@ -1,6 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": ["scripts/*.mjs", "e2e/**/*.spec.ts"],
+  "entry": ["scripts/*.mjs", "e2e/**/*.spec.ts", "vitest.mutation.config.ts"],
   "project": ["src/**/*.{ts,tsx}", "test/**/*.{ts,tsx}", "e2e/**/*.ts", "scripts/**/*.mjs"],
   "ignore": ["test/stubs/virtual-pwa-register.ts"],
   "ignoreExportsUsedInFile": true,

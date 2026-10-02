@@ -11,3 +11,10 @@ test-results
 .idea
 .vscode
 *.tsbuildinfo
+.tmp
+# Perf-trace results (uploaded as a workflow artifact, never committed).
+perf-trace-output
+# Stryker: the full report is an artifact; only reports/mutation/score.json
+# is committed (force-added by the Mutation workflow).
+reports/
+.stryker-tmp/

@@ -48,6 +48,10 @@ the e2e specs test the built app through `vite preview`.
 Playwright needs Chromium: run `pnpm exec playwright install chromium` once,
 or point `PLAYWRIGHT_CHROMIUM_PATH` at an existing Chromium binary.
 
+Other workflows (see `CLAUDE.md`): book EPUB/PDF rebuild (`pnpm book`),
+stats, weekly mutation testing (`pnpm mutation`), weekly editor-latency
+trace against `perf-baseline.json`, and visual-regression snapshots.
+
 ## Deployment
 
 Every push to `main` builds and deploys to GitHub Pages
