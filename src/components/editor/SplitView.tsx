@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { buildAnchors, fromAnchorPosition, toAnchorPosition } from '@/domain/scrollMap';
 import { t } from '@/i18n';
+import { perfMeasure } from '@/services/perfMarks';
 import { useStore } from '@/store';
 import type { ScrollAdapter } from './scrollAdapter';
 import { TextPane } from './TextPane';
@@ -12,6 +13,12 @@ const atBottom = (el: HTMLElement) => el.scrollTop + el.clientHeight >= el.scrol
 
 /** Scroll `to` so it shows the same place in the document `from` shows. */
 function syncScroll(from: ScrollAdapter, to: ScrollAdapter) {
+  const started = performance.now();
+  syncScrollNow(from, to);
+  perfMeasure('linked-scroll', started);
+}
+
+function syncScrollNow(from: ScrollAdapter, to: ScrollAdapter) {
   const src = from.scroller;
   const dst = to.scroller;
   if (atBottom(src)) {

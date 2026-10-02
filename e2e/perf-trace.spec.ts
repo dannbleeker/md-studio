@@ -12,6 +12,9 @@ import { newDocument, setText, textPane, visualPane } from './helpers';
  *                   Includes the deliberate 150 ms sync debounce.
  *   visual-to-text  an edit in the visual pane → the text pane showing it.
  *                   Includes Milkdown's 200 ms listener debounce.
+ *   visual-sync     CPU time of each visual-pane update during the
+ *                   text-to-visual run (no debounce, no scheduling noise):
+ *                   the steadiest signal for the incremental re-parse.
  *
  * Each writes perf-trace-output/<scenario>[.<iteration>].json; the Perf trace
  * workflow runs the spec several times and scripts/check-perf-regression.mjs
@@ -77,6 +80,9 @@ async function record(summary: Summary) {
 }
 
 async function loadLargeDocument(page: Page) {
+  await page.addInitScript(() => {
+    (window as { __MD_STUDIO_PERF__?: boolean }).__MD_STUDIO_PERF__ = true;
+  });
   await newDocument(page);
   await setText(page, LARGE_DOC);
   await expect(visualPane(page).locator('h2')).toHaveCount(150, { timeout: 15_000 });
@@ -166,7 +172,18 @@ test.describe('perf trace', () => {
 
   test('text-to-visual', async ({ page }) => {
     await loadLargeDocument(page);
+    // Let the load's own full parse and reconcile finish first.
+    await page.waitForTimeout(3000);
+    await page.evaluate(() => performance.clearMeasures());
     await record(summarize('text-to-visual', await timeEdits(page, 'text', 25)));
+    const syncs = await page.evaluate(() =>
+      performance
+        .getEntriesByType('measure')
+        .filter((e) => e.name.startsWith('visual-sync:') && e.name !== 'visual-sync:reconcile')
+        .map((e) => e.duration)
+    );
+    expect(syncs.length).toBeGreaterThan(20);
+    await record(summarize('visual-sync', syncs));
   });
 
   test('visual-to-text', async ({ page }) => {

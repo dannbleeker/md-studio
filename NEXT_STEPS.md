@@ -30,12 +30,11 @@
 - [x] **Export**: HTML (light/dark/auto theme), PDF, DOCX and plain text,
       from the toolbar and the command palette. Never changes the linked file.
 - [ ] Translate the UI: the catalogue is in `src/i18n/en.ts`.
-- [ ] **Large-document performance** (found by the perf trace): on a
-      ~3,000-line document, typing p95 is ~290 ms and text → visual sync
-      ~560 ms, because every sync re-parses the whole document and that
-      parse also runs between keystrokes. Re-parse only the changed blocks,
-      or move parsing off the typing path. Re-baseline `perf-baseline.json`
-      downwards when it lands.
+- [x] **Large-document performance**: the visual pane re-parses only the
+      changed blocks (with a full parse as fallback and once while idle) and
+      skips updates while hidden. On ~3,000 lines, text → visual p95 went
+      560 → 168 ms and per-update work ~260 → 12 ms. `perf-baseline.json`
+      re-baselined.
 - [ ] Link the book (EPUB/PDF in `public/`) from the app, e.g. an About
       dialog or the start screen.
 - [ ] Strengthen domain tests where mutants survive: `fuzzy.ts` scores 41%

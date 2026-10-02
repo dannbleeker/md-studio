@@ -1,11 +1,4 @@
-import {
-  defaultValueCtx,
-  Editor,
-  editorViewCtx,
-  editorViewOptionsCtx,
-  parserCtx,
-  rootCtx,
-} from '@milkdown/kit/core';
+import { defaultValueCtx, Editor, editorViewOptionsCtx, rootCtx } from '@milkdown/kit/core';
 import { clipboard } from '@milkdown/kit/plugin/clipboard';
 import { history } from '@milkdown/kit/plugin/history';
 import { listener, listenerCtx } from '@milkdown/kit/plugin/listener';
@@ -13,42 +6,22 @@ import { commonmark } from '@milkdown/kit/preset/commonmark';
 import { gfm } from '@milkdown/kit/preset/gfm';
 import { useEffect, useRef } from 'react';
 import { t } from '@/i18n';
+import { perfMeasure } from '@/services/perfMarks';
 import { useStore } from '@/store';
+import { applyFull, applyIncremental } from './applyMarkdown';
 import { keepSourceStyle } from './keepSourceStyle';
 import type { ScrollAdapter } from './scrollAdapter';
 
-/** Text-pane edits are batched for this long before the visual tree is re-parsed. */
+/** Text-pane edits are batched for this long before the visual tree is updated. */
 const TEXT_TO_VISUAL_DEBOUNCE_MS = 150;
 
-const HEADINGS = ':scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6';
-
 /**
- * Replaces only the top-level range that differs, so the selection and
- * scroll position in the visual pane stay put. `addToHistory: false` keeps
- * the other pane's edits out of this pane's undo stack and, because
- * Milkdown's listener skips such transactions, stops them echoing back.
+ * After incremental updates, one full parse once typing has paused this
+ * long guarantees the panes can never drift apart.
  */
-function applyMarkdown(editor: Editor, markdown: string) {
-  editor.action((ctx) => {
-    const view = ctx.get(editorViewCtx);
-    const next = ctx.get(parserCtx)(markdown);
-    if (!next) return;
-    const current = view.state.doc;
-    const start = current.content.findDiffStart(next.content);
-    if (start == null) return;
-    const end = current.content.findDiffEnd(next.content);
-    let endA = end?.a ?? current.content.size;
-    let endB = end?.b ?? next.content.size;
-    const overlap = start - Math.min(endA, endB);
-    if (overlap > 0) {
-      endA += overlap;
-      endB += overlap;
-    }
-    view.dispatch(
-      view.state.tr.replace(start, endA, next.slice(start, endB)).setMeta('addToHistory', false)
-    );
-  });
-}
+const RECONCILE_AFTER_MS = 2500;
+
+const HEADINGS = ':scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6';
 
 type Props = { onAdapter: (adapter: ScrollAdapter | null) => void };
 
@@ -63,11 +36,42 @@ export function VisualPane({ onAdapter }: Props) {
     let disposed = false;
     let editor: Editor | null = null;
     let pending: ReturnType<typeof setTimeout> | undefined;
+    let reconcileTimer: ReturnType<typeof setTimeout> | undefined;
+    // The Markdown the visual document currently represents.
+    let appliedMd = useStore.getState().doc.markdown;
+    // Text-only view: the hidden pane skips updates and catches up when shown.
+    let staleWhileHidden = false;
+
+    const applyAll = (markdown: string) => {
+      if (!editor) return;
+      clearTimeout(reconcileTimer);
+      applyFull(editor, markdown);
+      appliedMd = markdown;
+    };
 
     const flush = () => {
       clearTimeout(pending);
       pending = undefined;
-      if (editor) applyMarkdown(editor, useStore.getState().doc.markdown);
+      if (!editor) return;
+      const { doc, viewMode } = useStore.getState();
+      if (viewMode === 'text') {
+        staleWhileHidden = true;
+        return;
+      }
+      staleWhileHidden = false;
+      const started = performance.now();
+      const incremental = applyIncremental(editor, appliedMd, doc.markdown);
+      if (!incremental) applyAll(doc.markdown);
+      perfMeasure(incremental ? 'visual-sync:incremental' : 'visual-sync:full', started);
+      if (incremental) {
+        appliedMd = doc.markdown;
+        clearTimeout(reconcileTimer);
+        reconcileTimer = setTimeout(() => {
+          const t0 = performance.now();
+          applyAll(useStore.getState().doc.markdown);
+          perfMeasure('visual-sync:reconcile', t0);
+        }, RECONCILE_AFTER_MS);
+      }
     };
 
     Editor.make()
@@ -103,11 +107,23 @@ export function VisualPane({ onAdapter }: Props) {
 
     const unsubscribe = useStore.subscribe((state, prev) => {
       if (state.loadId !== prev.loadId) {
-        flush();
+        if (state.viewMode === 'text') staleWhileHidden = true;
+        else applyAll(state.doc.markdown);
         scrollEl.scrollTop = 0;
         return;
       }
-      if (state.doc.markdown === prev.doc.markdown || state.source === 'visual') return;
+      if (staleWhileHidden && state.viewMode !== 'text' && prev.viewMode === 'text') {
+        flush();
+        return;
+      }
+      if (state.doc.markdown === prev.doc.markdown) return;
+      if (state.source === 'visual') {
+        // This pane made the edit: its document is the truth, and a pending
+        // reconcile could only disturb the cursor.
+        appliedMd = state.doc.markdown;
+        clearTimeout(reconcileTimer);
+        return;
+      }
       clearTimeout(pending);
       pending = setTimeout(flush, TEXT_TO_VISUAL_DEBOUNCE_MS);
     });
@@ -115,7 +131,7 @@ export function VisualPane({ onAdapter }: Props) {
     // About to type here: land any batched text-pane edits first, so the
     // visual tree never edits a stale copy of the document.
     const onFocus = () => {
-      if (pending) flush();
+      if (pending || staleWhileHidden) flush();
     };
     rootEl.addEventListener('focusin', onFocus);
 
@@ -134,6 +150,7 @@ export function VisualPane({ onAdapter }: Props) {
     return () => {
       disposed = true;
       clearTimeout(pending);
+      clearTimeout(reconcileTimer);
       onAdapter(null);
       unsubscribe();
       rootEl.removeEventListener('focusin', onFocus);
