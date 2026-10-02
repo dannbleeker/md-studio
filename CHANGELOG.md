@@ -11,7 +11,8 @@
 - **Command palette:** type `#` (or pick *Go to heading…*) to jump to a
   heading. The outline and the palette share one jump routine.
 - **Open decisions closed:** the bundle budget is accepted as is (the gate
-  stays); the second UI language is off the backlog for now.
+  stays); the second UI language is off the backlog for now; no
+  Storybook.
 - **Tabs, follow-ups.** Switching back to a tab returns to its cursor and
   scroll position. Tabs reorder by drag and drop or Shift+←/→. Tabs with
   the same file name are labelled with their first heading (or a number).

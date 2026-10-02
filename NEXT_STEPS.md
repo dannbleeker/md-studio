@@ -20,9 +20,9 @@
       `bundle-budget.json` stays: every growth is re-pinned on purpose,
       with the reason in its comment.
 - [x] **Stryker**: added for `src/domain` (weekly `mutation.yml`).
-- [ ] **Storybook** (tp-studio-only pattern): not included yet. Leaning
-      no (few components, visual snapshots cover the screens); awaiting
-      the owner's call.
+- [x] **Storybook**: decided against. Few components, most bound to the
+      store; unit tests and Playwright visual snapshots cover the screens.
+      Revisit if the component count grows or a designer joins.
 
 ## Product
 
