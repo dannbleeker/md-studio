@@ -98,10 +98,16 @@ test('linked scroll follows headings, not pixel ratios', async ({ page }) => {
     const frame = () => new Promise((r) => requestAnimationFrame(r));
     scroller.scrollTop = 0;
     await frame();
-    while (!find() && scroller.scrollTop + scroller.clientHeight < scroller.scrollHeight) {
+    // Bounded, so a layout problem fails fast instead of hanging the test.
+    for (
+      let step = 0;
+      step < 200 && !find() && scroller.scrollTop + scroller.clientHeight < scroller.scrollHeight;
+      step++
+    ) {
       scroller.scrollTop += scroller.clientHeight / 2;
       await frame();
     }
+    if (!find()) throw new Error('"## Section 20" never rendered in the text pane');
     for (let i = 0; i < 3; i++) {
       scroller.scrollTop +=
         find()!.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
