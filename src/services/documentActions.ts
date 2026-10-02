@@ -172,12 +172,33 @@ export async function saveDocument(saveAs = false): Promise<void> {
     const newHandle = result.handle && result.handle !== fileHandle ? result.handle : null;
     const handleId = newHandle ? await putHandle(newHandle) : startHandleId;
     markSaved(result.name, result.handle, handleId, written);
+    if (newHandle && handleId) settleOtherTabsOf(handleId, written.tabId);
     if (newHandle) void forgetUnusedHandles();
     showToast(
       t(result.kind === 'written' ? 'toast.saved' : 'toast.downloaded', { name: result.name })
     );
   } catch {
     showToast(t('toast.saveFailed'));
+  }
+}
+
+/**
+ * Save As onto a file another tab has open: that tab's text no longer
+ * matches the file. Without unsaved changes it is closed (this tab now
+ * shows the file); with them it keeps its text as an unlinked copy, so a
+ * later Save there can't silently replace what was just written.
+ */
+function settleOtherTabsOf(handleId: string, keepTabId: string): void {
+  const others = syncedTabs(useStore.getState()).filter(
+    (tab) => tab.handleId === handleId && tab.id !== keepTabId
+  );
+  for (const tab of others) {
+    if (isDirty(tab.doc)) {
+      useStore.getState().unlinkTab(tab.id);
+      showToast(t('toast.unlinkedCopy', { name: tab.doc.fileName }));
+    } else {
+      useStore.getState().closeTab(tab.id);
+    }
   }
 }
 

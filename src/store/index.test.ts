@@ -143,6 +143,17 @@ describe('tabs', () => {
     expect(s.screen).toBe('editor');
   });
 
+  it('shows the start screen after a reload once every tab was closed', () => {
+    vi.useFakeTimers();
+    open('a', 'a.md');
+    useStore.getState().closeTab(useStore.getState().activeTabId);
+    vi.advanceTimersByTime(350);
+    vi.useRealTimers();
+    expect(loadTabs()?.tabs).toHaveLength(1);
+    resetStoreForTest();
+    expect(useStore.getState().screen).toBe('start');
+  });
+
   it('returns to where each tab was left; new documents start at the top', () => {
     let where = { textAnchor: 3, textHead: 5, textScroll: 200, visualScroll: 90 };
     const off = registerViewPart(() => where);

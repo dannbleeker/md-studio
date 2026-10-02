@@ -1,8 +1,9 @@
-import { lazy, Suspense, useCallback, useEffect, useRef } from 'react';
+import { lazy, useCallback, useEffect, useRef } from 'react';
 import { buildAnchors, fromAnchorPosition, toAnchorPosition } from '@/domain/scrollMap';
 import { t } from '@/i18n';
 import { perfMeasure } from '@/services/perfMarks';
 import { useStore } from '@/store';
+import { LazyBoundary } from '../ui/LazyBoundary';
 import { editors } from './editorRegistry';
 import type { ScrollAdapter } from './scrollAdapter';
 import { TextPane } from './TextPane';
@@ -120,9 +121,9 @@ export function SplitView() {
         aria-label={t('pane.visual')}
         hidden={viewMode === 'text'}
       >
-        <Suspense fallback={<div className="format-toolbar" aria-hidden="true" />}>
+        <LazyBoundary fallback={<div className="format-toolbar" aria-hidden="true" />}>
           <FormatToolbar />
-        </Suspense>
+        </LazyBoundary>
         <VisualPane onAdapter={setVisual} />
       </section>
     </div>

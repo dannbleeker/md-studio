@@ -30,9 +30,14 @@ function headingId(text: string): string {
       .trim()
       .replace(/[^\p{L}\p{N}\s-]/gu, '')
       .replace(/\s+/g, '-') || 'section';
-  const seen = usedIds.get(base) ?? 0;
+  // `# a`, `# a`, `# a-1` must not give two `a-1`s: a numbered id can
+  // collide with a heading that already reads that way.
+  let seen = usedIds.get(base) ?? 0;
+  let id = seen === 0 ? base : `${base}-${seen}`;
+  while (usedIds.has(id) && id !== base) id = `${base}-${++seen}`;
   usedIds.set(base, seen + 1);
-  return seen === 0 ? base : `${base}-${seen}`;
+  usedIds.set(id, Math.max(usedIds.get(id) ?? 0, 1));
+  return id;
 }
 
 const marked = new Marked({

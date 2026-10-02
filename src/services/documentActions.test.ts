@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocument } from '@/domain/document';
-import { resetStoreForTest, useStore } from '@/store';
+import { resetStoreForTest, syncedTabs, useStore } from '@/store';
 import { useUiStore } from '@/store/ui';
 import {
   checkDiskChanges,
@@ -15,7 +15,9 @@ import {
 const handles = new Map<string, FileSystemFileHandle>();
 vi.mock('./handleStore', () => ({
   getHandle: async (id: string) => handles.get(id) ?? null,
+  // Like the real store: the same file keeps its id.
   putHandle: async (h: FileSystemFileHandle) => {
+    for (const [known, stored] of handles) if (stored === h) return known;
     const id = `id-${handles.size + 1}`;
     handles.set(id, h);
     return id;
@@ -273,5 +275,43 @@ describe('bundled documents', () => {
     await openUserGuide();
     expect(useStore.getState().tabs.map((t) => t.doc.fileName)).toEqual(['User-Guide.md', 'x.md']);
     expect(useStore.getState().doc.fileName).toBe('User-Guide.md');
+  });
+});
+
+describe('Save As onto a file another tab has open', () => {
+  beforeEach(() => {
+    handles.clear();
+    resetStoreForTest();
+  });
+
+  async function saveBAs(h: FakeHandle) {
+    useStore.getState().loadDocument(createDocument('# B', 'b.md'), null);
+    useStore.getState().setMarkdown('# B, written over a.md', 'text');
+    Object.assign(window, { showSaveFilePicker: async () => h });
+    await saveDocument(true);
+    delete (window as { showSaveFilePicker?: unknown }).showSaveFilePicker;
+  }
+
+  it('closes the other tab when it has no unsaved changes', async () => {
+    const h = fakeHandle('a.md', '# A');
+    handles.set('id-a', h);
+    useStore.getState().loadDocument(createDocument('# A', 'a.md'), h, 'id-a');
+    await saveBAs(h);
+    const tabs = syncedTabs(useStore.getState());
+    expect(tabs.map((t) => [t.doc.fileName, t.handleId])).toEqual([['a.md', 'id-a']]);
+    expect(h.content).toBe('# B, written over a.md');
+  });
+
+  it('keeps unsaved changes in the other tab as an unlinked copy', async () => {
+    const h = fakeHandle('a.md', '# A');
+    handles.set('id-a', h);
+    useStore.getState().loadDocument(createDocument('# A', 'a.md'), h, 'id-a');
+    useStore.getState().setMarkdown('# A, edited', 'text');
+    await saveBAs(h);
+    const tabs = syncedTabs(useStore.getState());
+    expect(tabs.map((t) => [t.doc.markdown, t.handleId])).toEqual([
+      ['# A, edited', null],
+      ['# B, written over a.md', 'id-a'],
+    ]);
   });
 });

@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy } from 'react';
 import { ConfirmDialogHost } from './components/ConfirmDialogHost';
 import { CommandPalette } from './components/command-palette/CommandPalette';
 import { SplitView } from './components/editor/SplitView';
@@ -9,6 +9,7 @@ import { StartScreen } from './components/start/StartScreen';
 import { TabBar } from './components/tabs/TabBar';
 import { ToastHost } from './components/toast/ToastHost';
 import { Toolbar } from './components/toolbar/Toolbar';
+import { LazyBoundary } from './components/ui/LazyBoundary';
 import { useFileDrop } from './hooks/useFileDrop';
 import { useLocale } from './hooks/useLocale';
 import { useShortcuts } from './hooks/useShortcuts';
@@ -47,15 +48,15 @@ export function App() {
           {manyTabs ? <TabBar /> : null}
           <div className="workspace">
             {showOutline ? (
-              <Suspense fallback={null}>
+              <LazyBoundary>
                 <OutlinePanel />
-              </Suspense>
+              </LazyBoundary>
             ) : null}
             <div className="workspace-main">
               {findOpen ? (
-                <Suspense fallback={null}>
+                <LazyBoundary>
                   <FindBar />
-                </Suspense>
+                </LazyBoundary>
               ) : null}
               <SplitView />
             </div>

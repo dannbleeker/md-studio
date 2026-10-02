@@ -3,10 +3,13 @@ import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
 import { markdownToDocxDocument } from './docx';
 
-async function documentXml(markdown: string): Promise<string> {
+async function documentXml(markdown: string, part = 'word/document.xml'): Promise<string> {
   const zip = await JSZip.loadAsync(await Packer.toBuffer(markdownToDocxDocument(markdown, 'T')));
-  return (await zip.file('word/document.xml')?.async('string')) ?? '';
+  return (await zip.file(part)?.async('string')) ?? '';
 }
+
+/** The `<w:p>` elements of the document, as XML strings. */
+const paragraphs = (xml: string) => xml.match(/<w:p>[\s\S]*?<\/w:p>|<w:p [\s\S]*?<\/w:p>/g) ?? [];
 
 describe('markdownToDocx', () => {
   it('maps headings to Word heading styles', async () => {
@@ -76,5 +79,27 @@ describe('markdownToDocx', () => {
   it('decodes named HTML entities', async () => {
     const xml = await documentXml('A &copy; B &mdash; C');
     expect(xml).toContain('A © B — C');
+  });
+
+  it('writes tabs in code as Word tabs', async () => {
+    const xml = await documentXml('```\n\tif (a) {\n\t\treturn 1;\n```\n\n`a\tb`');
+    expect(xml).toContain('<w:tab/>');
+    expect(xml).not.toMatch(/<w:t[^>]*>[^<]*\t/);
+  });
+
+  it('keeps lists, headings and code inside a quote indented with the quote bar', async () => {
+    const xml = await documentXml('> intro\n>\n> - a\n>   - b\n>\n> # H\n>\n> ```\n> code\n> ```');
+    for (const text of ['>a<', '>b<', '>H<', '>code<']) {
+      const p = paragraphs(xml).find((para) => para.includes(text));
+      expect(p, text).toContain('w:pBdr');
+    }
+    const item = paragraphs(xml).find((para) => para.includes('>a<')) ?? '';
+    expect(item).toContain('w:numPr');
+    expect(Number(item.match(/w:ind w:left="(\d+)"/)?.[1])).toBeGreaterThan(720);
+  });
+
+  it('starts a nested ordered list at its own number', async () => {
+    const numbering = await documentXml('1. a\n   5. x\n   6. y', 'word/numbering.xml');
+    expect(numbering).toContain('w:start w:val="5"');
   });
 });

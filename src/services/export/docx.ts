@@ -10,6 +10,7 @@ import {
   Paragraph,
   type ParagraphChild,
   ShadingType,
+  Tab,
   Table,
   TableCell,
   TableRow,
@@ -45,9 +46,13 @@ type Style = { bold?: boolean; italics?: boolean; strike?: boolean; code?: boole
 /** marked leaves named entities (&copy;, &nbsp;, &mdash;…) encoded in its tokens. */
 const decode = (s: string) => decodeHTML(s);
 
+/** A raw tab inside a text run is not a reliable tab in Word; it needs its own element. */
+const withTabs = (text: string): (string | Tab)[] =>
+  text.split('\t').flatMap((part, i) => (i === 0 ? [part] : [new Tab(), part]));
+
 function run(text: string, style: Style): TextRun {
   return new TextRun({
-    text,
+    children: withTabs(text),
     bold: style.bold ?? false,
     italics: style.italics ?? false,
     strike: style.strike ?? false,
@@ -131,12 +136,11 @@ function plain(tokens: Token[] | undefined): string {
 
 function blocks(tokens: Token[], level = 0, quote = false): (Paragraph | Table)[] {
   const out: (Paragraph | Table)[] = [];
-  const quoteProps = quote
-    ? {
-        indent: { left: 567 },
-        border: { left: { style: BorderStyle.SINGLE, size: 12, color: ACCENT, space: 8 } },
-      }
-    : {};
+  const quoteBorder = {
+    border: { left: { style: BorderStyle.SINGLE, size: 12, color: ACCENT, space: 8 } },
+  };
+  // Everything inside a quote carries its bar and indent, lists and code included.
+  const quoteProps = quote ? { indent: { left: QUOTE_INDENT }, ...quoteBorder } : {};
   for (const t of tokens) {
     switch (t.type) {
       case 'heading': {
@@ -145,6 +149,7 @@ function blocks(tokens: Token[], level = 0, quote = false): (Paragraph | Table)[
           new Paragraph({
             heading: HEADINGS[h.depth - 1] ?? HeadingLevel.HEADING_6,
             children: inline(h.tokens),
+            ...quoteProps,
           })
         );
         break;
@@ -159,20 +164,19 @@ function blocks(tokens: Token[], level = 0, quote = false): (Paragraph | Table)[
         break;
       case 'text':
         out.push(
-          new Paragraph({ children: inline('tokens' in t ? t.tokens : undefined), ...quoteProps })
+          new Paragraph({
+            children: inline('tokens' in t ? t.tokens : undefined, quote ? { italics: true } : {}),
+            ...quoteProps,
+          })
         );
         break;
       case 'list': {
         const list = t as Tokens.List;
-        // Each ordered list numbers on its own (a later list restarts at its
-        // own start, not where the previous one stopped). Nested levels share
-        // the parent list's instance, as Word expects.
-        const instance =
-          list.ordered && (level === 0 || listInstance === null)
-            ? nextListInstance(typeof list.start === 'number' ? list.start : 1)
-            : listInstance;
-        const parentInstance = listInstance;
-        listInstance = instance;
+        // Each ordered list, nested ones included, numbers on its own from
+        // its own start (a later list restarts instead of continuing).
+        const instance = list.ordered
+          ? nextListInstance(typeof list.start === 'number' ? list.start : 1)
+          : 0;
         for (const item of list.items) {
           // marked puts a task item's box first, as its own token.
           const [first, ...rest] = item.tokens.filter((tok) => tok.type !== 'checkbox');
@@ -181,12 +185,20 @@ function blocks(tokens: Token[], level = 0, quote = false): (Paragraph | Table)[
           out.push(
             new Paragraph({
               children,
+              // A paragraph indent replaces the numbering's own, so in a
+              // quote the list's indent is restated on top of the quote's.
+              ...(quote
+                ? {
+                    ...quoteBorder,
+                    indent: { left: QUOTE_INDENT + 720 * (level + 1), hanging: 360 },
+                  }
+                : {}),
               ...(list.ordered
                 ? {
                     numbering: {
-                      reference: numberingReference(instance ?? 0),
+                      reference: numberingReference(instance),
                       level: Math.min(level, 8),
-                      instance: instance ?? 0,
+                      instance,
                     },
                   }
                 : { bullet: { level: Math.min(level, 8) } }),
@@ -194,16 +206,16 @@ function blocks(tokens: Token[], level = 0, quote = false): (Paragraph | Table)[
           );
           out.push(...blocks(rest, level + 1, quote));
         }
-        listInstance = parentInstance;
         break;
       }
       case 'code':
         for (const line of (t as Tokens.Code).text.split('\n')) {
           out.push(
             new Paragraph({
-              children: [new TextRun({ text: line || ' ', font: MONO, size: 19 })],
+              children: [new TextRun({ children: withTabs(line || ' '), font: MONO, size: 19 })],
               shading: { type: ShadingType.CLEAR, fill: CODE_FILL, color: 'auto' },
               spacing: { after: 0 },
+              ...quoteProps,
             })
           );
         }
@@ -259,10 +271,11 @@ function blocks(tokens: Token[], level = 0, quote = false): (Paragraph | Table)[
 }
 
 const MAX_IMAGE_PX = 600;
+/** A quote's left indent, in twips. */
+const QUOTE_INDENT = 567;
 
 /** Ordered-list numbering for the current conversion: instance -> start number. */
 let listStarts = new Map<number, number>();
-let listInstance: number | null = null;
 const nextListInstance = (start: number) => {
   const instance = listStarts.size + 1;
   listStarts.set(instance, start);
@@ -280,7 +293,6 @@ export function markdownToDocxDocument(
 ): Document {
   images = embedded;
   listStarts = new Map();
-  listInstance = null;
   const children = blocks(marked.lexer(markdown));
   const starts = new Set([1, ...listStarts.values()]);
   return new Document({
@@ -296,7 +308,7 @@ export function markdownToDocxDocument(
           level,
           format: LevelFormat.DECIMAL,
           text: `%${level + 1}.`,
-          start: level === 0 ? start : 1,
+          start,
           alignment: AlignmentType.START,
           style: { paragraph: { indent: { left: 720 * (level + 1), hanging: 360 } } },
         })),

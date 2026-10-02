@@ -351,3 +351,20 @@ test('visual undo still works next to a block the text pane changed', async ({ p
   await expect(paras.nth(0)).toHaveText('first para');
   await expect.poll(() => textContent(page)).toContain('first para\n');
 });
+
+test('Ctrl+Z in the Markdown pane undoes only what was typed there', async ({ page }) => {
+  await newDocument(page);
+  await setText(page, 'hello world');
+  await expect(visualPane(page).locator('p')).toHaveText('hello world');
+  await page.waitForTimeout(600); // close the text pane's undo group
+  await visualPane(page).locator('p').click();
+  await page.keyboard.press('End');
+  await page.keyboard.type(' VIS');
+  await expect.poll(() => textContent(page)).toContain('hello world VIS');
+
+  await textPane(page).click();
+  await page.keyboard.press('ControlOrMeta+Z');
+  await page.waitForTimeout(300);
+  // The visual edit stays; the text pane's own typing is what gets undone.
+  expect(await textContent(page)).toContain('VIS');
+});

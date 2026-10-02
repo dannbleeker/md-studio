@@ -108,9 +108,15 @@ export function TextPane({ onAdapter }: Props) {
         return;
       }
       // Apply only the span the visual pane changed, so the cursor and
-      // scroll position here survive.
+      // scroll position here survive. Kept out of this pane's undo history,
+      // as the visual pane does with text edits: Ctrl+Z here undoes only
+      // what was typed here.
       const change = minimalChange(current, state.doc.markdown);
-      if (change) view.dispatch({ changes: change, annotations: fromStore.of(true) });
+      if (change)
+        view.dispatch({
+          changes: change,
+          annotations: [fromStore.of(true), Transaction.addToHistory.of(false)],
+        });
     });
 
     const unregisterView = registerViewPart(() => {

@@ -22,9 +22,17 @@ export function isDirty(doc: MdDocument): boolean {
   return doc.markdown !== doc.savedMarkdown;
 }
 
-/** Ensures a Markdown extension, and strips characters Windows rejects in file names. */
+/**
+ * Ensures a Markdown extension, and strips characters Windows rejects in
+ * file names. An opened text file is saved as Markdown: "notes.txt" →
+ * "notes.md", not "notes.txt.md".
+ */
 export function normalizeFileName(name: string): string {
-  const cleaned = name.replace(/[<>:"/\\|?*]/g, '').trim() || UNTITLED;
+  const cleaned =
+    name
+      .replace(/[<>:"/\\|?*]/g, '')
+      .trim()
+      .replace(/\.txt$/i, '') || UNTITLED;
   return /\.(md|markdown|mdown|mkd)$/i.test(cleaned) ? cleaned : `${cleaned}.md`;
 }
 

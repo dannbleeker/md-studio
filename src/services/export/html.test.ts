@@ -81,4 +81,10 @@ describe('markdownToHtml', () => {
   it('prints in light colours whatever the theme', () => {
     expect(markdownToHtml('x', 't', 'dark')).toMatch(/@media print\{:root\{--bg:#fafbfc/);
   });
+
+  it('gives every heading a unique id, even against numbered ones', () => {
+    const html = markdownToHtml('# a\n\n# a\n\n# a-1', 'T', 'light');
+    const ids = [...html.matchAll(/<h1 id="([^"]+)"/g)].map((m) => m[1]);
+    expect(new Set(ids).size).toBe(3);
+  });
 });

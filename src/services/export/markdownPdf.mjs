@@ -95,21 +95,40 @@ export async function markdownToPdf({
   const space = (h) => {
     if (S.y + h > PAGE.h - M.bottom) addPage();
   };
+  // A character the standard fonts can't encode would make pdf-lib throw
+  // for the whole string; drop just those characters (æ, ø, å and the rest
+  // of WinAnsi stay), not everything outside ASCII.
+  const encodable = new Map();
+  const canEncode = (font, ch) => {
+    const key = `${font.name}\u0000${ch}`;
+    let ok = encodable.get(key);
+    if (ok === undefined) {
+      try {
+        font.widthOfTextAtSize(ch, 10);
+        ok = true;
+      } catch {
+        ok = false;
+      }
+      encodable.set(key, ok);
+    }
+    return ok;
+  };
+  const encodableText = (font, str) => [...str].filter((ch) => canEncode(font, ch)).join('');
   const safeDraw = (page, str, opts) => {
     if (page === S.page) S.fresh = false;
     try {
       page.drawText(str, opts);
     } catch {
-      page.drawText(str.replace(/[^\x20-\x7E]/g, ''), opts);
+      page.drawText(encodableText(opts.font, str), opts);
     }
   };
-  // Measure with the same ASCII fallback safeDraw uses: a glyph that slipped past
+  // Measure with the same fallback safeDraw uses: a glyph that slipped past
   // pdfText can never throw here, and the measured width matches what is drawn.
   const safeWidth = (font, str, size) => {
     try {
       return font.widthOfTextAtSize(str, size);
     } catch {
-      return font.widthOfTextAtSize(str.replace(/[^\x20-\x7E]/g, ''), size);
+      return font.widthOfTextAtSize(encodableText(font, str), size);
     }
   };
 
@@ -168,6 +187,9 @@ export async function markdownToPdf({
       color = INK,
       leftBar = null,
       bg = null,
+      // Where the quote bar and background go when the text itself is
+      // indented further (a list inside a quote); defaults to the text.
+      box = { x, width },
     } = opts;
     const spaceW = F.regular.widthOfTextAtSize(' ', size);
 
@@ -200,15 +222,15 @@ export async function markdownToPdf({
       const boxBottom = PAGE.h - top - lineHeight;
       if (bg)
         S.page.drawRectangle({
-          x: x - 8,
+          x: box.x - 8,
           y: boxBottom,
-          width: width + 12,
+          width: box.width + 12,
           height: lineHeight,
           color: bg,
         });
       if (leftBar)
         S.page.drawRectangle({
-          x: x - 10,
+          x: box.x - 10,
           y: boxBottom,
           width: 3,
           height: lineHeight,
@@ -322,9 +344,15 @@ export async function markdownToPdf({
 
   // Lists nest: an item's own text, then its sub-lists and any further
   // paragraphs (loose lists), each indented one step deeper.
-  function list(token, depth = 0) {
-    const indent = depth * 18;
-    let i = token.start || 1;
+  // Inside a quote (`quoted`), items sit right of the quote's bar and
+  // carry its bar and background.
+  function list(token, depth = 0, quoted = null) {
+    const indent = depth * 18 + (quoted ? quoted.x - M.left : 0);
+    const inQuote = quoted
+      ? { leftBar: quoted.leftBar, bg: quoted.bg, box: { x: quoted.x, width: quoted.width } }
+      : {};
+    // 0 is a valid start (`0. zero`).
+    let i = typeof token.start === 'number' ? token.start : 1;
     for (const item of token.items) {
       const marker = item.task ? (item.checked ? '[x]' : '[ ]') : token.ordered ? `${i}.` : '•';
       i++;
@@ -336,21 +364,24 @@ export async function markdownToPdf({
           ? (first.tokens ?? [{ type: 'text', text: first.text }])
           : [];
       const textX = M.left + 22 + indent + (item.task ? 6 : 0);
+      const textWidth = CONTENT_W - (textX - M.left) - (quoted ? 16 : 0);
       space(15.5);
+      const page = S.page;
       const top = S.y;
-      safeDraw(S.page, marker, {
+      flow(inlineRuns(inline), { x: textX, width: textWidth, ...inQuote });
+      // After the text, so a quote's background doesn't paint over it.
+      safeDraw(page, marker, {
         x: M.left + 4 + indent,
         y: PAGE.h - top - 10.5,
         font: F.regular,
         size: 10.5,
         color: MUTED,
       });
-      flow(inlineRuns(inline), { x: textX, width: CONTENT_W - (textX - M.left) });
       for (const block of inline.length ? rest : blocks) {
-        if (block.type === 'list') list(block, depth + 1);
+        if (block.type === 'list') list(block, depth + 1, quoted);
         else if (block.type === 'paragraph' || block.type === 'text') {
           gap(3);
-          flow(inlineRuns(block.tokens), { x: textX, width: CONTENT_W - (textX - M.left) });
+          flow(inlineRuns(block.tokens), { x: textX, width: textWidth, ...inQuote });
         } else if (block.type === 'code') codeBlock(block);
       }
       gap(1.5);
@@ -359,7 +390,9 @@ export async function markdownToPdf({
   }
 
   function codeBlock(token) {
-    const lines = String(token.text).split('\n');
+    // pdf-lib draws a tab as spaces but measures it as nothing; expand it
+    // first so width and wrapping match what is drawn.
+    const lines = String(token.text).replace(/\t/g, '    ').split('\n');
     const size = 9;
     const lh = 12.5;
     const wrapped = [];
@@ -484,7 +517,7 @@ export async function markdownToPdf({
         });
         gap(3);
       } else if (inner.type === 'list') {
-        list(inner, depth + 1);
+        list(inner, 0, quoted);
       } else if (inner.type === 'blockquote') {
         blockquote(inner, depth + 1);
       } else if (inner.type === 'code') {

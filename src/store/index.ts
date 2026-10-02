@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { createDocument, documentTitle, type MdDocument } from '@/domain/document';
-import { closeTab, moveTab, openTab, type Tab } from '@/domain/tabs';
+import { closeTab, isBlank, moveTab, openTab, type Tab } from '@/domain/tabs';
 import { t } from '@/i18n';
 import type { RecentEntry } from '@/services/storage';
 import * as storage from '@/services/storage';
@@ -75,6 +75,8 @@ type State = {
   /** Closes a tab without asking; closing the last one returns to the start screen. */
   closeTab: (id: string) => void;
   moveTab: (id: string, toIndex: number) => void;
+  /** Detaches a tab from its file, keeping its text (it becomes an unsaved copy). */
+  unlinkTab: (id: string) => void;
   forgetRecent: (entry: RecentEntry) => void;
   clearRecents: () => void;
   /** Replaces the active document with newer text found on disk (no unsaved changes). */
@@ -152,9 +154,10 @@ function initialState() {
   return {
     tabs,
     ...show(active, -1),
-    // A returning user lands back in their documents, not on a blank editor
-    // or the start screen; first-time users see the start screen.
-    screen: (restored ? 'editor' : 'start') as Screen,
+    // A returning user lands back in their documents; first-time users,
+    // and anyone who closed every tab (one blank tab left), see the start
+    // screen instead of a blank editor.
+    screen: (restored && !(tabs.length === 1 && isBlank(active)) ? 'editor' : 'start') as Screen,
     viewMode: settings.defaultViewMode,
     settings,
     recents: storage.loadRecents(),
@@ -248,6 +251,17 @@ export const useStore = create<State>()((set, get) => ({
   },
 
   moveTab: (id, toIndex) => set((s) => ({ tabs: moveTab(s.tabs, id, toIndex) })),
+
+  unlinkTab: (id) =>
+    set((s) =>
+      id === s.activeTabId
+        ? { fileHandle: null, handleId: null }
+        : {
+            tabs: s.tabs.map((tab) =>
+              tab.id === id ? { ...tab, fileHandle: null, handleId: null } : tab
+            ),
+          }
+    ),
 
   reloadFromDisk: (markdown) =>
     set((s) => ({
