@@ -26,6 +26,11 @@ import type { ScrollAdapter } from './scrollAdapter';
 
 /** Marks transactions that carry the other pane's edits, so they aren't echoed back. */
 const fromStore = Annotation.define<boolean>();
+/**
+ * Every edit that comes from the store: not echoed back, and kept out of
+ * this pane's undo history (Ctrl+Z here undoes only what was typed here).
+ */
+const FROM_STORE = [fromStore.of(true), Transaction.addToHistory.of(false)];
 
 /** Swapped at runtime when the line-wrapping setting changes. */
 const wrapping = new Compartment();
@@ -163,21 +168,15 @@ export function TextPane({ onAdapter }: Props) {
         view.dispatch({
           changes: { from: 0, to: current.length, insert: state.doc.markdown },
           selection: { anchor: clamp(at?.textAnchor ?? 0), head: clamp(at?.textHead ?? 0) },
-          annotations: [fromStore.of(true), Transaction.addToHistory.of(false)],
+          annotations: FROM_STORE,
         });
         restoreScroll(view.scrollDOM, at?.textScroll ?? 0);
         return;
       }
       // Apply only the span the visual pane changed, so the cursor and
-      // scroll position here survive. Kept out of this pane's undo history,
-      // as the visual pane does with text edits: Ctrl+Z here undoes only
-      // what was typed here.
+      // scroll position here survive.
       const change = minimalChange(current, state.doc.markdown);
-      if (change)
-        view.dispatch({
-          changes: change,
-          annotations: [fromStore.of(true), Transaction.addToHistory.of(false)],
-        });
+      if (change) view.dispatch({ changes: change, annotations: FROM_STORE });
     });
 
     const unregisterView = registerViewPart(() => {

@@ -39,3 +39,15 @@ export function restoreScroll(el: HTMLElement, top: number): void {
     el.scrollTop = top;
   });
 }
+
+/**
+ * The visual pane's top-level headings, in document order. Linked scroll
+ * and heading jumps (outline, palette) must count headings the same way,
+ * or a jump lands on the wrong one.
+ */
+export const visualHeadings = (pm: Element): HTMLElement[] =>
+  Array.from(
+    pm.querySelectorAll<HTMLElement>(
+      ':scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6'
+    )
+  );

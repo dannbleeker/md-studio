@@ -1,8 +1,6 @@
 import { EditorView } from '@codemirror/view';
 import type { Heading } from '@/domain/headings';
-import { editors } from './editorRegistry';
-
-const HEADINGS = ':scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6';
+import { editors, visualHeadings } from './editorRegistry';
 
 /**
  * Brings the `index`-th heading to the top of both panes and puts the text
@@ -20,7 +18,7 @@ export function jumpToHeading(headings: readonly Heading[], index: number): void
       effects: EditorView.scrollIntoView(line.from, { y: 'start', yMargin: 8 }),
     });
   }
-  const target = editors.visual?.dom.querySelectorAll<HTMLElement>(HEADINGS)[index];
+  const target = editors.visual ? visualHeadings(editors.visual.dom)[index] : undefined;
   const scroller = target?.closest<HTMLElement>('.pane-scroll');
   if (target && scroller) {
     scroller.scrollTop +=
