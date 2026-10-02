@@ -120,10 +120,9 @@ a short message, *Opened notes.md*. The picker looks for Markdown files with
 the extensions `.md`, `.markdown`, `.mdown` and `.mkd`.
 
 If the folder is already open on your screen, dragging is quicker. Drag a
-`.md` file (or a `.txt` file) from your file manager and drop it on the start
-screen or on the toolbar. Avoid dropping it into the Markdown source pane: that
-pane is a text editor, and it pastes a dropped file's text in at the spot
-where you let go.
+`.md` file (or a `.txt` file) from your file manager and drop it anywhere on the
+window. It opens in its own tab, wherever you let go. You can drop several
+files at once.
 
 On Windows, once MD Studio is installed as an app (see below), you can open a
 file from Explorer: right-click it, choose *Open with*, and pick MD Studio. If

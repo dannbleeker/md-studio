@@ -6,10 +6,11 @@ import { createDocument, isDirty, normalizeFileName } from '@/domain/document';
 import { neighbourTab, tabForFile } from '@/domain/tabs';
 import { t } from '@/i18n';
 import { syncedTabs, useStore } from '@/store';
+import { flushEditors } from '@/store/flush';
 import { requestConfirm, showToast } from '@/store/ui';
 import { type OpenedFile, openFile, readHandle, saveFile } from './fileSystem';
 import { ensurePermission, getHandle, pruneHandles, putHandle } from './handleStore';
-import type { RecentEntry } from './storage';
+import { loadTabs, type RecentEntry } from './storage';
 
 /** Asks before closing a tab whose changes are not saved to disk. */
 async function confirmClose(id: string): Promise<boolean> {
@@ -43,8 +44,11 @@ async function load(file: OpenedFile) {
 /** Drops stored handles no recent entry or open document points at any more. */
 async function forgetUnusedHandles() {
   const state = useStore.getState();
+  // Saved tabs count too: another window of the app may still use them.
   const keep = new Set(
-    [...state.recents, ...syncedTabs(state)].flatMap((r) => (r.handleId ? [r.handleId] : []))
+    [...state.recents, ...syncedTabs(state), ...(loadTabs()?.tabs ?? [])].flatMap((r) =>
+      r.handleId ? [r.handleId] : []
+    )
   );
   await pruneHandles(keep);
 }
@@ -52,6 +56,7 @@ async function forgetUnusedHandles() {
 export async function switchTab(id: string): Promise<void> {
   useStore.getState().activateTab(id);
   await restoreDocumentHandle();
+  await checkDiskChanges();
 }
 
 /** Activates the tab `step` places to the right (negative: left), wrapping. */
@@ -140,7 +145,11 @@ export async function openRecent(entry: RecentEntry): Promise<void> {
 }
 
 export async function saveDocument(saveAs = false): Promise<void> {
-  const { doc, fileHandle, markSaved } = useStore.getState();
+  // Land the visual pane's pending edits, then pin what this save writes
+  // and which tab it belongs to.
+  flushEditors();
+  const { doc, fileHandle, handleId: startHandleId, activeTabId, markSaved } = useStore.getState();
+  const written = { tabId: activeTabId, markdown: doc.markdown };
   try {
     // A handle restored after a reload or from Recent needs write
     // permission again; if refused, fall back to choosing a location.
@@ -148,11 +157,21 @@ export async function saveDocument(saveAs = false): Promise<void> {
       !saveAs && fileHandle && (await ensurePermission(fileHandle, 'readwrite'))
         ? fileHandle
         : null;
+    // The file may have changed since we last read or wrote it (another
+    // app, another device syncing the folder): ask before replacing that.
+    if (target && (await diskText(target)) !== doc.savedMarkdown) {
+      const overwrite = await requestConfirm({
+        title: t('confirm.overwrite.title'),
+        body: t('confirm.overwrite.body', { name: doc.fileName }),
+        confirmLabel: t('confirm.overwrite.ok'),
+      });
+      if (!overwrite) return;
+    }
     const result = await saveFile(doc.markdown, normalizeFileName(doc.fileName), target);
     if (!result) return;
     const newHandle = result.handle && result.handle !== fileHandle ? result.handle : null;
-    const handleId = newHandle ? await putHandle(newHandle) : useStore.getState().handleId;
-    markSaved(result.name, result.handle, handleId);
+    const handleId = newHandle ? await putHandle(newHandle) : startHandleId;
+    markSaved(result.name, result.handle, handleId, written);
     if (newHandle) void forgetUnusedHandles();
     showToast(
       t(result.kind === 'written' ? 'toast.saved' : 'toast.downloaded', { name: result.name })
@@ -186,4 +205,54 @@ export async function clearRecents(): Promise<void> {
 export async function openWelcome(): Promise<void> {
   const { default: markdown } = await import('@/i18n/welcome.en.md?raw');
   useStore.getState().loadDocument(createDocument(markdown, t('welcome.fileName')), null);
+}
+
+/** The file's current text, or null when it can't be read (moved, deleted, no permission). */
+async function diskText(handle: FileSystemFileHandle): Promise<string | null> {
+  try {
+    return await (await handle.getFile()).text();
+  } catch {
+    return null;
+  }
+}
+
+/** The disk text we last warned about, so a change is announced once. */
+let warnedAbout: string | null = null;
+
+/**
+ * Picks up changes made to the active document's file outside MD Studio.
+ * Runs when the window regains focus and after a tab switch. Only reads
+ * when permission is already granted, so it never prompts. A tab without
+ * unsaved changes reloads quietly; one with unsaved changes gets a warning,
+ * and Save asks before overwriting.
+ */
+export async function checkDiskChanges(): Promise<void> {
+  const { fileHandle, doc, activeTabId } = useStore.getState();
+  if (!fileHandle) return;
+  try {
+    if (
+      fileHandle.queryPermission &&
+      (await fileHandle.queryPermission({ mode: 'read' })) !== 'granted'
+    )
+      return;
+  } catch {
+    return;
+  }
+  const text = await diskText(fileHandle);
+  const now = useStore.getState();
+  // Ignore results that arrive after a switch, an edit or a save.
+  if (
+    text === null ||
+    now.activeTabId !== activeTabId ||
+    now.doc.savedMarkdown !== doc.savedMarkdown
+  )
+    return;
+  if (text === doc.savedMarkdown) return;
+  if (!isDirty(now.doc)) {
+    now.reloadFromDisk(text);
+    showToast(t('toast.reloadedFromDisk', { name: doc.fileName }));
+  } else if (warnedAbout !== text) {
+    warnedAbout = text;
+    showToast(t('toast.changedOnDisk', { name: doc.fileName }));
+  }
 }

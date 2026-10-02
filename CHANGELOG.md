@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+- **Bug hunt, part 1: data loss.**
+  - Save records exactly the text it wrote, on the tab it started in,
+    so typing during a save or switching tabs while it runs no longer
+    marks unwritten text as saved or ties another tab to the file.
+  - Visual-pane edits are flushed before saves, tab switches, closing and
+    page hide, so the last 200 ms of typing is never lost or written into
+    another tab, and a text edit made right after a visual edit is no
+    longer reverted.
+  - Two windows of the app keep each other's tabs, file handles still used
+    by any saved tab are kept, and double-clicked files go to the open
+    window. A full browser storage now warns instead of silently
+    dropping changes, and an unchanged tab takes half the space.
+  - Files changed on disk are noticed: an unchanged tab reloads, and Save
+    asks before overwriting the newer version.
+  - Exports number footnotes, keep nested lists, task boxes and
+    strikethrough in PDF, and embed pasted and `images/` pictures in PDF,
+    Word and HTML.
+  - Smaller fixes: a dropped `.md` file is no longer also pasted into the
+    Markdown pane; several dropped or double-clicked files all open;
+    shortcuts stay quiet behind dialogs and during IME composition, and
+    Alt shortcuts work on macOS; *Continue editing* finds the tab with
+    work when the active one is blank; a linked file in Recent is no
+    longer replaced by an unlinked one with the same name.
 - **The book is written.** *Writing in Plain Text* now has a foreword,
   seven chapters and three appendices (~23,000 words) instead of outlines,
   in the same voice as the mindmap-studio book. The PDF and EPUB are

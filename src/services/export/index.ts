@@ -10,6 +10,7 @@ import {
   formatInfo,
   type HtmlTheme,
 } from '@/domain/exportFormats';
+import { inlineFootnotes } from '@/domain/footnotes';
 import { t } from '@/i18n';
 import { useStore } from '@/store';
 import { showToast } from '@/store/ui';
@@ -24,6 +25,7 @@ async function render(
   options: ExportOptions
 ): Promise<Blob> {
   const { mime } = formatInfo(format);
+  const images = async () => (await import('./exportImages')).loadExportImages(markdown);
   switch (format) {
     case 'html': {
       const { markdownToHtml } = await import('./html');
@@ -37,11 +39,11 @@ async function render(
     }
     case 'docx': {
       const { markdownToDocx } = await import('./docx');
-      return markdownToDocx(markdown, title);
+      return markdownToDocx(markdown, title, await images());
     }
     case 'pdf': {
       const { markdownToPdf } = await import('./markdownPdf.mjs');
-      const bytes = await markdownToPdf({ sources: [markdown], title });
+      const bytes = await markdownToPdf({ sources: [markdown], title, images: await images() });
       return new Blob([bytes as Uint8Array<ArrayBuffer>], { type: mime });
     }
   }
@@ -52,7 +54,8 @@ export async function exportDocument(format: ExportFormat, options: ExportOption
   const name = exportFileName(doc.fileName, format);
   const title = documentTitle(doc.markdown) || name.replace(/\.[^.]+$/, '');
   try {
-    const blob = await render(format, doc.markdown, title, options);
+    // The exporters have no footnote support; see domain/footnotes.ts.
+    const blob = await render(format, inlineFootnotes(doc.markdown), title, options);
     const result = await saveBlobAs(blob, name, formatInfo(format));
     if (!result) return;
     showToast(

@@ -288,10 +288,11 @@ and the note as a footnote definition.
 
 Footnotes are less portable than anything else in this chapter. GitHub renders
 them, and so do MD Studio's visual pane and many other tools, but they are not
-part of CommonMark, and MD Studio's exports currently pass them through as the
-plain text you wrote. If a document will be exported, check how its footnotes
-come out. For important sources, an inline link or a *Sources* section may serve
-better.
+part of CommonMark, and a tool that doesn't know them shows the raw `[^1]`
+markers. MD Studio's exports number them for you: each marker becomes `[1]`,
+`[2]` and so on, in the order they appear, and the notes follow as a numbered
+list at the end. For important sources, an inline link or a *Sources* section
+may still serve better.
 
 ## Horizontal rules
 

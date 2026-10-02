@@ -168,4 +168,25 @@ describe('tabs', () => {
     useStore.getState().moveTab(useStore.getState().activeTabId, 0);
     expect(names()).toEqual(['c.md', 'a.md', 'b.md']);
   });
+
+  it('keeps tabs another window saved instead of overwriting them', () => {
+    vi.useFakeTimers();
+    open('mine', 'mine.md');
+    vi.advanceTimersByTime(350);
+    // Another window of the app saves a tab this window has never seen.
+    const other = {
+      id: 'other-window',
+      doc: createDocument('theirs', 'theirs.md'),
+      handleId: null,
+    };
+    const now = JSON.parse(localStorage.getItem('md-studio:tabs:v1') ?? '{}');
+    localStorage.setItem(
+      'md-studio:tabs:v1',
+      JSON.stringify({ ...now, tabs: [...now.tabs, other] })
+    );
+    useStore.getState().setMarkdown('mine, edited', 'text');
+    vi.advanceTimersByTime(350);
+    vi.useRealTimers();
+    expect(loadTabs()?.tabs.map((t) => t.doc.fileName)).toEqual(['mine.md', 'theirs.md']);
+  });
 });

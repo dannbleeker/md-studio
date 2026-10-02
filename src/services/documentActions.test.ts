@@ -1,11 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocument } from '@/domain/document';
 import { resetStoreForTest, useStore } from '@/store';
+import { useUiStore } from '@/store/ui';
 import {
+  checkDiskChanges,
   openDroppedFile,
   openRecent,
   restoreDocumentHandle,
   saveDocument,
+  switchTab,
 } from './documentActions';
 
 const handles = new Map<string, FileSystemFileHandle>();
@@ -143,5 +146,116 @@ describe('opening a file that is already open', () => {
     await openRecent(entry);
     expect(fileNames()).toEqual(['snap.md', 'x.md']);
     expect(useStore.getState().doc.fileName).toBe('snap.md');
+  });
+});
+
+describe('files changed on disk outside MD Studio', () => {
+  beforeEach(() => {
+    handles.clear();
+    resetStoreForTest();
+  });
+  const openOnDisk = (h: FakeHandle) =>
+    useStore.getState().loadDocument(createDocument(h.content, h.name), h, 'id-x');
+
+  it('reloads a tab without unsaved changes', async () => {
+    const h = fakeHandle('a.md', 'v1');
+    openOnDisk(h);
+    h.content = 'v2 from another app';
+    await checkDiskChanges();
+    expect(useStore.getState().doc).toMatchObject({
+      markdown: 'v2 from another app',
+      savedMarkdown: 'v2 from another app',
+    });
+  });
+
+  it('keeps unsaved work and asks before Save overwrites the newer file', async () => {
+    const h = fakeHandle('a.md', 'v1');
+    openOnDisk(h);
+    useStore.getState().setMarkdown('my edit', 'text');
+    h.content = 'v2 from another device';
+    await checkDiskChanges();
+    expect(useStore.getState().doc.markdown).toBe('my edit');
+
+    const saving = saveDocument();
+    await vi.waitFor(() => expect(useUiStore.getState().confirm).not.toBeNull());
+    useUiStore.getState().confirm?.resolve(false);
+    await saving;
+    expect(h.content).toBe('v2 from another device');
+
+    const again = saveDocument();
+    await vi.waitFor(() => expect(useUiStore.getState().confirm).not.toBeNull());
+    useUiStore.getState().confirm?.resolve(true);
+    await again;
+    expect(h.content).toBe('my edit');
+  });
+
+  it('saves without asking when the file is as we left it', async () => {
+    const h = fakeHandle('a.md', 'v1');
+    openOnDisk(h);
+    useStore.getState().setMarkdown('v1 edited', 'text');
+    await saveDocument();
+    expect(useUiStore.getState().confirm).toBeNull();
+    expect(h.content).toBe('v1 edited');
+  });
+});
+
+describe('saves that take a while', () => {
+  beforeEach(() => {
+    handles.clear();
+    resetStoreForTest();
+  });
+
+  /** A handle whose write waits until `release()` is called. */
+  function slowHandle(name: string, content: string) {
+    let release = () => {};
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    const h = fakeHandle(name, content);
+    const createWritable = h.createWritable.bind(h);
+    Object.assign(h, {
+      async createWritable() {
+        const w = await createWritable();
+        return { write: w.write, close: async () => gate.then(w.close) };
+      },
+    });
+    return { h, release: () => release() };
+  }
+
+  it('keeps edits made during a save marked as unsaved', async () => {
+    const { h, release } = slowHandle('a.md', 'v1');
+    useStore.getState().loadDocument(createDocument('v1', 'a.md'), h, 'id-a');
+    useStore.getState().setMarkdown('v2', 'text');
+    const saving = saveDocument();
+    await vi.waitFor(() => expect(h.content).toBe('v2'));
+    useStore.getState().setMarkdown('v3 typed during the save', 'text');
+    release();
+    await saving;
+    expect(useStore.getState().doc).toMatchObject({
+      markdown: 'v3 typed during the save',
+      savedMarkdown: 'v2',
+    });
+  });
+
+  it('records the save on the tab it started in, even after a tab switch', async () => {
+    const { h, release } = slowHandle('a.md', 'A');
+    useStore.getState().loadDocument(createDocument('A', 'a.md'), h, 'id-a');
+    const tabA = useStore.getState().activeTabId;
+    useStore.getState().setMarkdown('A edited', 'text');
+    useStore.getState().loadDocument(createDocument('B', 'b.md'), null);
+    const tabB = useStore.getState().activeTabId;
+    await switchTab(tabA);
+    const saving = saveDocument();
+    await vi.waitFor(() => expect(h.content).toBe('A edited'));
+    await switchTab(tabB);
+    release();
+    await saving;
+    const s = useStore.getState();
+    expect(s.doc).toMatchObject({ fileName: 'b.md', markdown: 'B' });
+    expect(s.fileHandle).toBeNull();
+    expect(s.tabs.find((t) => t.id === tabA)?.doc).toMatchObject({
+      markdown: 'A edited',
+      savedMarkdown: 'A edited',
+    });
   });
 });

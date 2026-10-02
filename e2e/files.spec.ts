@@ -124,3 +124,46 @@ test('switching tabs returns to the same scroll position; tabs can be dragged', 
   await expect(tabs.getByRole('tab').nth(1)).toContainText('Untitled.md · Long');
   await expect(tabs.getByRole('tab').nth(1)).toHaveAttribute('aria-selected', 'true');
 });
+
+test('a .md file dropped on the Markdown pane opens in a tab without pasting its text', async ({
+  page,
+}) => {
+  await newDocument(page);
+  await setText(page, 'keep me as I am');
+  await page
+    .getByTestId('text-editor')
+    .locator('.cm-content')
+    .evaluate((el) => {
+      const data = new DataTransfer();
+      data.items.add(new File(['# Dropped\n\nfrom disk'], 'dropped.md', { type: 'text/markdown' }));
+      const box = el.getBoundingClientRect();
+      el.dispatchEvent(
+        new DragEvent('drop', {
+          dataTransfer: data,
+          bubbles: true,
+          cancelable: true,
+          clientX: box.left + 5,
+          clientY: box.top + 5,
+        })
+      );
+    });
+  const tabs = page.getByRole('tablist', { name: 'Open documents' });
+  await expect(tabs.getByRole('tab')).toHaveCount(2);
+  await expect.poll(() => textContent(page)).toBe('# Dropped\n\nfrom disk');
+  await tabs.getByRole('tab').first().click();
+  await expect.poll(() => textContent(page)).toBe('keep me as I am');
+});
+
+test('app shortcuts stay quiet while a dialog is open', async ({ page }) => {
+  await newDocument(page);
+  await setText(page, 'first');
+  await page.getByRole('button', { name: 'New', exact: true }).click();
+  const tabs = page.getByRole('tablist', { name: 'Open documents' });
+  await expect(tabs.getByRole('tab')).toHaveCount(2);
+  await page.keyboard.press('ControlOrMeta+,');
+  await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+  await page.keyboard.press('Alt+W');
+  await page.keyboard.press('Alt+N');
+  await page.keyboard.press('Escape');
+  await expect(tabs.getByRole('tab')).toHaveCount(2);
+});

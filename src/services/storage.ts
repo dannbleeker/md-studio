@@ -35,12 +35,14 @@ function read<T>(key: string): T | null {
   }
 }
 
-function write(key: string, value: unknown): void {
+/** False when the browser refused (quota exceeded, storage disabled). */
+function write(key: string, value: unknown): boolean {
   try {
     localStorage.setItem(key, JSON.stringify(value));
+    return true;
   } catch {
-    // Quota exceeded or storage disabled: the in-memory document is intact,
-    // and losing reload-restore is better than crashing the editor.
+    // The in-memory document is intact; the caller decides whether to warn.
+    return false;
   }
 }
 
@@ -89,12 +91,28 @@ export function loadTabs(): Tabs | null {
   };
 }
 
-export function saveTabs(state: Tabs): void {
-  write(TABS_KEY, state);
+/**
+ * Saves the open tabs; false when they no longer fit in browser storage.
+ * `savedMarkdown` is left out when it equals `markdown` (the usual case),
+ * which halves what a saved tab costs.
+ */
+export function saveTabs(state: Tabs): boolean {
+  const ok = write(TABS_KEY, {
+    activeId: state.activeId,
+    tabs: state.tabs.map(({ id, doc, handleId }) => ({
+      id,
+      handleId,
+      doc:
+        doc.savedMarkdown === doc.markdown
+          ? { markdown: doc.markdown, fileName: doc.fileName, updatedAt: doc.updatedAt }
+          : doc,
+    })),
+  });
   // The legacy keys would otherwise resurrect a closed document if the
   // tabs entry is ever unreadable.
   remove(DOC_KEY);
   remove(HANDLE_KEY);
+  return ok;
 }
 
 export function loadSettings(): Record<string, unknown> {
@@ -115,8 +133,14 @@ export function loadRecents(): RecentEntry[] {
  * match; without handles, when their names match (two "notes.md" from
  * different folders are only told apart when both have handles).
  */
+/**
+ * Entries are the same file when their handle ids match. Two entries
+ * without handles are told apart by name only. One with a handle and one
+ * without are different files: a dropped "README.md" must not replace a
+ * linked README.md from another folder (and with it, that file's handle).
+ */
 const sameRecent = (a: RecentEntry, b: RecentEntry) =>
-  a.handleId && b.handleId ? a.handleId === b.handleId : a.fileName === b.fileName;
+  a.handleId || b.handleId ? a.handleId === b.handleId : a.fileName === b.fileName;
 
 export function pushRecent(entry: RecentEntry): RecentEntry[] {
   const rest = loadRecents().filter((r) => !sameRecent(r, entry));

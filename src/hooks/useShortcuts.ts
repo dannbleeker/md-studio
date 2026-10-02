@@ -12,15 +12,22 @@ import { useStore } from '@/store';
 export function useShortcuts(): void {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Mid-composition (IME) keys belong to the text being composed, and
+      // an open dialog (settings, confirm, palette…) owns the keyboard:
+      // Alt+W behind a modal would close a tab the user can't even see.
+      if (e.isComposing || document.querySelector('dialog[open]')) return;
       const mod = e.ctrlKey || e.metaKey;
       const s = useStore.getState();
       const key = e.key.toLowerCase();
+      // With Alt, e.key is layout-dependent (macOS Option+W types "∑"), so
+      // the Alt shortcuts match the physical key instead.
+      const altKey = e.code.startsWith('Key') ? e.code.slice(3).toLowerCase() : key;
       let handled = true;
       if (mod && key === 's') void saveDocument(e.shiftKey);
       else if (mod && !e.shiftKey && key === 'o') void openDocument();
-      else if (e.altKey && !mod && key === 'n') void newDocument();
+      else if (e.altKey && !mod && altKey === 'n') void newDocument();
       // Alt, not Ctrl: browsers keep Ctrl+W / Ctrl+Tab / Ctrl+PageDown for themselves.
-      else if (e.altKey && !mod && key === 'w' && s.screen === 'editor') void closeTab();
+      else if (e.altKey && !mod && altKey === 'w' && s.screen === 'editor') void closeTab();
       else if (e.altKey && !mod && key === 'pagedown') cycleTab(1);
       else if (e.altKey && !mod && key === 'pageup') cycleTab(-1);
       else if ((mod && key === 'k') || (mod && e.shiftKey && key === 'p')) s.setPaletteOpen(true);

@@ -33,4 +33,23 @@ describe('markdownToDocx', () => {
     expect(xml).toContain('line1');
     expect(xml).toContain('line2');
   });
+
+  it('embeds images it is given and keeps alt text for the rest', async () => {
+    const png = Uint8Array.from(
+      atob(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+      ),
+      (c) => c.charCodeAt(0)
+    );
+    const images = new Map([
+      ['dot.png', { type: 'png' as const, bytes: png, width: 1, height: 1 }],
+    ]);
+    const zip = await JSZip.loadAsync(
+      await Packer.toBuffer(markdownToDocxDocument('![dot](dot.png) ![gone](web.png)', 'T', images))
+    );
+    expect(Object.keys(zip.files).some((f) => f.startsWith('word/media/'))).toBe(true);
+    const xml = (await zip.file('word/document.xml')?.async('string')) ?? '';
+    expect(xml).toContain('descr="dot"');
+    expect(xml).toContain('[gone]');
+  });
 });
