@@ -3,6 +3,14 @@
 Read at session start so project shape doesn't need re-deriving. Per-change
 detail lives in `CHANGELOG.md`; open work in `NEXT_STEPS.md`.
 
+## Response style
+
+Always use the `anthropic-skills:caveman` skill (level **full**) for chat
+replies in this repo, from the first reply of every session: invoke it at
+session start if it isn't already active. Code, commit messages, PR text and
+docs stay in normal prose, as the skill itself specifies. Turn off only when
+the user says "stop caveman" or "normal mode".
+
 ## What this project is
 
 A local-first Markdown editor PWA. A raw Markdown pane (CodeMirror 6) and a
