@@ -1,11 +1,9 @@
-import { EditorView } from '@codemirror/view';
 import { useEffect, useMemo, useState } from 'react';
 import { findHeadings } from '@/domain/headings';
 import { t } from '@/i18n';
 import { useStore } from '@/store';
 import { editors } from '../editor/editorRegistry';
-
-const HEADINGS = ':scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6';
+import { jumpToHeading } from '../editor/jumpToHeading';
 
 /** Index of the heading at or above the text pane's top line. */
 function activeHeading(lines: number[]): number {
@@ -47,24 +45,7 @@ export function OutlinePanel() {
   }, [headings]);
 
   const jump = (index: number) => {
-    const heading = headings[index];
-    if (!heading) return;
-    editors.linkedScrollPausedUntil = performance.now() + 600;
-    const text = editors.text;
-    if (text) {
-      const line = text.state.doc.line(Math.min(heading.line + 1, text.state.doc.lines));
-      text.dispatch({
-        selection: { anchor: line.from },
-        effects: EditorView.scrollIntoView(line.from, { y: 'start', yMargin: 8 }),
-      });
-    }
-    const visual = editors.visual;
-    const target = visual?.dom.querySelectorAll<HTMLElement>(HEADINGS)[index];
-    const scroller = target?.closest<HTMLElement>('.pane-scroll');
-    if (target && scroller) {
-      scroller.scrollTop +=
-        target.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 8;
-    }
+    jumpToHeading(headings, index);
     setActive(index);
   };
 

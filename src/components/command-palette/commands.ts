@@ -4,6 +4,7 @@ import {
   cycleTab,
   newDocument,
   openDocument,
+  openWelcome,
   saveDocument,
 } from '@/services/documentActions';
 import { exportDocument } from '@/services/export';
@@ -15,6 +16,8 @@ export type Command = {
   label: MessageKey;
   shortcut?: string;
   run: () => void;
+  /** Instead of running, replace the palette's query with this (e.g. "#"). */
+  query?: string;
 };
 
 const state = () => useStore.getState();
@@ -62,6 +65,7 @@ export const COMMANDS: readonly Command[] = [
     shortcut: 'Ctrl+H',
     run: () => state().setFind(true, true),
   },
+  { id: 'goto-heading', label: 'cmd.gotoHeading', shortcut: '#', query: '#', run: () => {} },
   {
     id: 'outline',
     label: 'cmd.toggleOutline',
@@ -72,22 +76,22 @@ export const COMMANDS: readonly Command[] = [
   {
     id: 'export-html',
     label: 'cmd.exportHtml',
-    run: () => void exportDocument('html', { htmlTheme: 'auto' }),
+    run: () => void exportDocument('html', { htmlTheme: state().settings.exportHtmlTheme }),
   },
   {
     id: 'export-pdf',
     label: 'cmd.exportPdf',
-    run: () => void exportDocument('pdf', { htmlTheme: 'auto' }),
+    run: () => void exportDocument('pdf', { htmlTheme: state().settings.exportHtmlTheme }),
   },
   {
     id: 'export-docx',
     label: 'cmd.exportDocx',
-    run: () => void exportDocument('docx', { htmlTheme: 'auto' }),
+    run: () => void exportDocument('docx', { htmlTheme: state().settings.exportHtmlTheme }),
   },
   {
     id: 'export-txt',
     label: 'cmd.exportTxt',
-    run: () => void exportDocument('txt', { htmlTheme: 'auto' }),
+    run: () => void exportDocument('txt', { htmlTheme: state().settings.exportHtmlTheme }),
   },
   { id: 'print', label: 'cmd.print', shortcut: 'Ctrl+P', run: () => window.print() },
   {
@@ -97,6 +101,7 @@ export const COMMANDS: readonly Command[] = [
     run: () => state().setSettingsOpen(true),
   },
   { id: 'home', label: 'cmd.home', run: () => state().setScreen('start') },
+  { id: 'welcome', label: 'cmd.welcome', run: () => void openWelcome() },
   { id: 'book', label: 'cmd.book', run: () => window.open(BOOK_PDF, '_blank', 'noopener') },
   {
     id: 'dashboard',

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocument, isDirty } from '@/domain/document';
 import { loadTabs } from '@/services/storage';
 import { resetStoreForTest, useStore } from './index';
+import { DEFAULT_SETTINGS } from './settings';
 import { registerViewPart } from './viewState';
 
 describe('store', () => {
@@ -66,6 +67,7 @@ describe('store', () => {
     );
     resetStoreForTest();
     expect(useStore.getState().settings).toEqual({
+      ...DEFAULT_SETTINGS,
       theme: 'system',
       linkedScroll: false,
       defaultViewMode: 'text',

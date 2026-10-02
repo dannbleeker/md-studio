@@ -161,3 +161,29 @@ export async function saveDocument(saveAs = false): Promise<void> {
     showToast(t('toast.saveFailed'));
   }
 }
+
+/** Removes a file from the recent list; the file on disk is not touched. */
+export function forgetRecent(entry: RecentEntry): void {
+  useStore.getState().forgetRecent(entry);
+  void forgetUnusedHandles();
+}
+
+export async function clearRecents(): Promise<void> {
+  const ok = await requestConfirm({
+    title: t('confirm.clearRecents.title'),
+    body: t('confirm.clearRecents.body'),
+    confirmLabel: t('confirm.clearRecents.ok'),
+  });
+  if (!ok) return;
+  useStore.getState().clearRecents();
+  void forgetUnusedHandles();
+}
+
+/**
+ * Opens the bundled sample document as a new, unsaved tab. Loaded on
+ * demand so it never weighs on start-up.
+ */
+export async function openWelcome(): Promise<void> {
+  const { default: markdown } = await import('@/i18n/welcome.en.md?raw');
+  useStore.getState().loadDocument(createDocument(markdown, t('welcome.fileName')), null);
+}

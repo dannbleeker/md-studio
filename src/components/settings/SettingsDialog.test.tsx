@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { resetStoreForTest, useStore } from '@/store';
+import { DEFAULT_SETTINGS } from '@/store/settings';
 import { SettingsDialog } from './SettingsDialog';
 
 describe('SettingsDialog', () => {
@@ -15,6 +16,7 @@ describe('SettingsDialog', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Visual' }));
     fireEvent.click(screen.getByRole('checkbox', { name: /Link scrolling/ }));
     expect(useStore.getState().settings).toEqual({
+      ...DEFAULT_SETTINGS,
       theme: 'dark',
       defaultViewMode: 'visual',
       linkedScroll: false,

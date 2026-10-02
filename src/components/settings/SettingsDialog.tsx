@@ -1,7 +1,7 @@
 import { t } from '@/i18n';
 import { LOCALES, type LocalePreference, SUPPORTED_LOCALES } from '@/i18n/locales';
 import { useStore } from '@/store';
-import type { ThemePreference, ViewMode } from '@/store/settings';
+import { FONT_SIZES, type ThemePreference, type ViewMode } from '@/store/settings';
 import { Dialog } from '../ui/Dialog';
 
 const THEMES: ThemePreference[] = ['system', 'light', 'dark'];
@@ -50,6 +50,39 @@ export function SettingsDialog() {
             </label>
           ))}
         </fieldset>
+
+        <fieldset>
+          <legend>{t('settings.fontSize')}</legend>
+          {FONT_SIZES.map((size) => (
+            <label key={size} className="radio">
+              <input
+                type="radio"
+                name="fontSize"
+                value={size}
+                checked={settings.fontSize === size}
+                onChange={() => update({ fontSize: size })}
+              />
+              {t(`settings.fontSize.${size}`)}
+            </label>
+          ))}
+        </fieldset>
+
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={settings.lineWrapping}
+            onChange={(e) => update({ lineWrapping: e.target.checked })}
+          />
+          {t('settings.lineWrapping')}
+        </label>
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={settings.lineNumbers}
+            onChange={(e) => update({ lineNumbers: e.target.checked })}
+          />
+          {t('settings.lineNumbers')}
+        </label>
 
         {/* Hidden while English is the only language: a one-option picker is noise. */}
         {SUPPORTED_LOCALES.length > 1 ? (

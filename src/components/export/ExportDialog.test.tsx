@@ -32,4 +32,20 @@ describe('ExportDialog', () => {
     expect(exportDocument).toHaveBeenCalledWith('html', { htmlTheme: 'dark' });
     expect(useStore.getState().exportOpen).toBe(false);
   });
+
+  it('remembers the last format and theme for next time', () => {
+    const { unmount } = render(<ExportDialog />);
+    fireEvent.click(screen.getByRole('radio', { name: /Web page/ }));
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'light' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Export' }));
+    expect(useStore.getState().settings).toMatchObject({
+      exportFormat: 'html',
+      exportHtmlTheme: 'light',
+    });
+    unmount();
+    useStore.getState().setExportOpen(true);
+    render(<ExportDialog />);
+    expect(screen.getByRole('radio', { name: /Web page/ })).toBeChecked();
+    expect(screen.getByRole('combobox')).toHaveValue('light');
+  });
 });

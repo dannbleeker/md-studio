@@ -1,23 +1,24 @@
 {
   "_comment": "Editor-responsiveness baseline for the Perf trace workflow (.github/workflows/perf-trace.yml). scripts/check-perf-regression.mjs takes the BEST p95 across the workflow's iterations for each scenario and fails if it is more than the threshold percent above `p95_ms` here. Update these numbers in the same commit as a deliberate perf change; this diff is what reviewers see.",
-  "_note_provenance": "Seeded 2026-10-02 from three local runs (best-of-3 p95) on a ~3,000-line document, not from a CI runner. Re-baseline from the first CI run's log if the runner differs much.",
-  "_note_known_cost": "Re-baselined after the incremental visual sync (text-to-visual 560 -> 175 ms; it is now the 150 ms batching delay plus ~15 ms of work). The visual pane re-parses only the changed blocks; a full parse (~250 ms on this document) runs only as a fallback or once while idle. Typing latency is dominated by the browser's rendering in the headless runner (app JavaScript is ~8 ms per keystroke), hence its wide threshold.",
+  "_note_provenance": "Re-baselined 2026-10-02 from the first CI run of the Perf trace workflow (run 37047471865, ubuntu-latest, best-of-3 p95: typing 38.5, text-to-visual 162.3, visual-sync 7.3, visual-to-text 275.9 ms; the three iterations agreed within 5%). The earlier numbers came from a local container whose headless rendering made typing look ~7x slower than on the runner.",
+  "_note_known_cost": "Text-to-visual is the 150 ms batching delay plus ~12 ms of incremental work; a full parse (~250 ms on this document) runs only as a fallback or once while idle. Visual-to-text is the 200 ms markdownUpdated debounce plus serialize and the keep-source-style merge.",
   "regressionThresholdPct": 40,
   "scenarios": {
     "typing": {
-      "p95_ms": 290,
-      "thresholdPct": 75
+      "p95_ms": 40,
+      "thresholdPct": 75,
+      "_note": "Small absolute numbers: 75% is ~30 ms of headroom for runner jitter."
     },
     "text-to-visual": {
-      "p95_ms": 175
+      "p95_ms": 165
     },
     "visual-sync": {
-      "p95_ms": 13,
+      "p95_ms": 8,
       "thresholdPct": 100,
       "_note": "CPU time per visual-pane update; doubles if updates fall back to full parses, which is the regression this guards."
     },
     "visual-to-text": {
-      "p95_ms": 345
+      "p95_ms": 280
     }
   }
 }

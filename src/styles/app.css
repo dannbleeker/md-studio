@@ -26,6 +26,18 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
+  --editor-scale: 1;
+}
+/* Editor text size (Settings → Text size); both panes scale from it. */
+.app[data-font-size="small"] {
+  --editor-scale: 0.9;
+}
+.app[data-font-size="large"] {
+  --editor-scale: 1.15;
+}
+/* basicSetup always adds the gutter; the setting hides it. */
+.app:not([data-line-numbers]) .cm-gutters {
+  display: none;
 }
 
 .muted {
@@ -294,6 +306,35 @@ body {
 }
 .start-recent {
   margin-top: 2.5rem;
+}
+.start-recent-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.recent-row {
+  display: flex;
+  align-items: center;
+}
+.recent-remove {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  margin-right: 0.5rem;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-faint);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+.recent-remove:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.recent-remove:focus-visible {
+  outline: 2px solid var(--accent);
 }
 .start-recent h2 {
   font-size: 1rem;

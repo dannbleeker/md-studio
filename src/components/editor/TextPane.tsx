@@ -2,7 +2,7 @@ import { markdown } from '@codemirror/lang-markdown';
 import { syntaxHighlighting } from '@codemirror/language';
 import { languages } from '@codemirror/language-data';
 import { search } from '@codemirror/search';
-import { Annotation, EditorState, Transaction } from '@codemirror/state';
+import { Annotation, Compartment, EditorState, Transaction } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { basicSetup } from 'codemirror';
 import { useEffect, useRef } from 'react';
@@ -19,8 +19,12 @@ import type { ScrollAdapter } from './scrollAdapter';
 /** Marks transactions that carry the other pane's edits, so they aren't echoed back. */
 const fromStore = Annotation.define<boolean>();
 
+/** Swapped at runtime when the line-wrapping setting changes. */
+const wrapping = new Compartment();
+
 const theme = EditorView.theme({
-  '&': { height: '100%', fontSize: '0.95rem' },
+  // --editor-scale follows the font-size setting (see app.css).
+  '&': { height: '100%', fontSize: 'calc(0.95rem * var(--editor-scale, 1))' },
   '.cm-scroller': { fontFamily: 'var(--font-mono)', lineHeight: '1.6' },
   '.cm-content': { padding: '1rem 0' },
   '.cm-gutters': {
@@ -52,7 +56,7 @@ export function TextPane({ onAdapter }: Props) {
           markdown({ codeLanguages: languages }),
           // Search state for the app's find bar (its own panel stays closed).
           search(),
-          EditorView.lineWrapping,
+          wrapping.of(useStore.getState().settings.lineWrapping ? EditorView.lineWrapping : []),
           EditorView.domEventHandlers(textPaneImageHandlers()),
           EditorView.contentAttributes.of({ 'aria-label': t('pane.text') }),
           theme,
@@ -72,6 +76,16 @@ export function TextPane({ onAdapter }: Props) {
     view.contentDOM.addEventListener('focus', onFocus);
 
     const unsubscribe = useStore.subscribe((state, prev) => {
+      const { lineWrapping, lineNumbers, fontSize } = state.settings;
+      if (lineWrapping !== prev.settings.lineWrapping) {
+        view.dispatch({
+          effects: wrapping.reconfigure(lineWrapping ? EditorView.lineWrapping : []),
+        });
+      }
+      // Gutter visibility and font size are CSS; line heights change, so re-measure.
+      if (lineNumbers !== prev.settings.lineNumbers || fontSize !== prev.settings.fontSize) {
+        requestAnimationFrame(() => view.requestMeasure());
+      }
       const loaded = state.loadId !== prev.loadId;
       if (!loaded && (state.doc.markdown === prev.doc.markdown || state.source === 'text')) return;
       const current = view.state.doc.toString();

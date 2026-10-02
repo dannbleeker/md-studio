@@ -9,7 +9,16 @@ describe('sanitizeSettings', () => {
 
   it('replaces unknown or mistyped values with defaults', () => {
     expect(
-      sanitizeSettings({ theme: 'neon', linkedScroll: 'yes', language: 'xx', defaultViewMode: 3 })
+      sanitizeSettings({
+        theme: 'neon',
+        linkedScroll: 'yes',
+        language: 'xx',
+        defaultViewMode: 3,
+        fontSize: 'huge',
+        lineNumbers: 1,
+        exportFormat: 'rtf',
+        exportHtmlTheme: null,
+      })
     ).toEqual(DEFAULT_SETTINGS);
   });
 

@@ -64,6 +64,8 @@ type State = {
   /** Closes a tab without asking; closing the last one returns to the start screen. */
   closeTab: (id: string) => void;
   moveTab: (id: string, toIndex: number) => void;
+  forgetRecent: (entry: RecentEntry) => void;
+  clearRecents: () => void;
   /** Re-attaches the open document's file after a reload. */
   restoreFileHandle: (handle: FileSystemFileHandle) => void;
   setScreen: (screen: Screen) => void;
@@ -202,6 +204,12 @@ export const useStore = create<State>()((set, get) => ({
     } else {
       set({ tabs });
     }
+  },
+
+  forgetRecent: (entry) => set({ recents: storage.removeRecent(entry) }),
+  clearRecents: () => {
+    storage.clearRecents();
+    set({ recents: [] });
   },
 
   moveTab: (id, toIndex) => set((s) => ({ tabs: moveTab(s.tabs, id, toIndex) })),

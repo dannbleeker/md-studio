@@ -115,14 +115,26 @@ export function loadRecents(): RecentEntry[] {
  * match; without handles, when their names match (two "notes.md" from
  * different folders are only told apart when both have handles).
  */
+const sameRecent = (a: RecentEntry, b: RecentEntry) =>
+  a.handleId && b.handleId ? a.handleId === b.handleId : a.fileName === b.fileName;
+
 export function pushRecent(entry: RecentEntry): RecentEntry[] {
-  const same = (r: RecentEntry) =>
-    entry.handleId && r.handleId ? r.handleId === entry.handleId : r.fileName === entry.fileName;
-  const rest = loadRecents().filter((r) => !same(r));
+  const rest = loadRecents().filter((r) => !sameRecent(r, entry));
   const next = entry.markdown.length <= MAX_RECENT_BYTES ? [entry, ...rest] : rest;
   const capped = next.slice(0, MAX_RECENTS);
   write(RECENTS_KEY, capped);
   return capped;
+}
+
+/** Drops one entry from the list (the file itself is untouched). */
+export function removeRecent(entry: RecentEntry): RecentEntry[] {
+  const next = loadRecents().filter((r) => !sameRecent(r, entry));
+  write(RECENTS_KEY, next);
+  return next;
+}
+
+export function clearRecents(): void {
+  remove(RECENTS_KEY);
 }
 
 function remove(key: string): void {

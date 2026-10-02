@@ -29,13 +29,15 @@ export function App() {
   const showOutline = useStore((s) => s.settings.showOutline);
   const findOpen = useStore((s) => s.findOpen);
   const manyTabs = useStore((s) => s.tabs.length > 1);
+  const fontSize = useStore((s) => s.settings.fontSize);
+  const lineNumbers = useStore((s) => s.settings.lineNumbers);
   useLocale();
   useTheme();
   useShortcuts();
   useFileDrop();
 
   return (
-    <div className="app">
+    <div className="app" data-font-size={fontSize} data-line-numbers={lineNumbers || undefined}>
       {screen === 'start' ? (
         <StartScreen />
       ) : (
