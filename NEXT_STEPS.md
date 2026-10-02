@@ -21,9 +21,8 @@
 - [x] Recent files remember the file handle (IndexedDB): reopening reads
       the current file and Save writes back to it, also after a reload.
       Snapshot fallback when the file is gone or access is refused.
-- [ ] Reduce visual-pane formatting normalization: tune
-      `remarkStringifyOptionsCtx` (bullet marker, emphasis character) or
-      detect the source document's style and keep it.
+- [x] Visual-pane edits keep the source style of every block they don't
+      touch (`domain/preserveBlocks.ts`); only edited blocks are rewritten.
 - [ ] Multiple open documents / tabs (as in tp-studio).
 - [ ] Visual-pane toolbar or slash menu for formatting without shortcuts.
 - [ ] Image handling: paste/drop images and choose where they are stored.

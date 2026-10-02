@@ -14,6 +14,7 @@ import { gfm } from '@milkdown/kit/preset/gfm';
 import { useEffect, useRef } from 'react';
 import { t } from '@/i18n';
 import { useStore } from '@/store';
+import { keepSourceStyle } from './keepSourceStyle';
 import type { ScrollAdapter } from './scrollAdapter';
 
 /** Text-pane edits are batched for this long before the visual tree is re-parsed. */
@@ -77,8 +78,11 @@ export function VisualPane({ onAdapter }: Props) {
           ...prev,
           attributes: { 'aria-label': t('pane.visual'), spellcheck: 'true' },
         }));
-        ctx.get(listenerCtx).markdownUpdated((_ctx, markdown) => {
-          useStore.getState().setMarkdown(markdown, 'visual');
+        ctx.get(listenerCtx).markdownUpdated((listenerCtx, markdown) => {
+          const previous = useStore.getState().doc.markdown;
+          useStore
+            .getState()
+            .setMarkdown(keepSourceStyle(listenerCtx, previous, markdown), 'visual');
         });
       })
       .use(commonmark)

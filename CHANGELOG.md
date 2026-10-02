@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Visual edits keep your Markdown style**: editing in the visual pane
+  now rewrites only the blocks you changed. Elsewhere, `*` bullets,
+  `__bold__`, setext headings, spacing and so on stay exactly as written
+  (so git diffs stay small). Verified per edit, with a fallback to the
+  old behaviour if the merge would change meaning; no measurable cost on
+  a 3,000-line document.
 - **Recent files reopen the real file** (Edge/Chrome): file handles are
   kept in IndexedDB, so a recent entry opens the file's current content
   and Save writes back to it. The open document keeps its file across a
