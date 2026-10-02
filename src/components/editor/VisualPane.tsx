@@ -21,6 +21,7 @@ import { t } from '@/i18n';
 import { perfMeasure } from '@/services/perfMarks';
 import { useStore } from '@/store';
 import { registerFlush } from '@/store/flush';
+import { showToast } from '@/store/ui';
 import { registerViewPart } from '@/store/viewState';
 import { applyFull, applyIncremental } from './applyMarkdown';
 import { editors, isHidden, restoreScroll } from './editorRegistry';
@@ -64,12 +65,33 @@ export function VisualPane({ onAdapter }: Props) {
     // Text-only view: the hidden pane skips updates and catches up when shown.
     let staleWhileHidden = false;
 
+    // A document the parser can't handle (thousands of nested quotes or
+    // emphasis markers overflow its stack) can't be shown here, and the
+    // overflow leaves Milkdown's parser broken for later documents too. The
+    // pane is rebuilt empty and kept inert until the Markdown parses again:
+    // an edit to a stale tree would be serialized over the Markdown.
+    let failed = false;
+    const setFailed = (value: boolean) => {
+      if (value && !failed) showToast(t('toast.visualFailed'));
+      failed = value;
+      rootEl.inert = value;
+      rootEl.classList.toggle('visual-failed', value);
+    };
+
     const applyAll = (markdown: string) => {
       if (!editor) return;
       clearTimeout(reconcileTimer);
       reconcileDue = false;
-      applyFull(editor, markdown);
-      appliedMd = markdown;
+      if (failed) {
+        if (markdown !== appliedMd) void mount(markdown);
+        return;
+      }
+      try {
+        applyFull(editor, markdown);
+        appliedMd = markdown;
+      } catch {
+        void mount(markdown);
+      }
     };
 
     const flush = () => {
@@ -82,8 +104,17 @@ export function VisualPane({ onAdapter }: Props) {
         return;
       }
       staleWhileHidden = false;
+      if (failed) {
+        applyAll(doc.markdown);
+        return;
+      }
       const started = performance.now();
-      const incremental = applyIncremental(editor, appliedMd, doc.markdown);
+      let incremental = false;
+      try {
+        incremental = applyIncremental(editor, appliedMd, doc.markdown);
+      } catch {
+        // Settled by the full parse below, which rebuilds the pane if it fails too.
+      }
       if (!incremental) applyAll(doc.markdown);
       perfMeasure(incremental ? 'visual-sync:incremental' : 'visual-sync:full', started);
       if (incremental) {
@@ -98,65 +129,92 @@ export function VisualPane({ onAdapter }: Props) {
       }
     };
 
-    Editor.make()
-      .config((ctx) => {
-        ctx.set(rootCtx, rootEl);
-        ctx.set(defaultValueCtx, useStore.getState().doc.markdown);
-        // Match highlighting and search state for the app's find bar.
-        // + the format toolbar's view of the selection, after every change
-        // (a mark toggle changes formatting without moving the selection).
-        ctx.update(prosePluginsCtx, (plugins) => [
-          ...plugins,
-          search(),
-          new Plugin({ view: () => ({ update: (view) => reportFormat(view.state) }) }),
-          // A user edit the debounced listener hasn't reported yet. Store
-          // updates are applied with addToHistory false and don't count.
-          new Plugin({
-            appendTransaction: (trs) => {
-              if (trs.some((tr) => tr.docChanged && tr.getMeta('addToHistory') !== false))
-                unreported = true;
-              return null;
-            },
-          }),
-          visualPaneImagePlugin(() => editor),
-        ]);
-        ctx.update(remarkPluginsCtx, (plugins) => [...plugins, imageTitleFix]);
-        ctx.update(nodeViewCtx, (views) => {
-          const image: (typeof views)[number] = ['image', imageNodeView];
-          return [...views, image];
+    const create = (initial: string) =>
+      Editor.make()
+        .config((ctx) => {
+          ctx.set(rootCtx, rootEl);
+          ctx.set(defaultValueCtx, initial);
+          // Match highlighting and search state for the app's find bar.
+          // + the format toolbar's view of the selection, after every change
+          // (a mark toggle changes formatting without moving the selection).
+          ctx.update(prosePluginsCtx, (plugins) => [
+            ...plugins,
+            search(),
+            new Plugin({ view: () => ({ update: (view) => reportFormat(view.state) }) }),
+            // A user edit the debounced listener hasn't reported yet. Store
+            // updates are applied with addToHistory false and don't count.
+            new Plugin({
+              appendTransaction: (trs) => {
+                if (trs.some((tr) => tr.docChanged && tr.getMeta('addToHistory') !== false))
+                  unreported = true;
+                return null;
+              },
+            }),
+            visualPaneImagePlugin(() => editor),
+          ]);
+          ctx.update(remarkPluginsCtx, (plugins) => [...plugins, imageTitleFix]);
+          ctx.update(nodeViewCtx, (views) => {
+            const image: (typeof views)[number] = ['image', imageNodeView];
+            return [...views, image];
+          });
+          ctx.update(editorViewOptionsCtx, (prev) => ({
+            ...prev,
+            attributes: { 'aria-label': t('pane.visual'), spellcheck: 'true' },
+          }));
+          ctx.get(listenerCtx).markdownUpdated((listenerCtx, markdown) => {
+            // Already flushed, or fired after a load (another tab, a reload
+            // from disk): nothing of the user's to report.
+            if (!unreported) return;
+            unreported = false;
+            const previous = useStore.getState().doc.markdown;
+            useStore
+              .getState()
+              .setMarkdown(keepSourceStyle(listenerCtx, previous, markdown), 'visual');
+          });
+        })
+        .use(commonmark)
+        .use(gfm)
+        .use(history)
+        .use(clipboard)
+        .use(listener)
+        .create();
+
+    /** (Re)builds the editor showing `markdown`, or empty and inert if it can't be parsed. */
+    const mount = (markdown: string): Promise<void> => {
+      const previous = editor;
+      editor = null;
+      if (previous && editors.milkdown === previous) {
+        editors.visual = null;
+        editors.milkdown = null;
+      }
+      previous?.destroy();
+      rootEl.replaceChildren();
+      clearTimeout(reconcileTimer);
+      reconcileDue = false;
+      appliedMd = markdown;
+      return create(markdown)
+        .then((created) => {
+          setFailed(false);
+          return created;
+        })
+        .catch(() => {
+          rootEl.replaceChildren();
+          setFailed(true);
+          return create('');
+        })
+        .then((created) => {
+          if (disposed) {
+            created.destroy();
+            return;
+          }
+          editor = created;
+          editors.visual = created.action((ctx) => ctx.get(editorViewCtx));
+          editors.milkdown = created;
+          // The text pane may have changed while Milkdown was booting.
+          flush();
         });
-        ctx.update(editorViewOptionsCtx, (prev) => ({
-          ...prev,
-          attributes: { 'aria-label': t('pane.visual'), spellcheck: 'true' },
-        }));
-        ctx.get(listenerCtx).markdownUpdated((listenerCtx, markdown) => {
-          // Already flushed, or fired after a load (another tab, a reload
-          // from disk): nothing of the user's to report.
-          if (!unreported) return;
-          unreported = false;
-          const previous = useStore.getState().doc.markdown;
-          useStore
-            .getState()
-            .setMarkdown(keepSourceStyle(listenerCtx, previous, markdown), 'visual');
-        });
-      })
-      .use(commonmark)
-      .use(gfm)
-      .use(history)
-      .use(clipboard)
-      .use(listener)
-      .create()
-      .then((created) => {
-        if (disposed) {
-          created.destroy();
-          return;
-        }
-        editor = created;
-        editors.visual = created.action((ctx) => ctx.get(editorViewCtx));
-        editors.milkdown = created;
-        // The text pane may have changed while Milkdown was booting.
-        flush();
-      });
+    };
+    void mount(appliedMd);
 
     const unsubscribe = useStore.subscribe((state, prev) => {
       if (state.loadId !== prev.loadId) {

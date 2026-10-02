@@ -16,6 +16,13 @@ describe('markdownToHtml', () => {
     expect(markdownToHtml('x', 't', 'auto')).toContain('@media (prefers-color-scheme:dark)');
   });
 
+  it('declares a policy that forbids any script in the exported page', () => {
+    const html = markdownToHtml('# Hi', 'T', 'light');
+    expect(html).toContain(
+      `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src * data:; style-src 'unsafe-inline'">`
+    );
+  });
+
   it('shows raw HTML as text instead of rendering it', () => {
     const html = markdownToHtml(
       '<script>alert(1)</script>\n\nok <b onclick="x()">b</b>',

@@ -33,7 +33,10 @@ to:
   since GitHub Pages can't send headers) that allows scripts only from the
   app's own origin, no plugins, no frames, no form posts and no `<base>`
   rewriting. Even content that reached the page as HTML could not run
-  script. It is set in `vite.config.ts`.
+  script. It is set in `vite.config.ts`. The project dashboard
+  (`public/dashboard.html`) has its own policy, keeps its script in a
+  separate file, and links only to `https://github.com/` from GitHub API
+  data. Exported HTML pages declare a policy that forbids all script.
 - **Markdown is never rendered as HTML in the app.** Both panes are editors:
   CodeMirror shows source text, and Milkdown shows raw HTML in a document as
   text, not as markup.
@@ -44,7 +47,14 @@ to:
 - **No network requests of its own.** Exports read pasted images and images
   next to the file; they never fetch web images. The only network traffic
   is the app's own files, and web images that a document links to (shown in
-  the visual pane, as any Markdown preview does).
+  the visual pane, as any Markdown preview does). Those requests carry no
+  referrer, but the image's server still sees your IP address and when the
+  document was opened, as with any Markdown preview or email client.
+- **Hostile documents** that overflow the Markdown parser (thousands of
+  nested quotes or emphasis markers) can't take the editor down: the visual
+  pane goes inert and says so, the Markdown pane keeps working, and the
+  visual pane comes back once the document parses. Extremely deep nesting
+  can still make parsing slow.
 - **Files** are opened only when you pick or drop them, and written only
   through a handle you granted, after the browser's permission prompt.
 - **Service worker** precaches the app's own build output (the user guide

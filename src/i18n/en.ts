@@ -171,6 +171,8 @@ export const en = {
   'toast.recentCopy':
     'Opened the saved copy of {name}. Allow file access to work on the file itself.',
   'toast.openFailed': 'Could not open that file.',
+  'toast.visualFailed':
+    'This document is nested too deeply for the visual pane. Edit it in the Markdown pane.',
   'toast.saveFailed': 'Could not save the file.',
   'toast.storageFull':
     'Your open documents no longer fit in the browser’s storage, so recent changes won’t survive closing the app. Save them to disk.',

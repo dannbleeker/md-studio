@@ -115,10 +115,19 @@
         lazy setext in lists, HTML blocks), reference links inlined by
         a visual edit, visual undo lost next to a text edit, find bar
         not refocusing.
-- [ ] **Security sweep**: review untrusted input paths (opened and dropped
-      files, pasted HTML, links and raw HTML in Markdown, HTML export),
-      the service worker's caching rules, dependencies (`pnpm audit`), and
-      the CI workflows' permissions and bot pushes. Add a `SECURITY.md`.
+- [x] **Security sweep**: untrusted input paths (opened and dropped
+      files, pasted HTML, links and raw HTML in Markdown, HTML export,
+      dashboard), service worker caching, `pnpm audit`, CI workflow
+      permissions and bot pushes; `SECURITY.md` added. No path ran
+      document script in the app. Fixed: dashboard link scheme, crash
+      on deeply nested documents, CSP for app, dashboard and HTML
+      export, no-referrer images, workflow tokens and action pins.
+  - [ ] Open decision: block web images until the user allows them
+        (per document or in Settings)? Today a document's web images
+        load when it opens, as in other Markdown previews.
+  - [ ] Nested-bracket documents (`[[[[…]]]]`, 50k deep) take tens of
+        seconds to parse on every load; a nesting guard before parsing
+        would cap it.
 - [ ] **Refactor**: tidy the code once features settle: remove duplication
       between the panes, revisit store shape and component boundaries, and
       keep `CLAUDE.md` in step with the result.

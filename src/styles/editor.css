@@ -327,3 +327,8 @@
   margin: 0 0.3rem;
   flex-shrink: 0;
 }
+
+/* The visual tree is out of date and inert (a document it can't parse). */
+.visual-failed {
+  opacity: 0.45;
+}
