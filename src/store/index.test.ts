@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocument, isDirty } from '@/domain/document';
 import { loadTabs } from '@/services/storage';
 import { resetStoreForTest, useStore } from './index';
+import { registerViewPart } from './viewState';
 
 describe('store', () => {
   beforeEach(() => resetStoreForTest());
@@ -138,5 +139,31 @@ describe('tabs', () => {
     expect(names()).toEqual(['a.md', 'b.md']);
     expect(s.doc.markdown).toBe('b2');
     expect(s.screen).toBe('editor');
+  });
+
+  it('returns to where each tab was left; new documents start at the top', () => {
+    let where = { textAnchor: 3, textHead: 5, textScroll: 200, visualScroll: 90 };
+    const off = registerViewPart(() => where);
+    open('aaaaaa', 'a.md');
+    const first = useStore.getState().activeTabId;
+    open('b', 'b.md');
+    expect(useStore.getState().restoreView).toBeNull();
+    where = { textAnchor: 1, textHead: 1, textScroll: 0, visualScroll: 0 };
+    useStore.getState().activateTab(first);
+    expect(useStore.getState().restoreView).toEqual({
+      textAnchor: 3,
+      textHead: 5,
+      textScroll: 200,
+      visualScroll: 90,
+    });
+    off();
+  });
+
+  it('reorders tabs', () => {
+    open('a', 'a.md');
+    open('b', 'b.md');
+    open('c', 'c.md');
+    useStore.getState().moveTab(useStore.getState().activeTabId, 0);
+    expect(names()).toEqual(['c.md', 'a.md', 'b.md']);
   });
 });

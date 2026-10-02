@@ -19,8 +19,9 @@ import { useEffect, useRef } from 'react';
 import { t } from '@/i18n';
 import { perfMeasure } from '@/services/perfMarks';
 import { useStore } from '@/store';
+import { registerViewPart } from '@/store/viewState';
 import { applyFull, applyIncremental } from './applyMarkdown';
-import { editors } from './editorRegistry';
+import { editors, isHidden, restoreScroll } from './editorRegistry';
 import { reportFormat } from './formatState';
 import { imageNodeView, visualPaneImagePlugin } from './imageSupport';
 import { imageTitleFix } from './imageTitleFix';
@@ -140,7 +141,7 @@ export function VisualPane({ onAdapter }: Props) {
       if (state.loadId !== prev.loadId) {
         if (state.viewMode === 'text') staleWhileHidden = true;
         else applyAll(state.doc.markdown);
-        scrollEl.scrollTop = 0;
+        restoreScroll(scrollEl, state.restoreView?.visualScroll ?? 0);
         return;
       }
       if (staleWhileHidden && state.viewMode !== 'text' && prev.viewMode === 'text') {
@@ -167,6 +168,10 @@ export function VisualPane({ onAdapter }: Props) {
     };
     rootEl.addEventListener('focusin', onFocus);
 
+    const unregisterView = registerViewPart(() =>
+      isHidden(scrollEl) ? {} : { visualScroll: scrollEl.scrollTop }
+    );
+
     onAdapter({
       scroller: scrollEl,
       headingOffsets: () => {
@@ -185,6 +190,7 @@ export function VisualPane({ onAdapter }: Props) {
       clearTimeout(reconcileTimer);
       onAdapter(null);
       unsubscribe();
+      unregisterView();
       rootEl.removeEventListener('focusin', onFocus);
       if (editor && editors.milkdown === editor) {
         editors.visual = null;

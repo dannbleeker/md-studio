@@ -48,4 +48,20 @@ describe('TabBar', () => {
     await waitFor(() => expect(useStore.getState().tabs).toHaveLength(1));
     expect(useUiStore.getState().confirm).toBeNull();
   });
+
+  it('moves the active tab with Shift+Arrow', async () => {
+    render(<TabBar />);
+    fireEvent.keyDown(screen.getByRole('tablist'), { key: 'ArrowLeft', shiftKey: true });
+    await waitFor(() =>
+      expect(useStore.getState().tabs.map((tab) => tab.doc.fileName)).toEqual(['b.md', 'a.md'])
+    );
+    expect(useStore.getState().doc.fileName).toBe('b.md');
+  });
+
+  it('tells apart tabs with the same file name', () => {
+    open('# Second', 'a.md');
+    render(<TabBar />);
+    expect(screen.getByRole('tab', { name: 'a.md · Second' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'a.md · a' })).toBeInTheDocument();
+  });
 });

@@ -86,7 +86,10 @@ docs/guide/    the practitioner book (CC BY-NC 4.0)
   active tab's live state stays in `doc` / `fileHandle` / `handleId`, so
   the editors know nothing about tabs. Switching writes the active state
   back (`syncedTabs`) and shows the target as a load (`source: 'load'`,
-  `loadId` + 1). Persisted as `md-studio:tabs:v1`.
+  `loadId` + 1). Persisted as `md-studio:tabs:v1`. Per-tab cursor and
+  scroll live in memory: each pane registers a reader with
+  `store/viewState.ts`, the store captures them when leaving a tab, and
+  the panes apply `restoreView` on the next load.
 
 ## Conventions
 

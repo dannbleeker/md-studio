@@ -172,6 +172,7 @@ body {
   border-bottom: 1px solid var(--border);
 }
 .tab {
+  position: relative;
   display: flex;
   align-items: center;
   flex: 0 1 auto;
@@ -191,6 +192,22 @@ body {
   color: var(--text);
   /* Covers the bar's bottom border so the active tab joins the editor. */
   margin-bottom: -1px;
+}
+/* Where a dragged tab will land. */
+.tab[data-drop]::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+.tab[data-drop="before"]::before {
+  left: -2px;
+}
+.tab[data-drop="after"]::before {
+  right: -2px;
 }
 .tab-label {
   display: flex;

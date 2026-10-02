@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Tabs, follow-ups.** Switching back to a tab returns to its cursor and
+  scroll position. Tabs reorder by drag and drop or Shift+←/→. Tabs with
+  the same file name are labelled with their first heading (or a number).
+  A dropped file or recent snapshot that is already open (same name, same
+  content as opened) switches to its tab instead of opening a copy.
 - **Tabs.** Several documents can be open at once. New, Open, Recent,
   drop and Windows file-open each open a tab (an untouched blank document
   is reused); a file that is already open is switched to. The tab bar
