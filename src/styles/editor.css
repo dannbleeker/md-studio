@@ -109,6 +109,15 @@
 .visual-doc img {
   max-width: 100%;
 }
+/* A web image that isn't loaded: its alt text in a dashed frame. */
+.visual-doc img.image-blocked {
+  display: inline-block;
+  padding: 0.15em 0.5em;
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
 .visual-doc table {
   border-collapse: collapse;
   margin: 1em 0;
@@ -326,4 +335,9 @@
   background: var(--border);
   margin: 0 0.3rem;
   flex-shrink: 0;
+}
+
+/* The visual tree is out of date and inert (a document it can't parse). */
+.visual-failed {
+  opacity: 0.45;
 }

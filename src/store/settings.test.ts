@@ -16,10 +16,16 @@ describe('sanitizeSettings', () => {
         defaultViewMode: 3,
         fontSize: 'huge',
         lineNumbers: 1,
+        webImages: 'on',
         exportFormat: 'rtf',
         exportHtmlTheme: null,
       })
     ).toEqual(DEFAULT_SETTINGS);
+  });
+
+  it('blocks web images unless the user turned them on', () => {
+    expect(sanitizeSettings({}).webImages).toBe(false);
+    expect(sanitizeSettings({ webImages: true }).webImages).toBe(true);
   });
 
   it('defaults the language to following the browser', () => {

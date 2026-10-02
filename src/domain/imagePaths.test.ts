@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { imageExtension, imageFileName, isRelativeUrl, relativeImagePath } from './imagePaths';
+import {
+  imageExtension,
+  imageFileName,
+  isRelativeUrl,
+  isWebImage,
+  relativeImagePath,
+} from './imagePaths';
 
 describe('imagePaths', () => {
   it('picks an extension from the MIME type', () => {
@@ -32,5 +38,30 @@ describe('imagePaths', () => {
     expect(isRelativeUrl('data:image/png;base64,xx')).toBe(false);
     expect(isRelativeUrl('/abs.png')).toBe(false);
     expect(isRelativeUrl('')).toBe(false);
+  });
+});
+
+describe('isWebImage', () => {
+  it('is true for images on another server', () => {
+    for (const src of [
+      'https://example.com/a.png',
+      'http://example.com/a.png',
+      'HTTPS://example.com/a.png',
+      '//example.com/a.png',
+      ' https://example.com/a.png',
+    ])
+      expect(isWebImage(src), src).toBe(true);
+  });
+
+  it('is false for pasted, local and relative images', () => {
+    for (const src of [
+      'data:image/png;base64,AAAA',
+      'blob:x',
+      'images/a.png',
+      '/a.png',
+      'a.png',
+      '',
+    ])
+      expect(isWebImage(src), src).toBe(false);
   });
 });

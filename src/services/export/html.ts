@@ -70,7 +70,11 @@ function themeCss(theme: HtmlTheme): string {
   return `:root{color-scheme:light dark;${LIGHT}}@media (prefers-color-scheme:dark){:root{${DARK}}}`;
 }
 
-/** Standalone HTML page styled like the visual pane, in the chosen theme. */
+/**
+ * Standalone HTML page styled like the visual pane, in the chosen theme.
+ * The page has no script, and its CSP says so: should the renderer ever
+ * let markup through, the exported file still can't run it.
+ */
 export function markdownToHtml(markdown: string, title: string, theme: HtmlTheme): string {
   usedIds = new Map();
   const body = marked.parse(markdown, { async: false });
@@ -80,6 +84,7 @@ export function markdownToHtml(markdown: string, title: string, theme: HtmlTheme
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="generator" content="MD Studio">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src * data:; style-src 'unsafe-inline'">
 <title>${escapeHtml(title)}</title>
 <style>
 ${themeCss(theme)}

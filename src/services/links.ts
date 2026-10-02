@@ -4,4 +4,5 @@ const base = import.meta.env.BASE_URL;
 
 export const BOOK_PDF = `${base}Writing-in-Plain-Text.pdf`;
 export const BOOK_EPUB = `${base}Writing-in-Plain-Text.epub`;
+export const GUIDE_PDF = `${base}User-Guide.pdf`;
 export const DASHBOARD = `${base}dashboard.html`;

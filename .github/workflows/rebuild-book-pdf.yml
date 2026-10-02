@@ -4,6 +4,7 @@ name: Rebuild book artifacts
 #
 #   public/Writing-in-Plain-Text.epub   reflowable, e-reader friendly
 #   public/Writing-in-Plain-Text.pdf    fixed A4, cover + clickable contents
+#   public/User-Guide.pdf               the user guide (USER_GUIDE.md), A4
 #
 # Both are derived from docs/guide/*.md by the pure-Node builders in scripts/
 # (ported from mindmap-studio), so review happens on the Markdown and the
@@ -20,6 +21,8 @@ on:
       - 'docs/guide/**.md'
       - 'scripts/build-book-epub.mjs'
       - 'scripts/build-book-pdf.mjs'
+      - 'scripts/build-guide-pdf.mjs'
+      - 'USER_GUIDE.md'
       - 'scripts/lib/bookChapters.mjs'
   workflow_dispatch:
 
@@ -32,8 +35,10 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
           run_install: false
 
@@ -49,17 +54,21 @@ jobs:
 
       - name: Commit refreshed artifacts if changed
         env:
+          GH_TOKEN: ${{ github.token }}
           TRIGGER_SUBJECT: ${{ github.event.head_commit.message }}
         run: |
           EPUB=public/Writing-in-Plain-Text.epub
           PDF=public/Writing-in-Plain-Text.pdf
-          git add "$EPUB" "$PDF"
+          GUIDE=public/User-Guide.pdf
+          git add "$EPUB" "$PDF" "$GUIDE"
           if git diff --cached --quiet; then
             echo "Book artifacts unchanged — nothing to commit."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Checkout keeps no credentials (install and build run without them); only this step can push.
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           FIRST_LINE="$(printf '%s' "${TRIGGER_SUBJECT}" | head -n 1)"
           git commit -m "docs: rebuild book (EPUB + PDF) [skip ci]" -m "Triggered by: ${FIRST_LINE}"
           pushed=false

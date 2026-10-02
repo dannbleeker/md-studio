@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+- **Security sweep.** See `SECURITY.md` for the threat model.
+  - Content Security Policy for the app (scripts only from its own origin,
+    no plugins, frames or form posts), the dashboard and exported HTML.
+  - The dashboard links only to GitHub pages from GitHub API data; a
+    `javascript:` URL in the API response could otherwise have run script
+    in the app's origin.
+  - A document nested too deeply for the parser (thousands of `>` or `*`)
+    no longer breaks the visual pane, even after a reload: the pane goes
+    inert with a notice and comes back once the document parses.
+  - Web images are no longer loaded when a document opens: they show as
+    their alt text until **Load web images** is turned on in Settings,
+    and then load without a referrer.
+  - CI: read-only token for CI, no stored credentials during install and
+    build, third-party actions pinned to a commit SHA, Dependabot for
+    Actions. `qs` lifted past three advisories (dev-only, via Stryker).
+- **The user guide and the book open from inside the app**: start screen,
+  a Help and reading section in Settings, and the command palette. The
+  guide opens as a document tab, or as a PDF (`public/User-Guide.pdf`,
+  built by `pnpm book:guide` and rebuilt by the book workflow when
+  `USER_GUIDE.md` changes). The guide and the book are precached, so they
+  work offline.
+
 - **Bug hunt, part 3: sync engine.**
   - A text edit among repeated blocks no longer lands on the wrong copy in
     the visual pane (an ambiguous match now takes the full parse).

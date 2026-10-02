@@ -6,6 +6,7 @@ import {
   checkDiskChanges,
   openDroppedFile,
   openRecent,
+  openUserGuide,
   restoreDocumentHandle,
   saveDocument,
   switchTab,
@@ -257,5 +258,20 @@ describe('saves that take a while', () => {
       markdown: 'A edited',
       savedMarkdown: 'A edited',
     });
+  });
+});
+
+describe('bundled documents', () => {
+  beforeEach(() => resetStoreForTest());
+
+  it('opens the user guide once, then switches back to its tab', async () => {
+    await openUserGuide();
+    const guide = useStore.getState().doc;
+    expect(guide.fileName).toBe('User-Guide.md');
+    expect(guide.markdown).toMatch(/^# /);
+    await openDroppedFile(new File(['x'], 'x.md'));
+    await openUserGuide();
+    expect(useStore.getState().tabs.map((t) => t.doc.fileName)).toEqual(['User-Guide.md', 'x.md']);
+    expect(useStore.getState().doc.fileName).toBe('User-Guide.md');
   });
 });
