@@ -15,6 +15,7 @@ interface OpenFilePickerOptions {
 }
 
 interface SaveFilePickerOptions {
+  startIn?: FileSystemHandle;
   types?: FilePickerAcceptType[];
   excludeAcceptAllOption?: boolean;
   suggestedName?: string;
@@ -29,7 +30,14 @@ interface LaunchQueue {
   setConsumer(consumer: (params: LaunchParams) => void): void;
 }
 
+interface DirectoryPickerOptions {
+  id?: string;
+  mode?: 'read' | 'readwrite';
+  startIn?: FileSystemHandle | 'documents' | 'desktop' | 'downloads' | 'pictures';
+}
+
 interface Window {
+  showDirectoryPicker?: (options?: DirectoryPickerOptions) => Promise<FileSystemDirectoryHandle>;
   showOpenFilePicker?: (options?: OpenFilePickerOptions) => Promise<FileSystemFileHandle[]>;
   showSaveFilePicker?: (options?: SaveFilePickerOptions) => Promise<FileSystemFileHandle>;
   launchQueue?: LaunchQueue;

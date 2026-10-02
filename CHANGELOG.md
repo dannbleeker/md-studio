@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Paste and drop images** into either pane. In Edge/Chrome with the
+  document on disk, images are saved in an `images` folder next to it
+  (you pick the document's folder once) and linked by relative path; the
+  visual pane shows them from that folder. Otherwise they are shrunk to
+  at most 1600 px and embedded. Dropping a non-Markdown file outside the
+  editors no longer navigates away from the app.
 - **Fix: images disappeared from the visual pane.** Any image without a
   title (`![alt](src)`, the usual form) made the visual pane throw and
   render an empty paragraph instead, and a later edit in the visual pane

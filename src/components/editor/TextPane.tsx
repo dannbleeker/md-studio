@@ -12,6 +12,7 @@ import { t } from '@/i18n';
 import { useStore } from '@/store';
 import { editors } from './editorRegistry';
 import { highlightStyle } from './highlight';
+import { textPaneImageHandlers } from './imageSupport';
 import type { ScrollAdapter } from './scrollAdapter';
 
 /** Marks transactions that carry the other pane's edits, so they aren't echoed back. */
@@ -51,6 +52,7 @@ export function TextPane({ onAdapter }: Props) {
           // Search state for the app's find bar (its own panel stays closed).
           search(),
           EditorView.lineWrapping,
+          EditorView.domEventHandlers(textPaneImageHandlers()),
           EditorView.contentAttributes.of({ 'aria-label': t('pane.text') }),
           theme,
           EditorView.updateListener.of((update) => {

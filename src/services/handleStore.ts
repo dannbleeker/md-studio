@@ -43,6 +43,8 @@ function request<T>(
 }
 
 async function entries(): Promise<[string, FileSystemFileHandle][]> {
+  // Includes image-folder entries (`dir:<id>`); callers that only want file
+  // handles filter by key.
   const [keys, values] = await Promise.all([
     request<IDBValidKey[]>('readonly', (s) => s.getAllKeys()),
     request<FileSystemFileHandle[]>('readonly', (s) => s.getAll()),
@@ -62,6 +64,7 @@ const newId = () =>
 export async function putHandle(handle: FileSystemFileHandle): Promise<string | null> {
   try {
     for (const [id, stored] of await entries()) {
+      if (id.startsWith('dir:')) continue;
       if (await stored.isSameEntry?.(handle).catch(() => false)) {
         await request('readwrite', (s) => s.put(handle, id));
         return id;
@@ -83,11 +86,35 @@ export async function getHandle(id: string): Promise<FileSystemFileHandle | null
   }
 }
 
-/** Deletes every stored handle whose id isn't in `keep`. */
+/** Stores any handle under a caller-chosen key (e.g. a document's image folder). */
+export async function putHandleAt(key: string, handle: FileSystemHandle): Promise<void> {
+  try {
+    await request('readwrite', (s) => s.put(handle, key));
+  } catch {
+    // Not stored: the caller asks again next time.
+  }
+}
+
+export async function getHandleAt<T extends FileSystemHandle>(key: string): Promise<T | null> {
+  try {
+    return (await request<T | undefined>('readonly', (s) => s.get(key))) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Key for the image folder chosen for the document with handle id `docHandleId`. */
+export const imageFolderKey = (docHandleId: string) => `dir:${docHandleId}`;
+
+/**
+ * Deletes every stored handle whose id isn't in `keep`; a document's image
+ * folder (`dir:<id>`) is kept along with the document.
+ */
 export async function pruneHandles(keep: ReadonlySet<string>): Promise<void> {
   try {
     for (const [id] of await entries()) {
-      if (!keep.has(id)) await request('readwrite', (s) => s.delete(id));
+      const owner = id.startsWith('dir:') ? id.slice(4) : id;
+      if (!keep.has(owner)) await request('readwrite', (s) => s.delete(id));
     }
   } catch {
     // Best effort: a stale handle costs a few bytes, nothing more.
@@ -100,7 +127,7 @@ export async function pruneHandles(keep: ReadonlySet<string>): Promise<void> {
  * where every caller runs.
  */
 export async function ensurePermission(
-  handle: FileSystemFileHandle,
+  handle: FileSystemHandle,
   mode: 'read' | 'readwrite' = 'readwrite'
 ): Promise<boolean> {
   if (!handle.queryPermission) return true; // no permission model: just try

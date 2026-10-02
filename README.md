@@ -25,7 +25,7 @@ mece-studio.
 - **Nothing is lost on reload.** The open document is kept in local storage.
 - **Export** to HTML, PDF, Word (DOCX) or plain text.
 - Find & replace in either pane, and an outline of the document's headings.
-- A formatting toolbar in the visual view.
+- A formatting toolbar in the visual view, and image paste/drop.
 - Command palette (Ctrl+K), light/dark/system theme, print.
 - Works offline once loaded, and updates itself when a new version is
   deployed.

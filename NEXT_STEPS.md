@@ -26,7 +26,8 @@
 - [ ] Multiple open documents / tabs (as in tp-studio).
 - [x] Visual-pane format toolbar (text style, inline marks, link, lists, quote,
       code block, table, rule) with active-state buttons.
-- [ ] Image handling: paste/drop images and choose where they are stored.
+- [x] Paste/drop images: saved in `images/` next to the document (Chromium,
+      folder chosen once), otherwise shrunk and embedded.
 - [x] Find and replace across both panes; outline panel.
 - [x] **Export**: HTML (light/dark/auto theme), PDF, DOCX and plain text,
       from the toolbar and the command palette. Never changes the linked file.
@@ -38,8 +39,8 @@
       re-baselined.
 - [ ] Link the book (EPUB/PDF in `public/`) from the app, e.g. an About
       dialog or the start screen.
-- [ ] Strengthen domain tests where mutants survive: `fuzzy.ts` scores 41%
-      (overall 72%; see the Mutation workflow's report artifact).
+- [x] Strengthen domain tests where mutants survive: `fuzzy.ts` 41% -> 91%
+      (overall `src/domain` 84% of 579 mutants).
 - [ ] A stats dashboard page reading `public/stats.json`, as in the
       sibling studios.
 

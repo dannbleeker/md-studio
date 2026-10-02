@@ -11,9 +11,11 @@ export function useFileDrop(): void {
     };
     const onDrop = (e: DragEvent) => {
       const file = e.dataTransfer?.files[0];
-      if (!file || !MARKDOWN.test(file.name)) return;
+      if (!file) return;
+      // Never let the browser navigate away to a dropped file. Images
+      // dropped on an editor are handled (and prevented) by that pane.
       e.preventDefault();
-      void openDroppedFile(file);
+      if (MARKDOWN.test(file.name)) void openDroppedFile(file);
     };
     window.addEventListener('dragover', onDragOver);
     window.addEventListener('drop', onDrop);

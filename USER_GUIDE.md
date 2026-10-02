@@ -35,6 +35,18 @@ code block, table and horizontal rule. Buttons show as pressed when the
 selection already has that formatting. A link asks for its address;
 clearing the address removes the link.
 
+## Images
+
+Paste an image (Ctrl+V) or drop an image file into either pane.
+
+- **Edge and Chrome, document saved on disk:** the first time, MD Studio
+  asks you to pick the folder the document is in. Images are then saved in
+  an `images` folder next to the document and linked from it, so the
+  Markdown stays small and the images travel with the folder (and with
+  git). Choose *Cancel* to embed the image instead.
+- **Everywhere else** (or before the document is saved): the image is
+  shrunk to at most 1600 px and embedded in the document itself.
+
 ## Finding and navigating
 
 - **Find** (Ctrl+F) and **Find and replace** (Ctrl+H) open a bar above the
