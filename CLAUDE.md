@@ -48,7 +48,8 @@ src/
                handles in IndexedDB), documentActions.ts (user commands),
                images.ts, links.ts, perfMarks.ts, export/ (HTML, Word, PDF,
                plain text; markdownPdf.mjs is shared with the book scripts)
-  components/  editor/ (TextPane, VisualPane, SplitView, sync helpers) ·
+  components/  editor/ (TextPane, VisualPane + visualSync, SplitView,
+               sync helpers) ·
                start/ · tabs/ · find/ · outline/ · export/ · settings/ ·
                command-palette/ · toolbar/ · toast/ · ui/ (Dialog,
                LazyBoundary)
@@ -68,8 +69,10 @@ docs/guide/    the practitioner book (CC BY-NC 4.0)
 - `store.doc.markdown` is the single source of truth. Each change records its
   `source` (`'text' | 'visual' | 'load'`).
 - **Text → visual:** CodeMirror's update listener calls
-  `setMarkdown(md, 'text')`. VisualPane debounces 150 ms, then (in
-  `catchUp`)
+  `setMarkdown(md, 'text')`. The visual pane's sync logic lives in
+  `editor/visualSync.ts` (plain code, Milkdown injected as a `SyncHost`,
+  unit-tested with fake timers); VisualPane only wires it up. It debounces
+  150 ms, then (in `catchUp`)
   `applyIncremental` (editor/applyMarkdown.ts) re-parses only the changed
   blocks plus one neighbour each side and swaps just those top-level nodes,
   all with `addToHistory: false`. Anything it can't prove equal to a full

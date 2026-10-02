@@ -18,7 +18,6 @@ import { Plugin } from '@milkdown/kit/prose/state';
 import { getMarkdown } from '@milkdown/kit/utils';
 import { search } from 'prosemirror-search';
 import { useEffect, useRef } from 'react';
-import { tooDeeplyNested } from '@/domain/nesting';
 import { t } from '@/i18n';
 import { perfMeasure } from '@/services/perfMarks';
 import { useStore } from '@/store';
@@ -32,15 +31,7 @@ import { imageNodeView, visualPaneImagePlugin } from './imageSupport';
 import { imageTitleFix } from './imageTitleFix';
 import { keepSourceStyle } from './keepSourceStyle';
 import type { ScrollAdapter } from './scrollAdapter';
-
-/** Text-pane edits are batched for this long before the visual tree is updated. */
-const TEXT_TO_VISUAL_DEBOUNCE_MS = 150;
-
-/**
- * After incremental updates, one full parse once typing has paused this
- * long guarantees the panes can never drift apart.
- */
-const RECONCILE_AFTER_MS = 2500;
+import { createVisualSync, type SyncState } from './visualSync';
 
 type Props = { onAdapter: (adapter: ScrollAdapter | null) => void };
 
@@ -52,33 +43,9 @@ export function VisualPane({ onAdapter }: Props) {
     const rootEl = root.current;
     const scrollEl = scroller.current;
     if (!rootEl || !scrollEl) return;
-    let disposed = false;
     let editor: Editor | null = null;
     /** A user edit not yet reported to the store (see the listener below). */
     let unreported = false;
-    let pending: ReturnType<typeof setTimeout> | undefined;
-    let reconcileTimer: ReturnType<typeof setTimeout> | undefined;
-    /** An incremental update hasn't been checked against a full parse yet. */
-    let reconcileDue = false;
-    // The Markdown the visual document currently represents.
-    let appliedMd = useStore.getState().doc.markdown;
-    // Text-only view: the hidden pane skips updates and catches up when shown.
-    let staleWhileHidden = false;
-
-    // A document the parser can't handle (thousands of nested quotes or
-    // emphasis markers overflow its stack) can't be shown here, and the
-    // overflow leaves Milkdown's parser broken for later documents too. The
-    // pane is rebuilt empty and kept inert until the Markdown parses again:
-    // an edit to a stale tree would be serialized over the Markdown.
-    // Documents known to be too deep (domain/nesting.ts) aren't even tried:
-    // deep brackets don't overflow, but take seconds to parse.
-    let failed = false;
-    const setFailed = (value: boolean) => {
-      if (value && !failed) showToast(t('toast.visualFailed'));
-      failed = value;
-      rootEl.inert = value;
-      rootEl.classList.toggle('visual-failed', value);
-    };
 
     /**
      * Hands a user edit to the store, in the source's own style. Cleared
@@ -88,69 +55,6 @@ export function VisualPane({ onAdapter }: Props) {
       unreported = false;
       const previous = useStore.getState().doc.markdown;
       useStore.getState().setMarkdown(keepSourceStyle(ctx, previous, markdown), 'visual');
-    };
-
-    /** Unregisters an editor this pane is done with, unless another already took its place. */
-    const release = (old: Editor | null) => {
-      if (old && editors.milkdown === old) {
-        editors.visual = null;
-        editors.milkdown = null;
-      }
-    };
-
-    const applyAll = (markdown: string) => {
-      if (!editor) return;
-      clearTimeout(reconcileTimer);
-      reconcileDue = false;
-      if (failed || tooDeeplyNested([markdown])) {
-        if (markdown !== appliedMd || !failed) void mount(markdown);
-        return;
-      }
-      try {
-        applyFull(editor, markdown);
-        appliedMd = markdown;
-      } catch {
-        void mount(markdown);
-      }
-    };
-
-    /**
-     * Brings this pane up to the store's Markdown (text-pane edits). Not to
-     * be confused with store/flush.ts, which goes the other way.
-     */
-    const catchUp = () => {
-      clearTimeout(pending);
-      pending = undefined;
-      if (!editor) return;
-      const { doc, viewMode } = useStore.getState();
-      if (viewMode === 'text') {
-        staleWhileHidden = true;
-        return;
-      }
-      staleWhileHidden = false;
-      if (failed || tooDeeplyNested([doc.markdown])) {
-        applyAll(doc.markdown);
-        return;
-      }
-      const started = performance.now();
-      let incremental = false;
-      try {
-        incremental = applyIncremental(editor, appliedMd, doc.markdown);
-      } catch {
-        // Settled by the full parse below, which rebuilds the pane if it fails too.
-      }
-      if (!incremental) applyAll(doc.markdown);
-      perfMeasure(incremental ? 'visual-sync:incremental' : 'visual-sync:full', started);
-      if (incremental) {
-        appliedMd = doc.markdown;
-        clearTimeout(reconcileTimer);
-        reconcileDue = true;
-        reconcileTimer = setTimeout(() => {
-          const t0 = performance.now();
-          applyAll(useStore.getState().doc.markdown);
-          perfMeasure('visual-sync:reconcile', t0);
-        }, RECONCILE_AFTER_MS);
-      }
     };
 
     const create = (initial: string) =>
@@ -198,76 +102,51 @@ export function VisualPane({ onAdapter }: Props) {
         .use(listener)
         .create();
 
-    /** (Re)builds the editor showing `markdown`, or empty and inert if it can't be parsed. */
-    const mount = (markdown: string): Promise<void> => {
-      const previous = editor;
-      editor = null;
-      release(previous);
-      previous?.destroy();
-      rootEl.replaceChildren();
-      clearTimeout(reconcileTimer);
-      reconcileDue = false;
-      appliedMd = markdown;
-      const created = tooDeeplyNested([markdown])
-        ? Promise.reject(new Error('nested too deeply'))
-        : create(markdown);
-      return created
-        .then((created) => {
-          setFailed(false);
-          return created;
-        })
-        .catch(() => {
-          rootEl.replaceChildren();
-          setFailed(true);
-          return create('');
-        })
-        .then((created) => {
-          if (disposed) {
-            created.destroy();
-            return;
-          }
-          editor = created;
-          editors.visual = created.action((ctx) => ctx.get(editorViewCtx));
-          editors.milkdown = created;
-          // The text pane may have changed while Milkdown was booting.
-          catchUp();
-        });
-    };
-    void mount(appliedMd);
-
-    const unsubscribe = useStore.subscribe((state, prev) => {
-      if (state.loadId !== prev.loadId) {
-        if (state.viewMode === 'text') staleWhileHidden = true;
-        else applyAll(state.doc.markdown);
-        restoreScroll(scrollEl, state.restoreView?.visualScroll ?? 0);
-        return;
-      }
-      if (staleWhileHidden && state.viewMode !== 'text' && prev.viewMode === 'text') {
-        catchUp();
-        return;
-      }
-      if (state.doc.markdown === prev.doc.markdown) return;
-      if (state.source === 'visual') {
-        // This pane made the edit: its document is the truth, and a pending
-        // reconcile could only disturb the cursor.
-        appliedMd = state.doc.markdown;
-        clearTimeout(reconcileTimer);
-        reconcileDue = false;
-        return;
-      }
-      clearTimeout(pending);
-      pending = setTimeout(catchUp, TEXT_TO_VISUAL_DEBOUNCE_MS);
+    const read = (state = useStore.getState()): SyncState => ({
+      markdown: state.doc.markdown,
+      viewMode: state.viewMode,
+      loadId: state.loadId,
+      source: state.source,
     });
 
-    // About to type here: land any batched text-pane edits first, so the
-    // visual tree never edits a stale copy of the document.
+    const sync = createVisualSync<Editor>({
+      read,
+      create,
+      destroy: (old) => {
+        old?.destroy();
+        rootEl.replaceChildren();
+      },
+      setEditor: (next) => {
+        if (next) {
+          editors.visual = next.action((ctx) => ctx.get(editorViewCtx));
+          editors.milkdown = next;
+        } else if (editor && editors.milkdown === editor) {
+          // Unregister only this pane's editor, never one that replaced it.
+          editors.visual = null;
+          editors.milkdown = null;
+        }
+        editor = next;
+      },
+      applyFull,
+      applyIncremental,
+      setFailed: (failed, firstTime) => {
+        if (firstTime) showToast(t('toast.visualFailed'));
+        rootEl.inert = failed;
+        rootEl.classList.toggle('visual-failed', failed);
+      },
+      measure: perfMeasure,
+    });
+
+    const unsubscribe = useStore.subscribe((state, prev) => {
+      sync.onChange(read(state), read(prev));
+      if (state.loadId !== prev.loadId) {
+        restoreScroll(scrollEl, state.restoreView?.visualScroll ?? 0);
+      }
+    });
+
     const onFocus = () => {
       editors.lastFocused = 'visual';
-      if (pending || staleWhileHidden) catchUp();
-      // Settle any incremental update before the user edits this tree:
-      // once they type, the tree is serialized as the truth, and a
-      // divergence from a full parse would become permanent.
-      if (reconcileDue) applyAll(useStore.getState().doc.markdown);
+      sync.onFocus();
     };
     rootEl.addEventListener('focusin', onFocus);
 
@@ -290,16 +169,12 @@ export function VisualPane({ onAdapter }: Props) {
     });
 
     return () => {
-      disposed = true;
-      clearTimeout(pending);
-      clearTimeout(reconcileTimer);
       onAdapter(null);
       unsubscribe();
       unregisterView();
       unregisterFlush();
       rootEl.removeEventListener('focusin', onFocus);
-      release(editor);
-      editor?.destroy();
+      sync.dispose();
     };
   }, [onAdapter]);
 

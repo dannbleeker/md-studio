@@ -140,6 +140,7 @@
       inside the panes removed (one report path, one heading selector,
       one "edit from the store" spec); store and document actions tidied,
       dialog flags moved to `store/ui.ts`; `CLAUDE.md` brought up to date.
-  - [ ] Optional: extract VisualPane's sync state machine into a plain,
-        unit-tested module, once unit tests pin its timing behaviour
-        (2.5 s reconcile, reconcile on focus, catch-up when shown).
+  - [x] VisualPane's sync state machine extracted into
+        `editor/visualSync.ts`, with unit tests that pin its timing (150 ms
+        debounce, 2.5 s reconcile, reconcile on focus, catch-up when
+        shown, own edits taken as the truth, parse-failure recovery).

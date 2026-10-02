@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Refactor (no behaviour change): the visual pane's sync logic is its
+  own module.** `editor/visualSync.ts` decides when and how text-pane
+  edits reach the visual pane (debounce, incremental or full update,
+  double-check, catch-up when shown, recovery from parse failures), with
+  Milkdown behind an interface. Unit tests with fake timers now pin that
+  timing; before, only the browser tests covered it.
+
 - A dialog taller than the window (Settings on a short laptop screen)
   scrolls with its buttons pinned at the bottom, so Done stays in reach.
 - A test runs every command that shows a shortcut in the palette both
