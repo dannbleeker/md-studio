@@ -4,18 +4,18 @@
   "code": [
     {
       "category": "App code",
-      "files": 41,
-      "lines": 2756
+      "files": 43,
+      "lines": 2943
     },
     {
       "category": "Unit tests",
-      "files": 22,
-      "lines": 799
+      "files": 23,
+      "lines": 902
     },
     {
       "category": "E2E tests",
       "files": 6,
-      "lines": 536
+      "lines": 556
     },
     {
       "category": "Scripts",
@@ -34,28 +34,28 @@
     }
   ],
   "tests": {
-    "files": 20,
-    "total": 72,
-    "passed": 72,
+    "files": 21,
+    "total": 82,
+    "passed": 82,
     "failed": 0,
     "e2eSpecs": 5
   },
   "coverage": {
-    "lines": 56.16,
-    "statements": 54.43,
-    "functions": 51.98,
-    "branches": 54.43
+    "lines": 57.08,
+    "statements": 55.76,
+    "functions": 52.41,
+    "branches": 56.48
   },
   "bundle": {
-    "eagerGzipBytes": 738539,
+    "eagerGzipBytes": 739218,
     "chunks": {
       "codemirror": 215388,
       "docx": 111326,
       "html": 1327,
-      "index": 12140,
+      "index": 12815,
       "markdownPdf": 177919,
       "marked.esm": 13334,
-      "milkdown": 135976,
+      "milkdown": 135980,
       "plainText": 780,
       "react": 67523,
       "rolldown-runtime": 627,
@@ -69,7 +69,7 @@
     "words": 902
   },
   "git": {
-    "commits": 17,
+    "commits": 20,
     "firstCommit": "2026-10-02",
     "lastCommit": "2026-10-02",
     "activeDays": 1
