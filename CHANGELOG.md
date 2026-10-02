@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Find and replace** (Ctrl+F / Ctrl+H) in whichever pane you're working
+  in, with match case, whole word and regular expressions, a match count,
+  and replace / replace all. Matches are highlighted in the visual pane;
+  replacements sync to the other pane.
+- **Outline** panel (toolbar or Ctrl+Shift+O): the document's headings;
+  clicking one brings that section to the top of both panes, and the
+  current section is highlighted. Overlays the editors on narrow screens.
 - **Faster on large documents**: the visual pane now re-parses only the
   blocks that changed instead of the whole document after each typing
   pause, so typing no longer stutters on long files. On a 3,000-line

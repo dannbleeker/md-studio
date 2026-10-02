@@ -26,7 +26,7 @@
 - [ ] Multiple open documents / tabs (as in tp-studio).
 - [ ] Visual-pane toolbar or slash menu for formatting without shortcuts.
 - [ ] Image handling: paste/drop images and choose where they are stored.
-- [ ] Find and replace across both panes; outline/table-of-contents panel.
+- [x] Find and replace across both panes; outline panel.
 - [x] **Export**: HTML (light/dark/auto theme), PDF, DOCX and plain text,
       from the toolbar and the command palette. Never changes the linked file.
 - [ ] Translate the UI: the catalogue is in `src/i18n/en.ts`.

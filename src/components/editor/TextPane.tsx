@@ -1,6 +1,7 @@
 import { markdown } from '@codemirror/lang-markdown';
 import { syntaxHighlighting } from '@codemirror/language';
 import { languages } from '@codemirror/language-data';
+import { search } from '@codemirror/search';
 import { Annotation, EditorState, Transaction } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { basicSetup } from 'codemirror';
@@ -9,6 +10,7 @@ import { findHeadings } from '@/domain/headings';
 import { minimalChange } from '@/domain/textDiff';
 import { t } from '@/i18n';
 import { useStore } from '@/store';
+import { editors } from './editorRegistry';
 import { highlightStyle } from './highlight';
 import type { ScrollAdapter } from './scrollAdapter';
 
@@ -46,6 +48,8 @@ export function TextPane({ onAdapter }: Props) {
           // Takes precedence over basicSetup's fallback default style.
           syntaxHighlighting(highlightStyle),
           markdown({ codeLanguages: languages }),
+          // Search state for the app's find bar (its own panel stays closed).
+          search(),
           EditorView.lineWrapping,
           EditorView.contentAttributes.of({ 'aria-label': t('pane.text') }),
           theme,
@@ -57,6 +61,12 @@ export function TextPane({ onAdapter }: Props) {
         ],
       }),
     });
+
+    editors.text = view;
+    const onFocus = () => {
+      editors.lastFocused = 'text';
+    };
+    view.contentDOM.addEventListener('focus', onFocus);
 
     const unsubscribe = useStore.subscribe((state, prev) => {
       const loaded = state.loadId !== prev.loadId;
@@ -90,6 +100,8 @@ export function TextPane({ onAdapter }: Props) {
     return () => {
       onAdapter(null);
       unsubscribe();
+      view.contentDOM.removeEventListener('focus', onFocus);
+      if (editors.text === view) editors.text = null;
       view.destroy();
     };
   }, [onAdapter]);

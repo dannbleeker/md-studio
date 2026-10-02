@@ -1,14 +1,23 @@
-import { defaultValueCtx, Editor, editorViewOptionsCtx, rootCtx } from '@milkdown/kit/core';
+import {
+  defaultValueCtx,
+  Editor,
+  editorViewCtx,
+  editorViewOptionsCtx,
+  prosePluginsCtx,
+  rootCtx,
+} from '@milkdown/kit/core';
 import { clipboard } from '@milkdown/kit/plugin/clipboard';
 import { history } from '@milkdown/kit/plugin/history';
 import { listener, listenerCtx } from '@milkdown/kit/plugin/listener';
 import { commonmark } from '@milkdown/kit/preset/commonmark';
 import { gfm } from '@milkdown/kit/preset/gfm';
+import { search } from 'prosemirror-search';
 import { useEffect, useRef } from 'react';
 import { t } from '@/i18n';
 import { perfMeasure } from '@/services/perfMarks';
 import { useStore } from '@/store';
 import { applyFull, applyIncremental } from './applyMarkdown';
+import { editors } from './editorRegistry';
 import { keepSourceStyle } from './keepSourceStyle';
 import type { ScrollAdapter } from './scrollAdapter';
 
@@ -78,6 +87,8 @@ export function VisualPane({ onAdapter }: Props) {
       .config((ctx) => {
         ctx.set(rootCtx, rootEl);
         ctx.set(defaultValueCtx, useStore.getState().doc.markdown);
+        // Match highlighting and search state for the app's find bar.
+        ctx.update(prosePluginsCtx, (plugins) => [...plugins, search()]);
         ctx.update(editorViewOptionsCtx, (prev) => ({
           ...prev,
           attributes: { 'aria-label': t('pane.visual'), spellcheck: 'true' },
@@ -101,6 +112,7 @@ export function VisualPane({ onAdapter }: Props) {
           return;
         }
         editor = created;
+        editors.visual = created.action((ctx) => ctx.get(editorViewCtx));
         // The text pane may have changed while Milkdown was booting.
         flush();
       });
@@ -131,6 +143,7 @@ export function VisualPane({ onAdapter }: Props) {
     // About to type here: land any batched text-pane edits first, so the
     // visual tree never edits a stale copy of the document.
     const onFocus = () => {
+      editors.lastFocused = 'visual';
       if (pending || staleWhileHidden) flush();
     };
     rootEl.addEventListener('focusin', onFocus);
@@ -154,6 +167,9 @@ export function VisualPane({ onAdapter }: Props) {
       onAdapter(null);
       unsubscribe();
       rootEl.removeEventListener('focusin', onFocus);
+      if (editor && editors.visual === editor.action((ctx) => ctx.get(editorViewCtx))) {
+        editors.visual = null;
+      }
       editor?.destroy();
     };
   }, [onAdapter]);

@@ -12,6 +12,7 @@ export function Toolbar() {
   const dirty = useStore((s) => isDirty(s.doc));
   const viewMode = useStore((s) => s.viewMode);
   const linkedScroll = useStore((s) => s.settings.linkedScroll);
+  const showOutline = useStore((s) => s.settings.showOutline);
   const { setViewMode, updateSettings, setScreen, setSettingsOpen, setPaletteOpen, setExportOpen } =
     useStore.getState();
   const isMobile = useIsMobile();
@@ -70,6 +71,15 @@ export function Toolbar() {
             {t('toolbar.linkedScroll')}
           </label>
         ) : null}
+        <button
+          type="button"
+          className="btn btn-ghost"
+          aria-pressed={showOutline}
+          onClick={() => updateSettings({ showOutline: !showOutline })}
+          title="Ctrl+Shift+O"
+        >
+          {t('toolbar.outline')}
+        </button>
         <button
           type="button"
           className="btn btn-ghost"

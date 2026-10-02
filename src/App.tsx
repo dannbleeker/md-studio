@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { ConfirmDialogHost } from './components/ConfirmDialogHost';
 import { CommandPalette } from './components/command-palette/CommandPalette';
 import { SplitView } from './components/editor/SplitView';
@@ -11,8 +12,19 @@ import { useShortcuts } from './hooks/useShortcuts';
 import { useTheme } from './hooks/useTheme';
 import { useStore } from './store';
 
+// Loaded on first use: neither is needed to start editing, and keeping them
+// out of the start-up chunk keeps first paint fast.
+const FindBar = lazy(() =>
+  import('./components/find/FindBar').then((m) => ({ default: m.FindBar }))
+);
+const OutlinePanel = lazy(() =>
+  import('./components/outline/OutlinePanel').then((m) => ({ default: m.OutlinePanel }))
+);
+
 export function App() {
   const screen = useStore((s) => s.screen);
+  const showOutline = useStore((s) => s.settings.showOutline);
+  const findOpen = useStore((s) => s.findOpen);
   useTheme();
   useShortcuts();
   useFileDrop();
@@ -24,7 +36,21 @@ export function App() {
       ) : (
         <>
           <Toolbar />
-          <SplitView />
+          <div className="workspace">
+            {showOutline ? (
+              <Suspense fallback={null}>
+                <OutlinePanel />
+              </Suspense>
+            ) : null}
+            <div className="workspace-main">
+              {findOpen ? (
+                <Suspense fallback={null}>
+                  <FindBar />
+                </Suspense>
+              ) : null}
+              <SplitView />
+            </div>
+          </div>
         </>
       )}
       <SettingsDialog />

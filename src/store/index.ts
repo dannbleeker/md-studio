@@ -27,6 +27,8 @@ type State = {
   settingsOpen: boolean;
   paletteOpen: boolean;
   exportOpen: boolean;
+  findOpen: boolean;
+  findWithReplace: boolean;
 
   setMarkdown: (markdown: string, source: Exclude<ChangeSource, 'load'>) => void;
   loadDocument: (
@@ -47,6 +49,7 @@ type State = {
   setSettingsOpen: (open: boolean) => void;
   setPaletteOpen: (open: boolean) => void;
   setExportOpen: (open: boolean) => void;
+  setFind: (open: boolean, withReplace?: boolean) => void;
 };
 
 function initialState() {
@@ -67,6 +70,8 @@ function initialState() {
     settingsOpen: false,
     paletteOpen: false,
     exportOpen: false,
+    findOpen: false,
+    findWithReplace: false,
   };
 }
 
@@ -114,6 +119,8 @@ export const useStore = create<State>()((set, get) => ({
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
   setExportOpen: (exportOpen) => set({ exportOpen }),
+  setFind: (findOpen, withReplace) =>
+    set((s) => ({ findOpen, findWithReplace: withReplace ?? s.findWithReplace })),
 }));
 
 function rememberRecent(doc: MdDocument, handleId: string | null) {
