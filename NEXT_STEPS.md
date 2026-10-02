@@ -76,8 +76,10 @@
       bots' direct pushes (`github-actions[bot]` can't be a bypass actor).
 - [x] Actions may create pull requests; **Update visual snapshots** works.
       Re-run it whenever a change alters the screenshots.
-- [ ] Re-baseline `perf-baseline.json` from the first CI run of Perf trace
-      (the current numbers come from a local container).
+- [x] Re-baseline `perf-baseline.json` from the first CI run of Perf trace:
+      typing 290 -> 40 ms, text-to-visual 175 -> 165, visual-sync 13 -> 8,
+      visual-to-text 345 -> 280 (best-of-3 p95 on ubuntu-latest). The
+      container numbers were far looser, typing by ~7x.
 - [ ] Write the book chapters (currently outlines in `docs/guide/`).
 
 ## Finish up
