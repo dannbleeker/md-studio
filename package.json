@@ -74,6 +74,9 @@
     "onlyBuiltDependencies": [
       "esbuild",
       "@biomejs/biome"
-    ]
+    ],
+    "overrides": {
+      "qs": "^6.16.0"
+    }
   }
 }

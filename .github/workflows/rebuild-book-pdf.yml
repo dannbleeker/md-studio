@@ -32,8 +32,10 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
           run_install: false
 
@@ -49,6 +51,7 @@ jobs:
 
       - name: Commit refreshed artifacts if changed
         env:
+          GH_TOKEN: ${{ github.token }}
           TRIGGER_SUBJECT: ${{ github.event.head_commit.message }}
         run: |
           EPUB=public/Writing-in-Plain-Text.epub
@@ -60,6 +63,8 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Checkout keeps no credentials (install and build run without them); only this step can push.
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           FIRST_LINE="$(printf '%s' "${TRIGGER_SUBJECT}" | head -n 1)"
           git commit -m "docs: rebuild book (EPUB + PDF) [skip ci]" -m "Triggered by: ${FIRST_LINE}"
           pushed=false

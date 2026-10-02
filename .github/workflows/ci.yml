@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: ['**']
 
+# CI only reads the repo; the token gets nothing more.
+permissions:
+  contents: read
+
 # Cancel in-flight runs for the same ref when a new commit lands.
 concurrency:
   group: ci-${{ github.ref }}
@@ -18,11 +22,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Set up pnpm
         # No `version:` — reads `packageManager` from package.json so CI and
         # local installs use the same pnpm.
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
           run_install: false
 

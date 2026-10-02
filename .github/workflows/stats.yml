@@ -31,9 +31,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          persist-credentials: false
           fetch-depth: 0 # full history for the git story
 
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
           run_install: false
 
@@ -57,10 +58,14 @@ jobs:
         run: node ./scripts/build-stats.mjs
 
       - name: Commit refreshed stats
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           if [[ -n "$(git status --porcelain public/stats.json public/stats-history.json)" ]]; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            # Checkout keeps no credentials (install and build run without them); only this step can push.
+            git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
             git add public/stats.json public/stats-history.json
             git commit -m "chore(stats): refresh stats [skip ci]"
             pushed=false

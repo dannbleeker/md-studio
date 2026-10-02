@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -18,9 +18,44 @@ const CODEMIRROR_EAGER =
 const LAZY_LANGUAGE =
   /node_modules\/(?:@codemirror\/legacy-modes\/mode\/([\w-]+)\.js|(?:@codemirror\/lang-|@codemirror\/|@lezer\/)([\w-]+)\/)/;
 
+/**
+ * Content Security Policy for the built app (a <meta> tag: GitHub Pages
+ * can't send headers). Scripts only from this origin, so even if a
+ * document's content ever reached the DOM as HTML, its script couldn't
+ * run; no plugins, no <base> hijack, no form posts. Styles need
+ * 'unsafe-inline' because CodeMirror and Milkdown inject <style> elements.
+ * Images may come from anywhere: Markdown documents link web images.
+ * Not applied in dev, where Vite injects inline scripts for HMR.
+ */
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https: http:",
+  "connect-src 'self' data: blob:",
+  "font-src 'self'",
+  "worker-src 'self'",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "frame-src 'none'",
+  "base-uri 'self'",
+  "form-action 'none'",
+].join('; ');
+
+const contentSecurityPolicy: Plugin = {
+  name: 'md-studio-csp',
+  apply: 'build',
+  transformIndexHtml: (html) =>
+    html.replace(
+      '<meta charset="UTF-8" />',
+      `<meta charset="UTF-8" />\n    <meta http-equiv="Content-Security-Policy" content="${CSP}" />`
+    ),
+};
+
 export default defineConfig({
   plugins: [
     react(),
+    contentSecurityPolicy,
     // `registerType: 'prompt'` matches the sibling studios: the service worker
     // downloads a new build in the background on every deploy, and the app
     // shows a "New version available" toast instead of reloading under the
