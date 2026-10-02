@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocument, isDirty } from '@/domain/document';
-import { loadDocument } from '@/services/storage';
+import { loadTabs } from '@/services/storage';
 import { resetStoreForTest, useStore } from './index';
 
 describe('store', () => {
@@ -51,9 +51,9 @@ describe('store', () => {
   it('persists edits after a debounce', () => {
     vi.useFakeTimers();
     useStore.getState().setMarkdown('# saved later', 'text');
-    expect(loadDocument()).toBeNull();
+    expect(loadTabs()).toBeNull();
     vi.advanceTimersByTime(350);
-    expect(loadDocument()?.markdown).toBe('# saved later');
+    expect(loadTabs()?.tabs[0]?.doc.markdown).toBe('# saved later');
     vi.useRealTimers();
   });
 
@@ -72,5 +72,71 @@ describe('store', () => {
       language: 'system',
     });
     expect(useStore.getState().viewMode).toBe('text');
+  });
+});
+
+describe('tabs', () => {
+  beforeEach(() => resetStoreForTest());
+  const open = (md: string, name: string) =>
+    useStore.getState().loadDocument(createDocument(md, name), null);
+  const names = () => useStore.getState().tabs.map((t) => t.doc.fileName);
+
+  it('opens a file in place of the blank first tab, then in new tabs', () => {
+    open('# A', 'a.md');
+    expect(names()).toEqual(['a.md']);
+    open('# B', 'b.md');
+    expect(names()).toEqual(['a.md', 'b.md']);
+    expect(useStore.getState().doc.fileName).toBe('b.md');
+  });
+
+  it('keeps each tab’s edits when switching', () => {
+    open('a', 'a.md');
+    const first = useStore.getState().activeTabId;
+    useStore.getState().setMarkdown('a edited', 'text');
+    open('b', 'b.md');
+    const loadId = useStore.getState().loadId;
+    useStore.getState().activateTab(first);
+    const s = useStore.getState();
+    expect(s.doc.markdown).toBe('a edited');
+    expect(isDirty(s.doc)).toBe(true);
+    expect(s.source).toBe('load');
+    expect(s.loadId).toBe(loadId + 1);
+    expect(s.tabs.find((t) => t.doc.fileName === 'b.md')?.doc.markdown).toBe('b');
+  });
+
+  it('closing the active tab shows its neighbour; the last returns to start', () => {
+    open('a', 'a.md');
+    open('b', 'b.md');
+    useStore.getState().closeTab(useStore.getState().activeTabId);
+    expect(useStore.getState().doc.fileName).toBe('a.md');
+    useStore.getState().closeTab(useStore.getState().activeTabId);
+    const s = useStore.getState();
+    expect(s.screen).toBe('start');
+    expect(s.tabs).toHaveLength(1);
+    expect(s.doc.markdown).toBe('');
+  });
+
+  it('closing a background tab leaves the active one alone', () => {
+    open('a', 'a.md');
+    const first = useStore.getState().activeTabId;
+    open('b', 'b.md');
+    const loadId = useStore.getState().loadId;
+    useStore.getState().closeTab(first);
+    expect(names()).toEqual(['b.md']);
+    expect(useStore.getState().loadId).toBe(loadId);
+  });
+
+  it('persists every tab and restores the active one', () => {
+    vi.useFakeTimers();
+    open('a', 'a.md');
+    open('b', 'b.md');
+    useStore.getState().setMarkdown('b2', 'text');
+    vi.advanceTimersByTime(350);
+    vi.useRealTimers();
+    resetStoreForTest();
+    const s = useStore.getState();
+    expect(names()).toEqual(['a.md', 'b.md']);
+    expect(s.doc.markdown).toBe('b2');
+    expect(s.screen).toBe('editor');
   });
 });

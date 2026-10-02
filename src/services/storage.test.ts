@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createDocument } from '@/domain/document';
-import { loadDocument, loadRecents, pushRecent, saveDocument } from './storage';
+import { loadRecents, loadTabs, pushRecent, saveTabs } from './storage';
 
 const recent = (fileName: string, markdown = '# x') => ({
   fileName,
@@ -10,17 +10,60 @@ const recent = (fileName: string, markdown = '# x') => ({
 });
 
 describe('storage', () => {
-  it('round-trips the open document', () => {
+  it('round-trips the open tabs', () => {
     const doc = { ...createDocument('# Hello', 'a.md'), markdown: '# Hello!' };
-    saveDocument(doc);
-    expect(loadDocument()).toEqual(doc);
+    const state = {
+      tabs: [
+        { id: 't1', doc, handleId: 'h1' },
+        { id: 't2', doc: createDocument('b', 'b.md'), handleId: null },
+      ],
+      activeId: 't2',
+    };
+    saveTabs(state);
+    expect(loadTabs()).toEqual(state);
+  });
+
+  it('migrates the single document older builds stored', () => {
+    const doc = createDocument('# Old', 'old.md');
+    localStorage.setItem('md-studio:document:v1', JSON.stringify(doc));
+    localStorage.setItem('md-studio:document-handle:v1', JSON.stringify('h9'));
+    expect(loadTabs()).toEqual({
+      tabs: [{ id: 'restored', doc, handleId: 'h9' }],
+      activeId: 'restored',
+    });
+    saveTabs({ tabs: [{ id: 'x', doc, handleId: null }], activeId: 'x' });
+    expect(localStorage.getItem('md-studio:document:v1')).toBeNull();
+    expect(localStorage.getItem('md-studio:document-handle:v1')).toBeNull();
   });
 
   it('ignores corrupt or foreign values', () => {
     localStorage.setItem('md-studio:document:v1', '{not json');
-    expect(loadDocument()).toBeNull();
+    expect(loadTabs()).toBeNull();
     localStorage.setItem('md-studio:document:v1', '{"markdown":42}');
-    expect(loadDocument()).toBeNull();
+    expect(loadTabs()).toBeNull();
+    localStorage.setItem('md-studio:tabs:v1', JSON.stringify({ tabs: [{ id: 1, doc: {} }] }));
+    expect(loadTabs()).toBeNull();
+  });
+
+  it('falls back to the first tab when the active id is unknown', () => {
+    const doc = createDocument('a', 'a.md');
+    localStorage.setItem(
+      'md-studio:tabs:v1',
+      JSON.stringify({
+        tabs: [
+          { id: 'a', doc },
+          { id: 'b', doc, handleId: 7 },
+        ],
+        activeId: 'zz',
+      })
+    );
+    expect(loadTabs()).toEqual({
+      tabs: [
+        { id: 'a', doc, handleId: null },
+        { id: 'b', doc, handleId: null },
+      ],
+      activeId: 'a',
+    });
   });
 
   it('keeps recents de-duplicated, newest first, and capped', () => {

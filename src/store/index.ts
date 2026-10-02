@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { createDocument, documentTitle, type MdDocument } from '@/domain/document';
+import { closeTab, openTab, type Tab } from '@/domain/tabs';
 import type { RecentEntry } from '@/services/storage';
 import * as storage from '@/services/storage';
 import { type Settings, sanitizeSettings, type ViewMode } from './settings';
@@ -12,7 +13,17 @@ export type ChangeSource = 'text' | 'visual' | 'load';
 
 type Screen = 'start' | 'editor';
 
+/** A tab plus its live file handle (handles can't be serialized). */
+export type OpenTab = Tab & { fileHandle: FileSystemFileHandle | null };
+
 type State = {
+  /**
+   * Open documents in tab order. The active tab's entry may be stale: its
+   * live state is `doc` / `fileHandle` / `handleId` below, which the editors
+   * read, and is written back here when another tab is activated.
+   */
+  tabs: OpenTab[];
+  activeTabId: string;
   doc: MdDocument;
   source: ChangeSource;
   /** Bumped on every load so panes can reset selection/scroll for a new file. */
@@ -31,6 +42,7 @@ type State = {
   findWithReplace: boolean;
 
   setMarkdown: (markdown: string, source: Exclude<ChangeSource, 'load'>) => void;
+  /** Opens a document in a new tab (or in place of a blank one) and shows it. */
   loadDocument: (
     doc: MdDocument,
     handle: FileSystemFileHandle | null,
@@ -41,6 +53,9 @@ type State = {
     handle: FileSystemFileHandle | null,
     handleId?: string | null
   ) => void;
+  activateTab: (id: string) => void;
+  /** Closes a tab without asking; closing the last one returns to the start screen. */
+  closeTab: (id: string) => void;
   /** Re-attaches the open document's file after a reload. */
   restoreFileHandle: (handle: FileSystemFileHandle) => void;
   setScreen: (screen: Screen) => void;
@@ -52,16 +67,50 @@ type State = {
   setFind: (open: boolean, withReplace?: boolean) => void;
 };
 
+let tabCounter = 0;
+const newTabId = () => `tab-${Date.now().toString(36)}-${(tabCounter++).toString(36)}`;
+
+const blankTab = (): OpenTab => ({
+  id: newTabId(),
+  doc: createDocument(),
+  handleId: null,
+  fileHandle: null,
+});
+
+type LiveTab = Pick<State, 'tabs' | 'activeTabId' | 'doc' | 'fileHandle' | 'handleId'>;
+
+/** The tabs with the active one's live state written back. */
+export function syncedTabs(s: LiveTab): OpenTab[] {
+  return s.tabs.map((tab) =>
+    tab.id === s.activeTabId
+      ? { ...tab, doc: s.doc, fileHandle: s.fileHandle, handleId: s.handleId }
+      : tab
+  );
+}
+
+/** Live fields for showing `tab`; the new `loadId` makes the panes reset for it. */
+function show(tab: OpenTab, loadId: number) {
+  return {
+    activeTabId: tab.id,
+    doc: tab.doc,
+    fileHandle: tab.fileHandle,
+    handleId: tab.handleId,
+    source: 'load' as ChangeSource,
+    loadId: loadId + 1,
+  };
+}
+
 function initialState() {
   const settings = sanitizeSettings(storage.loadSettings());
-  const restored = storage.loadDocument();
+  const restored = storage.loadTabs();
+  const tabs: OpenTab[] = restored
+    ? restored.tabs.map((tab) => ({ ...tab, fileHandle: null }))
+    : [blankTab()];
+  const active = tabs.find((t) => t.id === restored?.activeId) ?? (tabs[0] as OpenTab);
   return {
-    doc: restored ?? createDocument(),
-    source: 'load' as ChangeSource,
-    loadId: 0,
-    fileHandle: null,
-    handleId: restored ? storage.loadDocumentHandleId() : null,
-    // A returning user lands back in their document, not on a blank editor
+    tabs,
+    ...show(active, -1),
+    // A returning user lands back in their documents, not on a blank editor
     // or the start screen; first-time users see the start screen.
     screen: (restored ? 'editor' : 'start') as Screen,
     viewMode: settings.defaultViewMode,
@@ -85,15 +134,11 @@ export const useStore = create<State>()((set, get) => ({
 
   loadDocument: (doc, handle, handleId = null) => {
     const id = handle ? handleId : null;
-    set((s) => ({
-      doc,
-      source: 'load',
-      loadId: s.loadId + 1,
-      fileHandle: handle,
-      handleId: id,
-      screen: 'editor',
-    }));
-    storage.saveDocumentHandleId(id);
+    const tab: OpenTab = { id: newTabId(), doc, handleId: id, fileHandle: handle };
+    set((s) => {
+      const { tabs } = openTab({ tabs: syncedTabs(s), activeId: s.activeTabId }, tab);
+      return { tabs: tabs as OpenTab[], ...show(tab, s.loadId), screen: 'editor' };
+    });
     if (doc.markdown || handle) rememberRecent(doc, id);
   },
 
@@ -103,8 +148,33 @@ export const useStore = create<State>()((set, get) => ({
       fileHandle: handle ?? s.fileHandle,
       handleId: handle ? handleId : s.handleId,
     }));
-    storage.saveDocumentHandleId(get().handleId);
     rememberRecent(get().doc, get().handleId);
+  },
+
+  activateTab: (id) => {
+    const s = get();
+    if (id === s.activeTabId) {
+      set({ screen: 'editor' });
+      return;
+    }
+    const tabs = syncedTabs(s);
+    const target = tabs.find((t) => t.id === id);
+    if (target) set({ tabs, ...show(target, s.loadId), screen: 'editor' });
+  },
+
+  closeTab: (id) => {
+    const s = get();
+    const result = closeTab({ tabs: syncedTabs(s), activeId: s.activeTabId }, id);
+    const tabs = result.tabs as OpenTab[];
+    const next = tabs.find((t) => t.id === result.activeId);
+    if (!next) {
+      const blank = blankTab();
+      set({ tabs: [blank], ...show(blank, s.loadId), screen: 'start' });
+    } else if (next.id !== s.activeTabId) {
+      set({ tabs, ...show(next, s.loadId) });
+    } else {
+      set({ tabs });
+    }
   },
 
   restoreFileHandle: (fileHandle) => set({ fileHandle }),
@@ -139,19 +209,30 @@ export function resetStoreForTest(): void {
   useStore.setState(initialState());
 }
 
+const persistable = (s: State) => ({
+  activeId: s.activeTabId,
+  tabs: syncedTabs(s).map(({ id, doc, handleId }) => ({ id, doc, handleId })),
+});
+
 // Debounced so a burst of keystrokes costs one localStorage write.
 let persistTimer: ReturnType<typeof setTimeout> | undefined;
 useStore.subscribe((state, prev) => {
-  if (state.doc === prev.doc) return;
+  if (
+    state.doc === prev.doc &&
+    state.tabs === prev.tabs &&
+    state.activeTabId === prev.activeTabId &&
+    state.handleId === prev.handleId
+  )
+    return;
   clearTimeout(persistTimer);
-  persistTimer = setTimeout(() => storage.saveDocument(useStore.getState().doc), 300);
+  persistTimer = setTimeout(() => storage.saveTabs(persistable(useStore.getState())), 300);
 });
 
 // Flush on tab close / app switch so the last keystrokes are not lost.
 if (typeof window !== 'undefined') {
   const flush = () => {
     clearTimeout(persistTimer);
-    storage.saveDocument(useStore.getState().doc);
+    storage.saveTabs(persistable(useStore.getState()));
   };
   window.addEventListener('pagehide', flush);
   document.addEventListener('visibilitychange', () => {

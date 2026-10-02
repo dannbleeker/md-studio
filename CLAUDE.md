@@ -82,6 +82,11 @@ docs/guide/    the practitioner book (CC BY-NC 4.0)
   the pointer or focus is in drives the other.
 - Both panes stay mounted in every view mode; text-only and visual-only just
   hide one with `hidden`.
+- **Tabs:** `store.tabs` lists open documents (`domain/tabs.ts`), but the
+  active tab's live state stays in `doc` / `fileHandle` / `handleId`, so
+  the editors know nothing about tabs. Switching writes the active state
+  back (`syncedTabs`) and shows the target as a load (`source: 'load'`,
+  `loadId` + 1). Persisted as `md-studio:tabs:v1`.
 
 ## Conventions
 

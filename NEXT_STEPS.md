@@ -23,7 +23,12 @@
       Snapshot fallback when the file is gone or access is refused.
 - [x] Visual-pane edits keep the source style of every block they don't
       touch (`domain/preserveBlocks.ts`); only edited blocks are rewritten.
-- [ ] Multiple open documents / tabs (as in tp-studio).
+- [x] Multiple open documents in tabs: New/Open/Recent/drop open a tab
+      (an untouched blank tab is reused), a file already open is switched
+      to, closing a tab with unsaved changes asks, all tabs survive a
+      reload. Tab bar shows from two tabs; Alt+W, Alt+PageUp/PageDown.
+- [ ] Tabs, later: keep cursor and scroll per tab (they reset on switch),
+      drag to reorder, tell apart two tabs with the same file name.
 - [x] Visual-pane format toolbar (text style, inline marks, link, lists, quote,
       code block, table, rule) with active-state buttons.
 - [x] Paste/drop images: saved in `images/` next to the document (Chromium,

@@ -159,6 +159,80 @@ body {
   padding: 0 0.4rem;
 }
 
+/* Tabs */
+.tab-bar {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  min-height: 34px;
+  padding: 4px 0.75rem 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+.tab {
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 6rem;
+  max-width: 14rem;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: var(--radius) var(--radius) 0 0;
+  color: var(--text-muted);
+}
+.tab:hover {
+  background: var(--accent-soft);
+}
+.tab[data-active] {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+  /* Covers the bar's bottom border so the active tab joins the editor. */
+  margin-bottom: -1px;
+}
+.tab-label {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  padding: 0.3rem 0.25rem 0.3rem 0.65rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.tab-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tab-close {
+  flex: none;
+  width: 1.4rem;
+  height: 1.4rem;
+  margin-right: 0.3rem;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-faint);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.tab-close:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.tab-label:focus-visible,
+.tab-close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
 /* Start screen */
 .start {
   max-width: 52rem;

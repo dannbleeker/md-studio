@@ -4,11 +4,13 @@
  * older build, and none of those may stop the editor from opening.
  */
 import type { MdDocument } from '@/domain/document';
+import type { Tab, Tabs } from '@/domain/tabs';
 
 const DOC_KEY = 'md-studio:document:v1';
 const SETTINGS_KEY = 'md-studio:settings:v1';
 const RECENTS_KEY = 'md-studio:recents:v1';
 const HANDLE_KEY = 'md-studio:document-handle:v1';
+const TABS_KEY = 'md-studio:tabs:v1';
 
 /** Snapshots above this size are left out of the recent list to protect the storage quota. */
 const MAX_RECENT_BYTES = 256 * 1024;
@@ -42,8 +44,7 @@ function write(key: string, value: unknown): void {
   }
 }
 
-export function loadDocument(): MdDocument | null {
-  const doc = read<Partial<MdDocument>>(DOC_KEY);
+function toDocument(doc: Partial<MdDocument> | null | undefined): MdDocument | null {
   if (!doc || typeof doc.markdown !== 'string') return null;
   return {
     markdown: doc.markdown,
@@ -53,8 +54,47 @@ export function loadDocument(): MdDocument | null {
   };
 }
 
-export function saveDocument(doc: MdDocument): void {
-  write(DOC_KEY, doc);
+/**
+ * The open tabs. Falls back to the single document older builds kept
+ * (`document:v1` + `document-handle:v1`), so an update keeps it open.
+ */
+export function loadTabs(): Tabs | null {
+  const saved = read<{ activeId?: unknown; tabs?: unknown }>(TABS_KEY);
+  if (saved && Array.isArray(saved.tabs)) {
+    const tabs: Tab[] = [];
+    for (const raw of saved.tabs as Partial<Tab>[]) {
+      const doc = toDocument(raw?.doc);
+      if (doc && typeof raw.id === 'string')
+        tabs.push({
+          id: raw.id,
+          doc,
+          handleId: typeof raw.handleId === 'string' ? raw.handleId : null,
+        });
+    }
+    const first = tabs[0];
+    if (!first) return null;
+    const activeId = tabs.some((t) => t.id === saved.activeId)
+      ? (saved.activeId as string)
+      : first.id;
+    return { tabs, activeId };
+  }
+  const legacy = toDocument(read<Partial<MdDocument>>(DOC_KEY));
+  if (!legacy) return null;
+  const handleId = read<string>(HANDLE_KEY);
+  return {
+    tabs: [
+      { id: 'restored', doc: legacy, handleId: typeof handleId === 'string' ? handleId : null },
+    ],
+    activeId: 'restored',
+  };
+}
+
+export function saveTabs(state: Tabs): void {
+  write(TABS_KEY, state);
+  // The legacy keys would otherwise resurrect a closed document if the
+  // tabs entry is ever unreadable.
+  remove(DOC_KEY);
+  remove(HANDLE_KEY);
 }
 
 export function loadSettings(): Record<string, unknown> {
@@ -85,19 +125,10 @@ export function pushRecent(entry: RecentEntry): RecentEntry[] {
   return capped;
 }
 
-/** Handle id of the open document, so Save keeps writing to it after a reload. */
-export function loadDocumentHandleId(): string | null {
-  const id = read<string>(HANDLE_KEY);
-  return typeof id === 'string' ? id : null;
-}
-
-export function saveDocumentHandleId(id: string | null): void {
-  if (id) write(HANDLE_KEY, id);
-  else {
-    try {
-      localStorage.removeItem(HANDLE_KEY);
-    } catch {
-      // Storage unavailable: nothing to clear.
-    }
+function remove(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Storage unavailable: nothing to clear.
   }
 }

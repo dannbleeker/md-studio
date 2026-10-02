@@ -1,5 +1,11 @@
 import { useEffect } from 'react';
-import { newDocument, openDocument, saveDocument } from '@/services/documentActions';
+import {
+  closeTab,
+  cycleTab,
+  newDocument,
+  openDocument,
+  saveDocument,
+} from '@/services/documentActions';
 import { useStore } from '@/store';
 
 /** App-wide keyboard shortcuts. Editor-local keys (bold, undo…) stay with each editor. */
@@ -13,6 +19,10 @@ export function useShortcuts(): void {
       if (mod && key === 's') void saveDocument(e.shiftKey);
       else if (mod && !e.shiftKey && key === 'o') void openDocument();
       else if (e.altKey && !mod && key === 'n') void newDocument();
+      // Alt, not Ctrl: browsers keep Ctrl+W / Ctrl+Tab / Ctrl+PageDown for themselves.
+      else if (e.altKey && !mod && key === 'w' && s.screen === 'editor') void closeTab();
+      else if (e.altKey && !mod && key === 'pagedown') cycleTab(1);
+      else if (e.altKey && !mod && key === 'pageup') cycleTab(-1);
       else if ((mod && key === 'k') || (mod && e.shiftKey && key === 'p')) s.setPaletteOpen(true);
       else if (mod && key === ',') s.setSettingsOpen(true);
       else if (mod && !e.shiftKey && key === 'f') s.setFind(true, false);
