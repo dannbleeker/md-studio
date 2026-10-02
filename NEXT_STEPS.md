@@ -5,9 +5,8 @@
 - [x] **Windows file association**: confirmed on an installed build —
       double-clicking a `.md` file opens it in MD Studio, and Save writes
       back to that file.
-- [ ] **Slate hex values**: the tokens in `src/styles/tokens.css` are a
-      first proposal (accent `#3d5170` light / `#93a8c6` dark). Cross-check
-      against the sibling studios' themes.
+- [x] **Slate hex values**: confirmed (accent `#3d5170` light / `#93a8c6`
+      dark, `src/styles/tokens.css`).
 - [ ] **Field-level content** of the settings panel, start screen and command
       palette. The current fields are a minimal first cut.
 - [ ] **Bundle budget**: pinned ~5% above the first build (codemirror ≈ 210 KB
@@ -55,14 +54,12 @@
       `stats.yml`, `update-visual-snapshots.yml`; Deploy re-runs after the
       book and stats workflows commit.
 - [x] Book build scripts (EPUB + PDF), pure Node, from mindmap-studio.
-- [ ] Make the `Verify` check required on `main`. Note that the Stats,
-      Mutation and Rebuild-book workflows push generated files straight to
-      `main` as `github-actions[bot]`; a rule that requires pull requests or
-      status checks for every push would reject those, so allow that bot to
-      bypass it (or require the check only on pull requests).
-- [ ] Allow GitHub Actions to create pull requests (Settings → Actions →
-      General), then run **Update visual snapshots** once to create the first
-      baselines. Until then the visual specs are skipped.
+- [x] `Verify` stays **advisory** on `main` (decided): the `main` ruleset
+      only blocks deletion and force pushes, because a ruleset requiring
+      PRs or status checks rejects the Stats, Mutation and Rebuild-book
+      bots' direct pushes (`github-actions[bot]` can't be a bypass actor).
+- [x] Actions may create pull requests; **Update visual snapshots** works.
+      Re-run it whenever a change alters the screenshots.
 - [ ] Re-baseline `perf-baseline.json` from the first CI run of Perf trace
       (the current numbers come from a local container).
 - [ ] Write the book chapters (currently outlines in `docs/guide/`).

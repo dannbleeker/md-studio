@@ -22,6 +22,16 @@
   --active-line: #f3f5f9;
   --danger: #b42318;
   --shadow: 0 8px 28px rgb(28 37 51 / 14%);
+  --syn-keyword: #7b3fa0;
+  --syn-string: #2f6f3e;
+  --syn-number: #9a5b13;
+  --syn-comment: #6b7686;
+  --syn-type: #1f5f8b;
+  --syn-property: #355c7d;
+  --syn-function: #1f5f8b;
+  --syn-link: #3d5170;
+  --syn-url: #556275;
+  --syn-code: #9a3d3d;
 
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, "Cascadia Code", Consolas, "SFMono-Regular", monospace;
@@ -46,6 +56,16 @@
     --active-line: #1a212b;
     --danger: #f97066;
     --shadow: 0 8px 28px rgb(0 0 0 / 45%);
+    --syn-keyword: #c792ea;
+    --syn-string: #a5d6a7;
+    --syn-number: #f0b37e;
+    --syn-comment: #8a96a8;
+    --syn-type: #82aaff;
+    --syn-property: #9fb7d4;
+    --syn-function: #82aaff;
+    --syn-link: #93a8c6;
+    --syn-url: #a3afc0;
+    --syn-code: #e6a0a0;
   }
 }
 
@@ -65,4 +85,14 @@
   --active-line: #1a212b;
   --danger: #f97066;
   --shadow: 0 8px 28px rgb(0 0 0 / 45%);
+  --syn-keyword: #c792ea;
+  --syn-string: #a5d6a7;
+  --syn-number: #f0b37e;
+  --syn-comment: #8a96a8;
+  --syn-type: #82aaff;
+  --syn-property: #9fb7d4;
+  --syn-function: #82aaff;
+  --syn-link: #93a8c6;
+  --syn-url: #a3afc0;
+  --syn-code: #e6a0a0;
 }

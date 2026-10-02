@@ -1,6 +1,13 @@
 # Changelog
 
-## Unreleased — repo and CI
+## Unreleased
+
+- Text pane: syntax colours follow the theme. CodeMirror's default style
+  hard-coded light colours, leaving keywords and fence info strings
+  near-invisible in dark mode. All token colours meet WCAG AA (4.5:1)
+  in both themes.
+
+## Repo and CI pipeline (PR #2)
 
 - Book build: `pnpm book` builds `public/Writing-in-Plain-Text.epub` and
   `.pdf` from `docs/guide/` (pure Node, ported from mindmap-studio, with
