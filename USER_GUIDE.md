@@ -11,6 +11,10 @@
   browsers, or files that moved) open the copy MD Studio kept.
 - Your open document is saved in the browser automatically. Close the tab
   and it is still there next time.
+- **Try the sample document** opens a short tour of MD Studio and
+  Markdown as a new, unsaved document.
+- The **×** next to a recent file removes it from the list, and **Clear
+  list** empties it. The files themselves are not touched.
 - The links under the start screen open the book *Writing in Plain Text*
   (PDF or EPUB) and the project dashboard.
 
@@ -60,6 +64,19 @@ Paste an image (Ctrl+V) or drop an image file into either pane.
 - **Outline** (toolbar, or Ctrl+Shift+O) lists the document's headings.
   Click one to bring that section to the top of both panes; the section
   you are reading is highlighted.
+- In the command palette (Ctrl+K), type `#` to list the headings instead
+  of commands, then a few letters to narrow them down and Enter to jump.
+  *Go to heading…* in the palette does the same.
+
+## Settings
+
+Ctrl+, or **Settings** in the toolbar. Besides theme, default view and linked
+scroll:
+
+- **Text size** (small, medium, large) for both panes.
+- **Wrap long lines** and **Show line numbers** for the Markdown pane.
+
+The Export dialog remembers the format and theme you used last.
 
 ## Tabs
 

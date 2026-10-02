@@ -19,8 +19,13 @@ export function ExportDialog() {
 }
 
 function ExportForm({ onDone }: { onDone: () => void }) {
-  const [format, setFormat] = useState<ExportFormat>('pdf');
-  const [htmlTheme, setHtmlTheme] = useState<HtmlTheme>('auto');
+  // Starts from the last export's choices.
+  const [format, setFormat] = useState<ExportFormat>(
+    () => useStore.getState().settings.exportFormat
+  );
+  const [htmlTheme, setHtmlTheme] = useState<HtmlTheme>(
+    () => useStore.getState().settings.exportHtmlTheme
+  );
 
   return (
     <form
@@ -28,6 +33,7 @@ function ExportForm({ onDone }: { onDone: () => void }) {
       onSubmit={(e) => {
         e.preventDefault();
         onDone();
+        useStore.getState().updateSettings({ exportFormat: format, exportHtmlTheme: htmlTheme });
         void exportDocument(format, { htmlTheme });
       }}
     >

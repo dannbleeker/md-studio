@@ -7,14 +7,22 @@
       back to that file.
 - [x] **Slate hex values**: confirmed (accent `#3d5170` light / `#93a8c6`
       dark, `src/styles/tokens.css`).
-- [ ] **Field-level content** of the settings panel, start screen and command
-      palette. The current fields are a minimal first cut.
-- [ ] **Bundle budget**: pinned ~5% above the first build (codemirror ≈ 210 KB
-      gz, milkdown ≈ 133 KB gz, react ≈ 67 KB gz, index ≈ 10 KB gz).
-      Consider lazy-loading the visual editor or language-data if first-load
-      size matters.
+- [x] **Field-level content**: Settings gained text size, line wrapping and
+      line numbers (Markdown pane); Export remembers its last format and
+      theme. The start screen can remove one recent file or clear the list,
+      and opens a sample document. The command palette jumps to headings
+      after a `#` ("Go to heading…").
+- [x] **Bundle budget**: accepted as is. Both editors and React load at
+      start-up because split view needs them at once, and the PWA serves
+      everything from cache after the first visit, so only first visits pay
+      (~430 KB gzip). Lazy-loading the editors would only help first visits
+      that land on the start screen. The per-chunk gate in
+      `bundle-budget.json` stays: every growth is re-pinned on purpose,
+      with the reason in its comment.
 - [x] **Stryker**: added for `src/domain` (weekly `mutation.yml`).
-- [ ] **Storybook** (tp-studio-only pattern): not included yet.
+- [ ] **Storybook** (tp-studio-only pattern): not included yet. Leaning
+      no (few components, visual snapshots cover the screens); awaiting
+      the owner's call.
 
 ## Product
 
@@ -41,9 +49,6 @@
 - [x] Locale support: `src/i18n/locales.ts` registry, language chosen from
       the browser or a `language` setting, dates in the UI language,
       `<html lang>` kept in step. English only for now.
-- [ ] Add a second UI language (e.g. Danish): copy `en.ts` to `xx.ts`
-      typed as `Messages`, register it in `locales.ts`. The settings
-      language picker appears automatically.
 - [x] **Large-document performance**: the visual pane re-parses only the
       changed blocks (with a full parse as fallback and once while idle) and
       skips updates while hidden. On ~3,000 lines, text → visual p95 went

@@ -1,6 +1,13 @@
 import { documentTitle, isDirty } from '@/domain/document';
 import { dateTimeFormat, t } from '@/i18n';
-import { newDocument, openDocument, openRecent } from '@/services/documentActions';
+import {
+  clearRecents,
+  forgetRecent,
+  newDocument,
+  openDocument,
+  openRecent,
+  openWelcome,
+} from '@/services/documentActions';
 import { BOOK_EPUB, BOOK_PDF, DASHBOARD } from '@/services/links';
 import { useStore } from '@/store';
 
@@ -36,16 +43,26 @@ export function StartScreen() {
         <button type="button" className="start-card" onClick={() => void openDocument()}>
           <strong>{t('start.open')}</strong>
         </button>
+        <button type="button" className="start-card" onClick={() => void openWelcome()}>
+          <strong>{t('start.welcome')}</strong>
+        </button>
       </div>
 
       <section className="start-recent" aria-labelledby="recent-heading">
-        <h2 id="recent-heading">{t('start.recent')}</h2>
+        <div className="start-recent-head">
+          <h2 id="recent-heading">{t('start.recent')}</h2>
+          {recents.length > 0 ? (
+            <button type="button" className="btn btn-ghost" onClick={() => void clearRecents()}>
+              {t('start.clearRecents')}
+            </button>
+          ) : null}
+        </div>
         {recents.length === 0 ? (
           <p className="muted">{t('start.noRecent')}</p>
         ) : (
           <ul>
             {recents.map((entry) => (
-              <li key={entry.fileName}>
+              <li key={entry.handleId ?? entry.fileName} className="recent-row">
                 <button
                   type="button"
                   className="recent-item"
@@ -57,6 +74,15 @@ export function StartScreen() {
                     {entry.handleId ? t('start.recentOnDisk') : t('start.recentCopy')} ·{' '}
                     {timeFormat.format(entry.openedAt)}
                   </span>
+                </button>
+                <button
+                  type="button"
+                  className="recent-remove"
+                  aria-label={t('start.removeRecent', { name: entry.fileName })}
+                  title={t('start.removeRecent', { name: entry.fileName })}
+                  onClick={() => forgetRecent(entry)}
+                >
+                  ×
                 </button>
               </li>
             ))}
