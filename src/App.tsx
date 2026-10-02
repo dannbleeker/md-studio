@@ -1,6 +1,7 @@
 import { ConfirmDialogHost } from './components/ConfirmDialogHost';
 import { CommandPalette } from './components/command-palette/CommandPalette';
 import { SplitView } from './components/editor/SplitView';
+import { ExportDialog } from './components/export/ExportDialog';
 import { SettingsDialog } from './components/settings/SettingsDialog';
 import { StartScreen } from './components/start/StartScreen';
 import { ToastHost } from './components/toast/ToastHost';
@@ -27,6 +28,7 @@ export function App() {
         </>
       )}
       <SettingsDialog />
+      <ExportDialog />
       <CommandPalette />
       <ConfirmDialogHost />
       <ToastHost />

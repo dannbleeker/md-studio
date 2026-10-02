@@ -1,4 +1,5 @@
 import { markdown } from '@codemirror/lang-markdown';
+import { syntaxHighlighting } from '@codemirror/language';
 import { languages } from '@codemirror/language-data';
 import { Annotation, EditorState, Transaction } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
@@ -8,6 +9,7 @@ import { findHeadings } from '@/domain/headings';
 import { minimalChange } from '@/domain/textDiff';
 import { t } from '@/i18n';
 import { useStore } from '@/store';
+import { highlightStyle } from './highlight';
 import type { ScrollAdapter } from './scrollAdapter';
 
 /** Marks transactions that carry the other pane's edits, so they aren't echoed back. */
@@ -41,6 +43,8 @@ export function TextPane({ onAdapter }: Props) {
         doc: useStore.getState().doc.markdown,
         extensions: [
           basicSetup,
+          // Takes precedence over basicSetup's fallback default style.
+          syntaxHighlighting(highlightStyle),
           markdown({ codeLanguages: languages }),
           EditorView.lineWrapping,
           EditorView.contentAttributes.of({ 'aria-label': t('pane.text') }),

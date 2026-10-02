@@ -23,7 +23,8 @@ mece-studio.
 - **Double-click to open on Windows.** Once the app is installed, `.md` files
   can be associated with it.
 - **Nothing is lost on reload.** The open document is kept in local storage.
-- Command palette (Ctrl+K), light/dark/system theme, export to HTML, print.
+- **Export** to HTML, PDF, Word (DOCX) or plain text.
+- Command palette (Ctrl+K), light/dark/system theme, print.
 - Works offline once loaded, and updates itself when a new version is
   deployed.
 

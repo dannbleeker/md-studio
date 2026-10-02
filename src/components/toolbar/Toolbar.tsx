@@ -12,7 +12,7 @@ export function Toolbar() {
   const dirty = useStore((s) => isDirty(s.doc));
   const viewMode = useStore((s) => s.viewMode);
   const linkedScroll = useStore((s) => s.settings.linkedScroll);
-  const { setViewMode, updateSettings, setScreen, setSettingsOpen, setPaletteOpen } =
+  const { setViewMode, updateSettings, setScreen, setSettingsOpen, setPaletteOpen, setExportOpen } =
     useStore.getState();
   const isMobile = useIsMobile();
 
@@ -41,6 +41,9 @@ export function Toolbar() {
         </button>
         <button type="button" className="btn btn-primary" onClick={() => void saveDocument()}>
           {t('toolbar.save')}
+        </button>
+        <button type="button" className="btn btn-ghost" onClick={() => setExportOpen(true)}>
+          {t('toolbar.export')}
         </button>
       </div>
 

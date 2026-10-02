@@ -24,6 +24,7 @@ type State = {
   recents: RecentEntry[];
   settingsOpen: boolean;
   paletteOpen: boolean;
+  exportOpen: boolean;
 
   setMarkdown: (markdown: string, source: Exclude<ChangeSource, 'load'>) => void;
   loadDocument: (doc: MdDocument, handle: FileSystemFileHandle | null) => void;
@@ -33,6 +34,7 @@ type State = {
   updateSettings: (patch: Partial<Settings>) => void;
   setSettingsOpen: (open: boolean) => void;
   setPaletteOpen: (open: boolean) => void;
+  setExportOpen: (open: boolean) => void;
 };
 
 function initialState() {
@@ -51,6 +53,7 @@ function initialState() {
     recents: storage.loadRecents(),
     settingsOpen: false,
     paletteOpen: false,
+    exportOpen: false,
   };
 }
 
@@ -90,6 +93,7 @@ export const useStore = create<State>()((set, get) => ({
   },
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
+  setExportOpen: (exportOpen) => set({ exportOpen }),
 }));
 
 function rememberRecent(doc: MdDocument) {

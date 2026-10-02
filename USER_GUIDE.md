@@ -30,6 +30,24 @@ scroll. Turn it off in the toolbar or in Settings.
 - In Firefox, Safari and on phones, Save downloads the file instead.
 - A dot next to the file name means there are unsaved changes.
 
+## Exporting
+
+**Export** (toolbar, or *Export…* in the command palette) saves a copy of the
+document in another format. Your Markdown file stays as it is, and stays the
+file that Save writes to.
+
+| Format | What you get |
+| --- | --- |
+| Web page (HTML) | A standalone page styled like the visual view, in a light, dark or follow-the-reader's-system theme |
+| PDF | An A4 document for sharing and printing |
+| Word document (DOCX) | Editable in Word, with real headings, lists, tables and links |
+| Plain text | Formatting marks removed, structure kept |
+
+The command palette also has a direct command per format, e.g. *Export as
+PDF*. PDF uses standard fonts: Latin text (including æ, ø, å) comes through,
+but emoji and non-Latin scripts are left out. The first PDF or Word export
+needs a connection; after that they work offline too.
+
 ## Installing
 
 In Edge or Chrome, use **Install app** in the address bar. On Windows, the

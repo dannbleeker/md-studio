@@ -6,7 +6,7 @@ import { createDocument, isDirty, normalizeFileName } from '@/domain/document';
 import { t } from '@/i18n';
 import { useStore } from '@/store';
 import { requestConfirm, showToast } from '@/store/ui';
-import { downloadText, type OpenedFile, openFile, readHandle, saveFile } from './fileSystem';
+import { type OpenedFile, openFile, readHandle, saveFile } from './fileSystem';
 import type { RecentEntry } from './storage';
 
 async function confirmDiscard(): Promise<boolean> {
@@ -78,34 +78,4 @@ export async function saveDocument(saveAs = false): Promise<void> {
   } catch {
     showToast(t('toast.saveFailed'));
   }
-}
-
-const escapeHtml = (s: string) =>
-  s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] ?? c);
-
-/** Exports the visual pane's rendered HTML as a standalone page. */
-export function exportHtml(): void {
-  const { doc } = useStore.getState();
-  const body = document.querySelector('[data-pane="visual"] .ProseMirror')?.innerHTML ?? '';
-  const title = escapeHtml(doc.fileName.replace(/\.[^.]+$/, ''));
-  const html = `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${title}</title>
-<style>
-body { font: 16px/1.6 system-ui, sans-serif; max-width: 46rem; margin: 2rem auto; padding: 0 1rem; color: #1e293b; }
-pre { background: #f1f4f8; padding: 0.75rem 1rem; overflow-x: auto; border-radius: 6px; }
-code { font-family: ui-monospace, Consolas, monospace; }
-table { border-collapse: collapse; } th, td { border: 1px solid #cbd5e1; padding: 0.3rem 0.6rem; }
-blockquote { border-left: 3px solid #94a3b8; margin-left: 0; padding-left: 1rem; color: #475569; }
-</style>
-</head>
-<body>
-${body}
-</body>
-</html>
-`;
-  downloadText(html, `${doc.fileName.replace(/\.[^.]+$/, '')}.html`, 'text/html');
 }
