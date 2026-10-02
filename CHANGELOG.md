@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Deeply nested documents no longer stall or crash the editors.** Both
+  parsers are quadratic on nested brackets (20,000 levels took the visual
+  pane over a second and the Markdown pane half a second, on every load),
+  and 10,000 nested `![` overflowed the Markdown pane's parser. A guard
+  (`domain/nesting.ts`) keeps a document nested past any real one's depth
+  away from both: the visual pane goes inert with its notice, the Markdown
+  pane shows plain text without highlighting, and both recover once the
+  document is fixed.
+
 - **Bug hunt, part 4: suspected bugs confirmed and fixed.**
   - A lazy part of the app (find bar, outline, format toolbar) that fails
     to load after a deploy no longer blanks the whole app: it is left out

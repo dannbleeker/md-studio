@@ -50,11 +50,12 @@ to:
   the visual pane) once you allow them: **Load web images** in Settings is
   off by default, because a web image tells its server your IP address and
   when the document was opened. Allowed images load without a referrer.
-- **Hostile documents** that overflow the Markdown parser (thousands of
-  nested quotes or emphasis markers) can't take the editor down: the visual
-  pane goes inert and says so, the Markdown pane keeps working, and the
-  visual pane comes back once the document parses. Extremely deep nesting
-  can still make parsing slow.
+- **Hostile documents** nested too deeply for the Markdown parsers
+  (hundreds of nested brackets, quotes or emphasis markers, far beyond any
+  real document) can't stall or take down the editor. Such a document is
+  never parsed: the visual pane goes inert and says so, the Markdown pane
+  shows it as plain text without highlighting, and both come back once the
+  document is fixed. See `src/domain/nesting.ts`.
 - **Files** are opened only when you pick or drop them, and written only
   through a handle you granted, after the browser's permission prompt.
 - **Service worker** precaches the app's own build output (the user guide

@@ -2,11 +2,18 @@ import { markdown } from '@codemirror/lang-markdown';
 import { syntaxHighlighting } from '@codemirror/language';
 import { languages } from '@codemirror/language-data';
 import { search } from '@codemirror/search';
-import { Annotation, Compartment, EditorState, Transaction } from '@codemirror/state';
+import {
+  Annotation,
+  Compartment,
+  EditorState,
+  type Extension,
+  Transaction,
+} from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { basicSetup } from 'codemirror';
 import { useEffect, useRef } from 'react';
 import { findHeadings } from '@/domain/headings';
+import { tooDeeplyNested } from '@/domain/nesting';
 import { minimalChange } from '@/domain/textDiff';
 import { t } from '@/i18n';
 import { useStore } from '@/store';
@@ -22,6 +29,46 @@ const fromStore = Annotation.define<boolean>();
 
 /** Swapped at runtime when the line-wrapping setting changes. */
 const wrapping = new Compartment();
+
+/**
+ * The Markdown language, or none for a document nested too deeply for its
+ * parser (domain/nesting.ts): the text stays editable, just unhighlighted.
+ */
+const language = new Compartment();
+const markdownLanguage = markdown({ codeLanguages: languages });
+const plainText: Extension = [];
+const languageFor = (text: Iterable<string>) =>
+  tooDeeplyNested(text) ? plainText : markdownLanguage;
+
+/**
+ * Switches the language off in the same transaction that makes the
+ * document too deep, so the parser never sees it. Switching back on waits
+ * for a later transaction (see the update listener): a language added in
+ * the transaction that replaces the text is first built from the old text.
+ */
+const guardNesting = EditorState.transactionExtender.of((tr) =>
+  tr.docChanged &&
+  language.get(tr.startState) !== plainText &&
+  touchesNesting(tr) &&
+  tooDeeplyNested(tr.newDoc.iter())
+    ? { effects: language.reconfigure(plainText) }
+    : null
+);
+
+/**
+ * Only an edit that inserts or removes one of these can deepen the
+ * nesting, so ordinary typing skips the whole-document scan.
+ */
+const NESTING_CHARS = /[[\]>*_\n\\]/;
+function touchesNesting(tr: Transaction): boolean {
+  let touched = false;
+  tr.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
+    touched ||=
+      NESTING_CHARS.test(inserted.toString()) ||
+      NESTING_CHARS.test(tr.startState.sliceDoc(fromA, toA));
+  });
+  return touched;
+}
 
 const theme = EditorView.theme({
   // --editor-scale follows the font-size setting (see app.css).
@@ -54,7 +101,8 @@ export function TextPane({ onAdapter }: Props) {
           basicSetup,
           // Takes precedence over basicSetup's fallback default style.
           syntaxHighlighting(highlightStyle),
-          markdown({ codeLanguages: languages }),
+          language.of(languageFor(useStore.getState().doc.markdown.split(/(?=\n)/))),
+          guardNesting,
           // Search state for the app's find bar (its own panel stays closed).
           search(),
           wrapping.of(useStore.getState().settings.lineWrapping ? EditorView.lineWrapping : []),
@@ -63,6 +111,19 @@ export function TextPane({ onAdapter }: Props) {
           theme,
           EditorView.updateListener.of((update) => {
             if (!update.docChanged) return;
+            if (
+              language.get(update.state) === plainText &&
+              !tooDeeplyNested(update.state.doc.iter())
+            ) {
+              // Not inside this update: CodeMirror forbids dispatching during one.
+              queueMicrotask(() => {
+                if (
+                  language.get(view.state) === plainText &&
+                  !tooDeeplyNested(view.state.doc.iter())
+                )
+                  view.dispatch({ effects: language.reconfigure(markdownLanguage) });
+              });
+            }
             if (update.transactions.every((tr) => tr.annotation(fromStore))) return;
             useStore.getState().setMarkdown(update.state.doc.toString(), 'text');
           }),
