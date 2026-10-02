@@ -5,6 +5,10 @@
 - **New document**, **Open file…**, or pick a file from **Recent** on the start
   screen. You can also drop a `.md` file anywhere on the window.
 - Click **MD Studio** in the toolbar to return to the start screen.
+- In Edge and Chrome, a recent file marked **File on disk** reopens the
+  file itself, with its current content, and Save writes back to it. The
+  browser may ask once to allow access. **Saved copy** entries (other
+  browsers, or files that moved) open the copy MD Studio kept.
 - Your open document is saved in the browser automatically. Close the tab
   and it is still there next time.
 
@@ -24,8 +28,10 @@ scroll. Turn it off in the toolbar or in Settings.
 
 ## Saving
 
-- **Save** (Ctrl+S) writes back to the file you opened in Edge or Chrome. The
-  first save of a new document asks where to put it.
+- **Save** (Ctrl+S) writes back to the file you opened in Edge or Chrome,
+  also after closing and reopening the app (the browser may ask once to
+  allow access again). The first save of a new document asks where to put
+  it.
 - **Save as…** (Ctrl+Shift+S) always asks.
 - In Firefox, Safari and on phones, Save downloads the file instead.
 - A dot next to the file name means there are unsaved changes.

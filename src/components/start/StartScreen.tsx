@@ -53,7 +53,10 @@ export function StartScreen() {
                 >
                   <span className="recent-name">{entry.fileName}</span>
                   <span className="muted">{entry.title}</span>
-                  <span className="muted recent-time">{timeFormat.format(entry.openedAt)}</span>
+                  <span className="muted recent-time">
+                    {entry.handleId ? t('start.recentOnDisk') : t('start.recentCopy')} ·{' '}
+                    {timeFormat.format(entry.openedAt)}
+                  </span>
                 </button>
               </li>
             ))}

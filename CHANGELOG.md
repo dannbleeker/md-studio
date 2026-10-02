@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Recent files reopen the real file** (Edge/Chrome): file handles are
+  kept in IndexedDB, so a recent entry opens the file's current content
+  and Save writes back to it. The open document keeps its file across a
+  reload too, instead of Save asking for a location. Falls back to the
+  saved copy, with a note, when the file has moved or access is refused.
+  The start screen marks entries as "File on disk" or "Saved copy".
 - **Export**: save a copy as a themed web page (HTML, light/dark/auto),
   PDF, Word document (DOCX) or plain text, from the toolbar's Export
   dialog or the command palette. Replaces the unstyled "Export as HTML".

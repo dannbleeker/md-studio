@@ -10,6 +10,8 @@ export const en = {
   'start.open': 'Open file…',
   'start.continue': 'Continue editing',
   'start.recent': 'Recent',
+  'start.recentOnDisk': 'File on disk',
+  'start.recentCopy': 'Saved copy',
   'start.noRecent': 'Files you open or save appear here.',
   'start.dropHint': 'Tip: drop a .md file anywhere to open it.',
   'toolbar.home': 'Home',
@@ -78,6 +80,9 @@ export const en = {
   'toast.opened': 'Opened {name}',
   'toast.exported': 'Exported {name}',
   'toast.exportFailed': 'Could not export the document.',
+  'toast.recentMissing': 'Couldn’t find {name} on disk any more, so opened the saved copy.',
+  'toast.recentCopy':
+    'Opened the saved copy of {name}. Allow file access to work on the file itself.',
   'toast.openFailed': 'Could not open that file.',
   'toast.saveFailed': 'Could not save the file.',
   'toast.updateReady': 'A new version of MD Studio is ready.',
