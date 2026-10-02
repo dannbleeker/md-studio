@@ -34,3 +34,15 @@ interface Window {
   showSaveFilePicker?: (options?: SaveFilePickerOptions) => Promise<FileSystemFileHandle>;
   launchQueue?: LaunchQueue;
 }
+
+interface FileSystemHandlePermissionDescriptor {
+  mode?: 'read' | 'readwrite';
+}
+
+// Chromium-only permission API on stored handles. A handle restored from
+// IndexedDB starts as "prompt" and needs requestPermission (inside a user
+// gesture) before it can be read or written again.
+interface FileSystemHandle {
+  queryPermission?(descriptor?: FileSystemHandlePermissionDescriptor): Promise<PermissionState>;
+  requestPermission?(descriptor?: FileSystemHandlePermissionDescriptor): Promise<PermissionState>;
+}

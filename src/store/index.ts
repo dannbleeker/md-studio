@@ -18,6 +18,8 @@ type State = {
   /** Bumped on every load so panes can reset selection/scroll for a new file. */
   loadId: number;
   fileHandle: FileSystemFileHandle | null;
+  /** IndexedDB id of `fileHandle` (persisted, so the handle survives a reload). */
+  handleId: string | null;
   screen: Screen;
   viewMode: ViewMode;
   settings: Settings;
@@ -27,8 +29,18 @@ type State = {
   exportOpen: boolean;
 
   setMarkdown: (markdown: string, source: Exclude<ChangeSource, 'load'>) => void;
-  loadDocument: (doc: MdDocument, handle: FileSystemFileHandle | null) => void;
-  markSaved: (fileName: string, handle: FileSystemFileHandle | null) => void;
+  loadDocument: (
+    doc: MdDocument,
+    handle: FileSystemFileHandle | null,
+    handleId?: string | null
+  ) => void;
+  markSaved: (
+    fileName: string,
+    handle: FileSystemFileHandle | null,
+    handleId?: string | null
+  ) => void;
+  /** Re-attaches the open document's file after a reload. */
+  restoreFileHandle: (handle: FileSystemFileHandle) => void;
   setScreen: (screen: Screen) => void;
   setViewMode: (mode: ViewMode) => void;
   updateSettings: (patch: Partial<Settings>) => void;
@@ -45,6 +57,7 @@ function initialState() {
     source: 'load' as ChangeSource,
     loadId: 0,
     fileHandle: null,
+    handleId: restored ? storage.loadDocumentHandleId() : null,
     // A returning user lands back in their document, not on a blank editor
     // or the start screen; first-time users see the start screen.
     screen: (restored ? 'editor' : 'start') as Screen,
@@ -65,24 +78,31 @@ export const useStore = create<State>()((set, get) => ({
     set((s) => ({ doc: { ...s.doc, markdown, updatedAt: Date.now() }, source }));
   },
 
-  loadDocument: (doc, handle) => {
+  loadDocument: (doc, handle, handleId = null) => {
+    const id = handle ? handleId : null;
     set((s) => ({
       doc,
       source: 'load',
       loadId: s.loadId + 1,
       fileHandle: handle,
+      handleId: id,
       screen: 'editor',
     }));
-    if (doc.markdown || handle) rememberRecent(doc);
+    storage.saveDocumentHandleId(id);
+    if (doc.markdown || handle) rememberRecent(doc, id);
   },
 
-  markSaved: (fileName, handle) => {
+  markSaved: (fileName, handle, handleId = null) => {
     set((s) => ({
       doc: { ...s.doc, fileName, savedMarkdown: s.doc.markdown },
       fileHandle: handle ?? s.fileHandle,
+      handleId: handle ? handleId : s.handleId,
     }));
-    rememberRecent(get().doc);
+    storage.saveDocumentHandleId(get().handleId);
+    rememberRecent(get().doc, get().handleId);
   },
+
+  restoreFileHandle: (fileHandle) => set({ fileHandle }),
 
   setScreen: (screen) => set({ screen }),
   setViewMode: (viewMode) => set({ viewMode }),
@@ -96,12 +116,13 @@ export const useStore = create<State>()((set, get) => ({
   setExportOpen: (exportOpen) => set({ exportOpen }),
 }));
 
-function rememberRecent(doc: MdDocument) {
+function rememberRecent(doc: MdDocument, handleId: string | null) {
   const recents = storage.pushRecent({
     fileName: doc.fileName,
     title: documentTitle(doc.markdown),
     markdown: doc.markdown,
     openedAt: Date.now(),
+    ...(handleId ? { handleId } : {}),
   });
   useStore.setState({ recents });
 }

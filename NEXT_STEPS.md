@@ -18,9 +18,9 @@
 
 ## Product
 
-- [ ] Recent files that remember the actual file handle (IndexedDB), so
-      reopening on Windows writes back to the same file. Today, recents
-      reopen a snapshot, and the first Save asks for a location.
+- [x] Recent files remember the file handle (IndexedDB): reopening reads
+      the current file and Save writes back to it, also after a reload.
+      Snapshot fallback when the file is gone or access is refused.
 - [ ] Reduce visual-pane formatting normalization: tune
       `remarkStringifyOptionsCtx` (bullet marker, emphasis character) or
       detect the source document's style and keep it.
