@@ -1,6 +1,7 @@
 import type { MessageKey } from '@/i18n/en';
 import { newDocument, openDocument, saveDocument } from '@/services/documentActions';
 import { exportDocument } from '@/services/export';
+import { BOOK_PDF, DASHBOARD } from '@/services/links';
 import { useStore } from '@/store';
 
 export type Command = {
@@ -87,4 +88,10 @@ export const COMMANDS: readonly Command[] = [
     run: () => state().setSettingsOpen(true),
   },
   { id: 'home', label: 'cmd.home', run: () => state().setScreen('start') },
+  { id: 'book', label: 'cmd.book', run: () => window.open(BOOK_PDF, '_blank', 'noopener') },
+  {
+    id: 'dashboard',
+    label: 'cmd.dashboard',
+    run: () => window.open(DASHBOARD, '_blank', 'noopener'),
+  },
 ];

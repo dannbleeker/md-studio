@@ -11,6 +11,8 @@
   browsers, or files that moved) open the copy MD Studio kept.
 - Your open document is saved in the browser automatically. Close the tab
   and it is still there next time.
+- The links under the start screen open the book *Writing in Plain Text*
+  (PDF or EPUB) and the project dashboard.
 
 ## Views
 

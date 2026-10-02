@@ -1,6 +1,7 @@
 import { documentTitle, isDirty } from '@/domain/document';
 import { t } from '@/i18n';
 import { newDocument, openDocument, openRecent } from '@/services/documentActions';
+import { BOOK_EPUB, BOOK_PDF, DASHBOARD } from '@/services/links';
 import { useStore } from '@/store';
 
 const timeFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
@@ -64,6 +65,17 @@ export function StartScreen() {
         )}
       </section>
       <p className="muted start-hint">{t('start.dropHint')}</p>
+      <nav className="start-links" aria-label={t('start.links')}>
+        <a href={BOOK_PDF} target="_blank" rel="noopener">
+          {t('start.bookPdf')}
+        </a>
+        <a href={BOOK_EPUB} download>
+          {t('start.bookEpub')}
+        </a>
+        <a href={DASHBOARD} target="_blank" rel="noopener">
+          {t('start.dashboard')}
+        </a>
+      </nav>
     </main>
   );
 }

@@ -85,15 +85,30 @@ const coverage = cov
 let bundle = null;
 const assets = join(ROOT, 'dist', 'assets');
 if (existsSync(assets)) {
+  // Start-up = what index.html loads (entry script + modulepreloads); every
+  // other chunk (export, find bar, outline…) loads on first use.
+  const html = readFileSync(join(ROOT, 'dist', 'index.html'), 'utf8');
+  const loaded = new Set([...html.matchAll(/assets\/([^"]+\.js)"/g)].map((m) => m[1]));
   const chunks = {};
+  const eager = [];
+  let eagerBytes = 0;
   let lazy = 0;
   for (const f of readdirSync(assets).filter((n) => n.endsWith('.js'))) {
     const gz = gzipSync(readFileSync(join(assets, f))).length;
-    if (f.startsWith('lang-')) lazy += gz;
-    else chunks[f.replace(/-[\w-]{8}\.js$/, '')] = gz;
+    if (f.startsWith('lang-')) {
+      lazy += gz;
+      continue;
+    }
+    const name = f.replace(/-[\w-]{8}\.js$/, '');
+    chunks[name] = gz;
+    if (loaded.has(f)) {
+      eager.push(name);
+      eagerBytes += gz;
+    }
   }
   bundle = {
-    eagerGzipBytes: Object.values(chunks).reduce((a, b) => a + b, 0),
+    eagerGzipBytes: eagerBytes,
+    eager,
     chunks,
     lazyLanguageGzipBytes: lazy,
   };

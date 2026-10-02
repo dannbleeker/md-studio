@@ -31,10 +31,11 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2,webmanifest}'],
         navigateFallback: '/index.html',
-        // Opening the book (/Writing-in-Plain-Text.pdf) or a stats file is a
-        // navigation too; without this the SPA fallback would answer it with
-        // the app shell instead of the file (tp-studio hit exactly this).
-        navigateFallbackDenylist: [/\.(?:pdf|epub|json)$/],
+        // Opening the book (/Writing-in-Plain-Text.pdf), a stats file or the
+        // dashboard (/dashboard.html) is a navigation too; without this the
+        // SPA fallback would answer it with the app shell instead of the
+        // file (tp-studio hit exactly this).
+        navigateFallbackDenylist: [/\.(?:pdf|epub|json|html)$/],
         // CodeMirror's language-data lazy-loads one chunk per fenced-code
         // language. They are small, but there are ~100; leave them out of the
         // install-critical precache and cache them on first use instead.
