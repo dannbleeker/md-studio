@@ -63,9 +63,13 @@ docs/guide/    the practitioner book (CC BY-NC 4.0)
   `setMarkdown(md, 'visual')`. TextPane applies a minimal single-range diff
   (`domain/textDiff.ts`) tagged with a `fromStore` annotation, so the cursor
   and scroll position survive.
-- **Known trade-off:** an edit in the visual pane re-serializes the whole
-  document through remark, which can normalize formatting elsewhere (bullet
-  markers, emphasis characters, setext → ATX headings).
+- **Source style is kept:** Milkdown re-serializes the whole document on
+  every visual edit; `keepSourceStyle` (editor/) merges that with the old
+  source via `domain/preserveBlocks.ts`, keeping the original text of every
+  unchanged leading/trailing block. Only the edited blocks take the
+  serializer's style. The merge is verified (edited region + neighbours,
+  or the whole document when link reference definitions exist) and falls
+  back to the serializer output if it would change meaning.
 - **Linked scroll:** both panes report heading offsets; `domain/scrollMap.ts`
   turns a scroll position into (section, fraction) and back. Only the pane
   the pointer or focus is in drives the other.

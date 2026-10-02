@@ -130,3 +130,23 @@ test('linked scroll follows headings, not pixel ratios', async ({ page }) => {
   await page.waitForTimeout(200);
   expect(await scroller.evaluate((el) => el.scrollTop)).toBe(before);
 });
+
+test('a visual edit leaves the source style of untouched blocks alone', async ({ page }) => {
+  await newDocument(page);
+  const source =
+    'Title\n=====\n\n* star bullet\n* another\n\n__strong__ and *em*\n\nLast paragraph here.\n';
+  await setText(page, source);
+  const visual = visualPane(page);
+  await expect(visual.locator('li')).toHaveCount(2);
+
+  // Type at the end of the last paragraph in the visual pane.
+  await visual.locator('p', { hasText: 'Last paragraph here.' }).click();
+  await page.keyboard.press('End');
+  await page.keyboard.type(' Edited');
+
+  await expect
+    .poll(() => textContent(page))
+    .toBe(
+      'Title\n=====\n\n* star bullet\n* another\n\n__strong__ and *em*\n\nLast paragraph here. Edited\n'
+    );
+});
