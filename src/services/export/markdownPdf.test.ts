@@ -129,4 +129,18 @@ describe('markdownToPdf', () => {
     const pieces = text.split(' ').filter((p) => p.includes('aaa'));
     expect(pieces.length).toBeGreaterThan(1);
   });
+
+  it('numbers an ordered list from its own start, 0 included', async () => {
+    const text = drawnText(await markdownToPdf({ sources: ['0. zero\n1. one'], title: 'T' }));
+    expect(text).toContain('0.');
+    expect(text).toContain('1.');
+    expect(text).not.toContain('2.');
+  });
+
+  it('keeps Danish letters on a code line with a character the font lacks', async () => {
+    const text = drawnText(
+      await markdownToPdf({ sources: ['```\nblåbærgrød ─ box\n```'], title: 'T' })
+    );
+    expect(text).toContain('blåbærgrød');
+  });
 });

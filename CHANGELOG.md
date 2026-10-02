@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+- **Bug hunt, part 4: suspected bugs confirmed and fixed.**
+  - A lazy part of the app (find bar, outline, format toolbar) that fails
+    to load after a deploy no longer blanks the whole app: it is left out
+    and a toast offers a reload. The service worker now also takes control
+    on the first visit.
+  - Save As onto a file another tab has open closes that tab, or, if it
+    has unsaved changes, keeps them as a copy no longer linked to the file.
+  - A `.txt` file is saved as `notes.md` and exported as `notes.pdf`,
+    not `notes.txt.md` and `notes.txt.pdf`.
+  - Closing every tab and reloading shows the start screen, not a blank
+    editor.
+  - Ctrl+Z in the Markdown pane undoes only what was typed there, no
+    longer edits made in the visual pane.
+  - Line numbers, fold markers and the × buttons meet WCAG contrast in
+    both themes (`--text-faint` darkened in light, lightened in dark).
+  - Word: tabs in code are real tabs; lists, headings and code inside a
+    quote keep the quote's bar and indent; plain text in a quote is italic
+    like paragraphs; a nested numbered list starts at its own number.
+  - PDF: a list starting at `0.` starts at 0; a code line with a character
+    the font lacks keeps its Danish letters; lists inside a quote carry
+    the quote's bar; tabs in code wrap correctly.
+  - Plain text: a leading quote and leading spaces in code keep their
+    indent.
+  - HTML: heading ids stay unique when a heading reads like a numbered id
+    (`# a`, `# a`, `# a-1`).
+
 - **Security sweep.** See `SECURITY.md` for the threat model.
   - Content Security Policy for the app (scripts only from its own origin,
     no plugins, frames or form posts), the dashboard and exported HTML.

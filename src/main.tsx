@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { registerLaunchQueue } from './pwa/launchQueue';
 import { registerPwa } from './pwa/registerPwa';
+import { registerStaleBuildHandler } from './pwa/staleBuild';
 import { checkDiskChanges, restoreDocumentHandle } from './services/documentActions';
 import './styles/tokens.css';
 import './styles/app.css';
@@ -16,6 +17,7 @@ createRoot(document.getElementById('root')!).render(
 );
 
 registerLaunchQueue();
+registerStaleBuildHandler();
 void restoreDocumentHandle();
 // Back from another app (or another device synced the folder): pick up
 // changes made to the open file in the meantime.

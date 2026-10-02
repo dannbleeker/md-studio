@@ -7,8 +7,14 @@ import { marked, type Token, type Tokens } from 'marked';
  * is, link targets in brackets so they aren't lost).
  */
 export function markdownToPlainText(markdown: string): string {
-  return `${blocks(marked.lexer(markdown), 0).trim()}\n`;
+  return `${trimLines(blocks(marked.lexer(markdown), 0))}\n`;
 }
+
+/**
+ * Drops blank lines around a block but keeps the first line's indent: a
+ * leading quote is indented, and spaces in code are part of the code.
+ */
+const trimLines = (text: string) => text.replace(/^\s*\n/, '').trimEnd();
 
 function inline(tokens: Token[] | undefined): string {
   let out = '';
@@ -60,8 +66,8 @@ function blocks(tokens: Token[], depth: number, sep = '\n\n'): string {
             .map((item, i) => {
               const marker = list.ordered ? `${start + i}.` : '-';
               const check = item.task ? (item.checked ? '[x] ' : '[ ] ') : '';
-              const body = blocks(item.tokens, 0, list.loose ? '\n\n' : '\n')
-                .trim()
+              const body = trimLines(blocks(item.tokens, 0, list.loose ? '\n\n' : '\n'))
+                .trimStart()
                 .replace(/\n(?=.)/g, `\n${indent}  `);
               return `${indent}${marker} ${check}${body}`;
             })
@@ -74,8 +80,7 @@ function blocks(tokens: Token[], depth: number, sep = '\n\n'): string {
         break;
       case 'blockquote':
         parts.push(
-          blocks((t as Tokens.Blockquote).tokens, 0)
-            .trim()
+          trimLines(blocks((t as Tokens.Blockquote).tokens, 0))
             .split('\n')
             .map((l) => `${indent}  ${l}`)
             .join('\n')

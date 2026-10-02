@@ -10,6 +10,8 @@ describe('document', () => {
 
   it('normalizes file names', () => {
     expect(normalizeFileName('notes')).toBe('notes.md');
+    expect(normalizeFileName('notes.txt')).toBe('notes.md');
+    expect(normalizeFileName('NOTES.TXT')).toBe('NOTES.md');
     expect(normalizeFileName('README.markdown')).toBe('README.markdown');
     expect(normalizeFileName('a/b:c?.md')).toBe('abc.md');
     expect(normalizeFileName('   ')).toBe('Untitled.md');

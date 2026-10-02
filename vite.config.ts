@@ -68,6 +68,9 @@ export default defineConfig({
         // it opens offline like the user guide, which is a precached chunk.
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2,webmanifest,pdf,epub}'],
         navigateFallback: '/index.html',
+        // Take control on the first visit too, so its lazy chunks come from
+        // the precache and survive a deploy made while the tab is open.
+        clientsClaim: true,
         // Opening the book (/Writing-in-Plain-Text.pdf), a stats file or the
         // dashboard (/dashboard.html) is a navigation too; without this the
         // SPA fallback would answer it with the app shell instead of the

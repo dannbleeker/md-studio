@@ -127,6 +127,13 @@
   - [ ] Nested-bracket documents (`[[[[…]]]]`, 50k deep) take tens of
         seconds to parse on every load; a nesting guard before parsing
         would cap it.
+- [x] **Bug hunt, part 4**: the unconfirmed suspects from parts 1–3
+      checked; all confirmed ones fixed (stale chunks after a deploy,
+      Save As onto an open file, `.txt` names, start screen after closing
+      every tab, text-pane undo, `--text-faint` contrast, Word/PDF/plain
+      text/HTML export details). By design: HTML export's `lang="en"`
+      (the app's language is not the document's; revisit if documents get
+      a language setting).
 - [ ] **Refactor**: tidy the code once features settle: remove duplication
       between the panes, revisit store shape and component boundaries, and
       keep `CLAUDE.md` in step with the result.

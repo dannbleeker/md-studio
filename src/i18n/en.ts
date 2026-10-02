@@ -179,12 +179,15 @@ export const en = {
   'toast.visualFailed':
     'This document is nested too deeply for the visual pane. Edit it in the Markdown pane.',
   'toast.saveFailed': 'Could not save the file.',
+  'toast.unlinkedCopy':
+    'Another tab had {name} open with unsaved changes. It keeps them as a copy, no longer linked to the file.',
   'toast.storageFull':
     'Your open documents no longer fit in the browser’s storage, so recent changes won’t survive closing the app. Save them to disk.',
   'toast.reloadedFromDisk': 'Reloaded {name}: it changed on disk.',
   'toast.changedOnDisk': '{name} changed on disk. Saving will ask before replacing it.',
   'toast.updateReady': 'A new version of MD Studio is ready.',
   'toast.reload': 'Reload',
+  'toast.staleBuild': 'MD Studio was updated. Reload to finish loading it.',
   'toast.offlineReady': 'MD Studio is ready to work offline.',
   'toast.dismiss': 'Dismiss',
 } as const;

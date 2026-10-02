@@ -40,4 +40,11 @@ describe('markdownToPlainText', () => {
   it('decodes named HTML entities', () => {
     expect(markdownToPlainText('A &copy; B &hellip;')).toBe('A © B …\n');
   });
+
+  it('keeps the indent of a leading quote and of leading code', () => {
+    expect(markdownToPlainText('> quoted\n> line two\n\nafter')).toBe(
+      '  quoted\n  line two\n\nafter\n'
+    );
+    expect(markdownToPlainText('```\n  x\n```')).toBe('  x\n');
+  });
 });

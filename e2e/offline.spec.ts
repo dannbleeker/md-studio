@@ -18,10 +18,11 @@ test('offline, the app, the user guide and the book are served by the service wo
 
   await context.setOffline(true);
   await page.reload();
-  // The reload restores the session in the editor; open the guide from the palette.
-  await page.keyboard.press('ControlOrMeta+K');
-  await page.keyboard.type('open the user guide');
-  await page.getByRole('option', { name: 'Open the user guide', exact: true }).click();
+  // Nothing was opened, so the reload shows the start screen.
+  await page
+    .getByRole('navigation', { name: 'About MD Studio' })
+    .getByRole('button', { name: 'User guide' })
+    .click();
   await expect(visualPane(page).locator('h1')).toHaveText('MD Studio quick reference');
 
   const book = await page.evaluate(async () => {
