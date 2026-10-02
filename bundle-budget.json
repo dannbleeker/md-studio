@@ -1,0 +1,10 @@
+{
+  "comment": "Per-chunk gzip-size ceilings in bytes, checked by scripts/check-bundle-size.mjs after `vite build`. A chunk fails the gate when it exceeds its budget by more than slopPercent. Chunk keys are name prefixes (\"index\" matches index-AbC123.js). Initial ceilings were set ~5% above the first measured build with CodeMirror + Milkdown in place; re-pin deliberately when a feature grows a chunk, so the diff in this file is what reviewers see. Chunks without an entry are reported but never fail.",
+  "slopPercent": 10,
+  "chunks": {
+    "index": 10500,
+    "codemirror": 226000,
+    "milkdown": 144500,
+    "react": 71700
+  }
+}

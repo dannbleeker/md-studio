@@ -1,0 +1,38 @@
+/**
+ * The one document both editors edit. `markdown` is the single source of
+ * truth; the visual pane's ProseMirror tree and the text pane's CodeMirror
+ * buffer are both projections of it.
+ */
+export type MdDocument = {
+  markdown: string;
+  /** Display name, e.g. "notes.md". */
+  fileName: string;
+  /** Markdown as last written to (or read from) disk; drives the dirty flag. */
+  savedMarkdown: string;
+  updatedAt: number;
+};
+
+export const UNTITLED = 'Untitled.md';
+
+export function createDocument(markdown = '', fileName = UNTITLED): MdDocument {
+  return { markdown, fileName, savedMarkdown: markdown, updatedAt: Date.now() };
+}
+
+export function isDirty(doc: MdDocument): boolean {
+  return doc.markdown !== doc.savedMarkdown;
+}
+
+/** Ensures a Markdown extension, and strips characters Windows rejects in file names. */
+export function normalizeFileName(name: string): string {
+  const cleaned = name.replace(/[<>:"/\\|?*]/g, '').trim() || UNTITLED;
+  return /\.(md|markdown|mdown|mkd)$/i.test(cleaned) ? cleaned : `${cleaned}.md`;
+}
+
+/** First heading, else first non-empty line, used as a recent-list subtitle. */
+export function documentTitle(markdown: string): string {
+  for (const raw of markdown.split(/\r?\n/)) {
+    const line = raw.replace(/^ {0,3}#{1,6}\s+/, '').trim();
+    if (line) return line.length > 80 ? `${line.slice(0, 79)}…` : line;
+  }
+  return '';
+}

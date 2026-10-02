@@ -1,0 +1,68 @@
+/*
+ * Slate theme tokens. The accent is a dark slate blue-gray rather than
+ * neutral black, so MD Studio reads as part of the Studio family without
+ * looking like a bare developer tool.
+ *
+ * Dark mode applies when the OS prefers dark and the user hasn't forced
+ * light, or when the user picks dark in Settings (data-theme on <html>).
+ */
+:root {
+  color-scheme: light;
+  --bg: #fafbfc;
+  --surface: #ffffff;
+  --surface-2: #f1f4f8;
+  --border: #d8dee8;
+  --text: #1c2533;
+  --text-muted: #556275;
+  --text-faint: #8793a5;
+  --accent: #3d5170;
+  --accent-hover: #2f405a;
+  --accent-contrast: #ffffff;
+  --accent-soft: #e4e9f1;
+  --active-line: #f3f5f9;
+  --danger: #b42318;
+  --shadow: 0 8px 28px rgb(28 37 51 / 14%);
+
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", Consolas, "SFMono-Regular", monospace;
+  --radius: 8px;
+  --toolbar-height: 48px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #11161d;
+    --surface: #161c25;
+    --surface-2: #1c2430;
+    --border: #2c3747;
+    --text: #e3e8ef;
+    --text-muted: #a3afc0;
+    --text-faint: #6e7b8e;
+    --accent: #93a8c6;
+    --accent-hover: #aabbd4;
+    --accent-contrast: #11161d;
+    --accent-soft: #243041;
+    --active-line: #1a212b;
+    --danger: #f97066;
+    --shadow: 0 8px 28px rgb(0 0 0 / 45%);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #11161d;
+  --surface: #161c25;
+  --surface-2: #1c2430;
+  --border: #2c3747;
+  --text: #e3e8ef;
+  --text-muted: #a3afc0;
+  --text-faint: #6e7b8e;
+  --accent: #93a8c6;
+  --accent-hover: #aabbd4;
+  --accent-contrast: #11161d;
+  --accent-soft: #243041;
+  --active-line: #1a212b;
+  --danger: #f97066;
+  --shadow: 0 8px 28px rgb(0 0 0 / 45%);
+}

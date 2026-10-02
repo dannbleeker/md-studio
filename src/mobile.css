@@ -1,0 +1,32 @@
+/* Narrow screens: stack the split panes and let the toolbar wrap. */
+@media (max-width: 720px) {
+  .split {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+  .split[data-view="text"],
+  .split[data-view="visual"] {
+    grid-template-rows: 1fr;
+  }
+  .pane-text {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .toolbar {
+    padding: 0.35rem 0.5rem;
+    gap: 0.35rem;
+  }
+  .file-name {
+    max-width: 16ch;
+  }
+  .visual-doc {
+    padding: 1rem 1rem 30vh;
+  }
+  .start {
+    padding: 1.5rem 1rem;
+  }
+  .recent-item {
+    grid-template-columns: 1fr;
+    gap: 0.1rem;
+  }
+}
