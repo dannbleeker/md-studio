@@ -36,4 +36,8 @@ describe('markdownToPlainText', () => {
   it('handles an empty document', () => {
     expect(markdownToPlainText('')).toBe('\n');
   });
+
+  it('decodes named HTML entities', () => {
+    expect(markdownToPlainText('A &copy; B &hellip;')).toBe('A © B …\n');
+  });
 });

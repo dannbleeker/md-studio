@@ -16,6 +16,7 @@ import {
   TextRun,
   WidthType,
 } from 'docx';
+import { decodeHTML } from 'entities';
 import { marked, type Token, type Tokens } from 'marked';
 import type { ExportImages } from './exportImages';
 
@@ -41,9 +42,8 @@ const CODE_FILL = 'F1F4F8';
 
 type Style = { bold?: boolean; italics?: boolean; strike?: boolean; code?: boolean };
 
-const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'" };
-const decode = (s: string) =>
-  s.replace(/&(amp|lt|gt|quot|#39);/g, (m, e: string) => ENTITIES[e] ?? m);
+/** marked leaves named entities (&copy;, &nbsp;, &mdash;…) encoded in its tokens. */
+const decode = (s: string) => decodeHTML(s);
 
 function run(text: string, style: Style): TextRun {
   return new TextRun({
@@ -164,20 +164,37 @@ function blocks(tokens: Token[], level = 0, quote = false): (Paragraph | Table)[
         break;
       case 'list': {
         const list = t as Tokens.List;
+        // Each ordered list numbers on its own (a later list restarts at its
+        // own start, not where the previous one stopped). Nested levels share
+        // the parent list's instance, as Word expects.
+        const instance =
+          list.ordered && (level === 0 || listInstance === null)
+            ? nextListInstance(typeof list.start === 'number' ? list.start : 1)
+            : listInstance;
+        const parentInstance = listInstance;
+        listInstance = instance;
         for (const item of list.items) {
-          const [first, ...rest] = item.tokens;
+          // marked puts a task item's box first, as its own token.
+          const [first, ...rest] = item.tokens.filter((tok) => tok.type !== 'checkbox');
           const children = first && 'tokens' in first ? inline(first.tokens) : [];
           if (item.task) children.unshift(new TextRun({ text: item.checked ? '☑ ' : '☐ ' }));
           out.push(
             new Paragraph({
               children,
               ...(list.ordered
-                ? { numbering: { reference: 'ordered', level: Math.min(level, 8) } }
+                ? {
+                    numbering: {
+                      reference: numberingReference(instance ?? 0),
+                      level: Math.min(level, 8),
+                      instance: instance ?? 0,
+                    },
+                  }
                 : { bullet: { level: Math.min(level, 8) } }),
             })
           );
           out.push(...blocks(rest, level + 1, quote));
         }
+        listInstance = parentInstance;
         break;
       }
       case 'code':
@@ -242,6 +259,17 @@ function blocks(tokens: Token[], level = 0, quote = false): (Paragraph | Table)[
 }
 
 const MAX_IMAGE_PX = 600;
+
+/** Ordered-list numbering for the current conversion: instance -> start number. */
+let listStarts = new Map<number, number>();
+let listInstance: number | null = null;
+const nextListInstance = (start: number) => {
+  const instance = listStarts.size + 1;
+  listStarts.set(instance, start);
+  return instance;
+};
+/** One numbering definition per start number; instances restart within it. */
+const numberingReference = (instance: number) => `ordered-${listStarts.get(instance) ?? 1}`;
 /** The current conversion's images; set per call (conversions run synchronously). */
 let images: ExportImages = new Map();
 
@@ -251,6 +279,10 @@ export function markdownToDocxDocument(
   embedded: ExportImages = new Map()
 ): Document {
   images = embedded;
+  listStarts = new Map();
+  listInstance = null;
+  const children = blocks(marked.lexer(markdown));
+  const starts = new Set([1, ...listStarts.values()]);
   return new Document({
     title,
     creator: 'MD Studio',
@@ -258,20 +290,19 @@ export function markdownToDocxDocument(
       default: { document: { run: { font: 'Calibri', size: 22 } } },
     },
     numbering: {
-      config: [
-        {
-          reference: 'ordered',
-          levels: Array.from({ length: 9 }, (_, level) => ({
-            level,
-            format: LevelFormat.DECIMAL,
-            text: `%${level + 1}.`,
-            alignment: AlignmentType.START,
-            style: { paragraph: { indent: { left: 720 * (level + 1), hanging: 360 } } },
-          })),
-        },
-      ],
+      config: [...starts].map((start) => ({
+        reference: `ordered-${start}`,
+        levels: Array.from({ length: 9 }, (_, level) => ({
+          level,
+          format: LevelFormat.DECIMAL,
+          text: `%${level + 1}.`,
+          start: level === 0 ? start : 1,
+          alignment: AlignmentType.START,
+          style: { paragraph: { indent: { left: 720 * (level + 1), hanging: 360 } } },
+        })),
+      })),
     },
-    sections: [{ children: blocks(marked.lexer(markdown)) }],
+    sections: [{ children }],
   });
 }
 

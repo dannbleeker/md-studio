@@ -16,6 +16,11 @@
     padding: 0.35rem 0.5rem;
     gap: 0.35rem;
   }
+  /* The view switch plus outline, commands and settings is wider than a
+     phone; let the group wrap rather than push buttons off-screen. */
+  .toolbar-group {
+    flex-wrap: wrap;
+  }
   .file-name {
     max-width: 16ch;
   }

@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **Bug hunt, part 2: export and UI.**
+  - Word: task items keep their text in the bullet, each numbered list
+    starts at its own number instead of continuing the previous one.
+  - Named entities (`&copy;`, `&nbsp;`, `&mdash;`…) come out as characters
+    in Word, PDF and plain text.
+  - HTML: table column alignment is honoured, headings get anchor ids so
+    in-page links work, and dark or auto pages print in light colours.
+  - PDF: everything inside a quote is drawn (nested quotes, code, lists),
+    table cells show their text without Markdown syntax, and long words
+    or URLs wrap instead of running off the page.
+  - The command palette keeps the keyboard selection in view; the toolbar
+    wraps on a 360 px phone instead of pushing buttons off-screen; the
+    dark-theme danger button meets WCAG AA contrast; confirm dialogs
+    focus Cancel, the safe choice for discard and overwrite.
 - **Bug hunt, part 1: data loss.**
   - Save records exactly the text it wrote, on the tab it started in,
     so typing during a save or switching tabs while it runs no longer

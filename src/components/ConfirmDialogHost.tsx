@@ -17,9 +17,10 @@ export function ConfirmDialogHost() {
             <button
               type="button"
               className="btn btn-danger"
+              // No autofocus: every confirm here is destructive (discard,
+              // overwrite, clear), so the dialog's first button, Cancel,
+              // keeps focus and a stray Enter does no harm.
               onClick={() => req.resolve(true)}
-              // biome-ignore lint/a11y/noAutofocus: a confirm dialog should focus its decision.
-              autoFocus
             >
               {req.confirmLabel}
             </button>

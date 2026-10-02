@@ -104,7 +104,7 @@
         of several dropped or launched files opening; file changes on
         disk not noticed; footnotes, nested lists, strikethrough and
         images in exports; a dropped `.md` pasted into the Markdown pane.
-  - [ ] PR 2, export and UI: DOCX task lists and list numbering,
+  - [x] PR 2, export and UI: DOCX task lists and list numbering,
         named HTML entities in DOCX/TXT/PDF, HTML table alignment, print
         and heading anchors, PDF quotes/table cells/long words, palette
         scroll, 360 px toolbar overflow, dark danger-button contrast,

@@ -9,6 +9,7 @@
  * rather than failing the export.
  */
 
+import { decodeHTML } from 'entities';
 import { marked } from 'marked';
 import { PDFDocument, PDFName, PDFString, rgb, StandardFonts } from 'pdf-lib';
 
@@ -27,14 +28,9 @@ const QUOTE_BG = rgb(0.933, 0.945, 0.965);
 const RULE = rgb(0.9, 0.91, 0.93);
 const TABLE_HEAD_BG = rgb(0.945, 0.957, 0.973);
 
+// marked leaves named entities (&copy;, &nbsp;, &mdash;…) encoded in its tokens.
 function decodeEntities(s) {
-  return String(s)
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&apos;/g, "'");
+  return decodeHTML(String(s));
 }
 
 // Standard fonts use WinAnsi: it covers Latin + common punctuation (em dash,
@@ -117,6 +113,22 @@ export async function markdownToPdf({
     }
   };
 
+  /** `word` in pieces no wider than `width` (usually just `[word]`). */
+  const splitToWidth = (word, font, size, width) => {
+    if (safeWidth(font, word, size) <= width) return [word];
+    const pieces = [];
+    let piece = '';
+    for (const ch of word) {
+      if (piece && safeWidth(font, piece + ch, size) > width) {
+        pieces.push(piece);
+        piece = '';
+      }
+      piece += ch;
+    }
+    if (piece) pieces.push(piece);
+    return pieces;
+  };
+
   const fontFor = (run) => {
     if (run.code) return F.mono;
     if (run.b && run.i) return F.boldItalic;
@@ -171,7 +183,12 @@ export async function markdownToPdf({
         continue;
       }
       for (const p of pdfText(r.text).split(/\s+/)) {
-        if (p !== '') words.push({ text: p, run: r });
+        if (p === '') continue;
+        // A word wider than the line (a long URL) is split so it can't run
+        // off the page.
+        for (const piece of splitToWidth(p, fontFor(r), size, width)) {
+          words.push({ text: piece, run: r });
+        }
       }
     }
 
@@ -398,7 +415,14 @@ export async function markdownToPdf({
     const cols = token.header.length;
     const colW = CONTENT_W / cols;
     const wrapCell = (cell, font) => {
-      const words = pdfText(cell.text).split(/\s+/).filter(Boolean);
+      // The cell's parsed text, not its source: `**x**` is drawn as "x".
+      const text = inlineRuns(cell.tokens)
+        .map((r) => r.text ?? '')
+        .join('');
+      const words = pdfText(text)
+        .split(/\s+/)
+        .filter(Boolean)
+        .flatMap((w) => splitToWidth(w, font, size, colW - 2 * pad));
       const lines = [];
       let ln = '';
       for (const w of words) {
@@ -446,22 +470,30 @@ export async function markdownToPdf({
     gap(10);
   }
 
-  function blockquote(token) {
+  // Everything inside a quote is drawn, one bar deeper per nested quote.
+  function blockquote(token, depth = 0) {
+    const x = M.left + 12 + depth * 12;
+    const quoted = { x, width: CONTENT_W - 16 - depth * 12, leftBar: ACCENT, bg: QUOTE_BG };
     gap(2);
     for (const inner of token.tokens) {
-      if (inner.type === 'paragraph') {
-        flow(inlineRuns(inner.tokens), {
-          x: M.left + 12,
-          width: CONTENT_W - 16,
-          leftBar: ACCENT,
-          bg: QUOTE_BG,
+      if (inner.type === 'paragraph' || inner.type === 'heading' || inner.type === 'text') {
+        const runs = inlineRuns(inner.tokens);
+        flow(inner.type === 'heading' ? runs.map((r) => ({ ...r, b: true })) : runs, {
+          ...quoted,
           color: rgb(0.3, 0.33, 0.4),
         });
+        gap(3);
       } else if (inner.type === 'list') {
-        list(inner);
+        list(inner, depth + 1);
+      } else if (inner.type === 'blockquote') {
+        blockquote(inner, depth + 1);
+      } else if (inner.type === 'code') {
+        codeBlock(inner);
+      } else if (inner.type === 'table') {
+        table(inner);
       }
     }
-    gap(8);
+    gap(depth === 0 ? 8 : 2);
   }
 
   function renderTokens(tokens, dest) {

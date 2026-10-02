@@ -1,3 +1,4 @@
+import { decodeHTML } from 'entities';
 import { marked, type Token, type Tokens } from 'marked';
 
 /**
@@ -101,7 +102,7 @@ function blocks(tokens: Token[], depth: number, sep = '\n\n'): string {
   return parts.join(sep);
 }
 
-const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'" };
+/** marked leaves named entities (&copy;, &nbsp;, &mdash;…) encoded in its tokens. */
 function decode(s: string): string {
-  return s.replace(/&(amp|lt|gt|quot|#39);/g, (_, e: string) => ENTITIES[e] ?? _);
+  return decodeHTML(s);
 }

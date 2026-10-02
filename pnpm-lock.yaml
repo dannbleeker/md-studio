@@ -38,6 +38,9 @@ importers:
       docx:
         specifier: ^9.8.1
         version: 9.8.1
+      entities:
+        specifier: ^7.0.1
+        version: 7.0.1
       marked:
         specifier: ^18.0.14
         version: 18.0.14
