@@ -68,7 +68,7 @@ test('view modes hide and show panes', async ({ page }) => {
 test('command palette runs commands', async ({ page }) => {
   await newDocument(page);
   await page.keyboard.press('ControlOrMeta+K');
-  const input = page.getByRole('combobox');
+  const input = page.getByRole('combobox', { name: 'Commands' });
   await expect(input).toBeFocused();
   await input.fill('text only');
   await page.keyboard.press('Enter');
@@ -225,4 +225,18 @@ test('the hidden visual pane catches up when shown again', async ({ page }) => {
   await page.getByRole('button', { name: 'Split', exact: true }).click();
   await expect(visualPane(page).locator('h1')).toHaveText('After');
   await expect(visualPane(page).locator('p')).toHaveText('written while hidden');
+});
+
+test('images without a title render, and survive a visual edit', async ({ page }) => {
+  await newDocument(page);
+  await setText(page, 'Before\n\n![a chart](https://example.com/chart.png)\n\nAfter\n');
+  const img = visualPane(page).locator('img:not(.ProseMirror-separator)');
+  await expect(img).toHaveAttribute('alt', 'a chart');
+
+  // An edit elsewhere in the visual pane must not drop the image from the source.
+  await visualPane(page).locator('p', { hasText: 'After' }).click();
+  await page.keyboard.press('End');
+  await page.keyboard.type(' edited');
+  await expect.poll(() => textContent(page)).toContain('After edited');
+  expect(await textContent(page)).toContain('![a chart](https://example.com/chart.png)');
 });

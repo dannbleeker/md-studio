@@ -11,7 +11,7 @@ describe('CommandPalette', () => {
 
   it('filters commands and runs the active one on Enter', () => {
     render(<CommandPalette />);
-    const input = screen.getByRole('combobox');
+    const input = screen.getByRole('combobox', { name: 'Commands' });
     fireEvent.change(input, { target: { value: 'visual only' } });
     expect(screen.getAllByRole('option')[0]).toHaveTextContent('View: visual only');
     fireEvent.keyDown(input, { key: 'Enter' });
@@ -21,7 +21,7 @@ describe('CommandPalette', () => {
 
   it('moves the selection with arrow keys', () => {
     render(<CommandPalette />);
-    const input = screen.getByRole('combobox');
+    const input = screen.getByRole('combobox', { name: 'Commands' });
     fireEvent.keyDown(input, { key: 'ArrowDown' });
     expect(screen.getAllByRole('option')[1]).toHaveAttribute('aria-selected', 'true');
     fireEvent.keyDown(input, { key: 'ArrowUp' });
@@ -31,7 +31,9 @@ describe('CommandPalette', () => {
 
   it('says so when nothing matches', () => {
     render(<CommandPalette />);
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'zzzz' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Commands' }), {
+      target: { value: 'zzzz' },
+    });
     expect(screen.getByText('No matching commands')).toBeInTheDocument();
   });
 });

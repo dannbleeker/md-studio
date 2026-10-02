@@ -26,6 +26,15 @@ a moment later.
 **Linked scroll** (split view) keeps both panes on the same section as you
 scroll. Turn it off in the toolbar or in Settings.
 
+## Formatting
+
+In the visual view, the toolbar above the document formats without
+keyboard shortcuts: text style (paragraph or heading 1–4), bold, italic,
+strikethrough, inline code, link, bulleted and numbered lists, quote,
+code block, table and horizontal rule. Buttons show as pressed when the
+selection already has that formatting. A link asks for its address;
+clearing the address removes the link.
+
 ## Finding and navigating
 
 - **Find** (Ctrl+F) and **Find and replace** (Ctrl+H) open a bar above the

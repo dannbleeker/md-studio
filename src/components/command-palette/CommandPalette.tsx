@@ -39,6 +39,7 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
         // biome-ignore lint/a11y/noAutofocus: the palette exists to be typed into.
         autoFocus
         role="combobox"
+        aria-label={t('toolbar.commands')}
         aria-expanded="true"
         aria-controls="palette-list"
         aria-activedescendant={results[active] ? `cmd-${results[active].id}` : undefined}

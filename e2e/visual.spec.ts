@@ -84,6 +84,6 @@ test('settings dialog', async ({ page }) => {
 test('command palette', async ({ page }) => {
   await openSample(page);
   await page.keyboard.press('ControlOrMeta+K');
-  await expect(page.getByRole('combobox')).toBeFocused();
+  await expect(page.getByRole('combobox', { name: 'Commands' })).toBeFocused();
   await matchesBaseline(page, 'command-palette.png');
 });

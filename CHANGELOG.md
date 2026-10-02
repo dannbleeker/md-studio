@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Fix: images disappeared from the visual pane.** Any image without a
+  title (`![alt](src)`, the usual form) made the visual pane throw and
+  render an empty paragraph instead, and a later edit in the visual pane
+  could then drop the image from the Markdown. Image titles are now
+  normalised before reaching the editor.
+- **Format toolbar** above the visual pane: text style (paragraph,
+  heading 1–4), bold, italic, strikethrough, inline code, link (via a
+  prompt dialog), bulleted and numbered lists, quote, code block, table
+  and horizontal rule. Buttons show as pressed for the selection's
+  current formatting.
+- The command palette's input now has an accessible name ("Commands").
 - **Find and replace** (Ctrl+F / Ctrl+H) in whichever pane you're working
   in, with match case, whole word and regular expressions, a match count,
   and replace / replace all. Matches are highlighted in the visual pane;

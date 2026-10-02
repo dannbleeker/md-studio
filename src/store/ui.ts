@@ -13,12 +13,47 @@ export type ConfirmRequest = {
   resolve: (ok: boolean) => void;
 };
 
+export type PromptRequest = {
+  title: string;
+  label: string;
+  initial: string;
+  confirmLabel: string;
+  resolve: (value: string | null) => void;
+};
+
+/** What the visual pane's selection is formatted with, for the format toolbar. */
+export type FormatState = {
+  strong: boolean;
+  emphasis: boolean;
+  strike: boolean;
+  code: boolean;
+  link: string | null;
+  /** 0 = paragraph, 1–6 = heading level, -1 = other block (code, table…). */
+  block: number;
+};
+
+const NO_FORMAT: FormatState = {
+  strong: false,
+  emphasis: false,
+  strike: false,
+  code: false,
+  link: null,
+  block: 0,
+};
+
 type UiState = {
   toasts: Toast[];
   confirm: ConfirmRequest | null;
+  prompt: PromptRequest | null;
+  format: FormatState;
 };
 
-export const useUiStore = create<UiState>()(() => ({ toasts: [], confirm: null }));
+export const useUiStore = create<UiState>()(() => ({
+  toasts: [],
+  confirm: null,
+  prompt: null,
+  format: NO_FORMAT,
+}));
 
 let nextToastId = 1;
 
@@ -44,6 +79,22 @@ export function requestConfirm(req: Omit<ConfirmRequest, 'resolve'>): Promise<bo
         resolve: (ok) => {
           useUiStore.setState({ confirm: null });
           resolve(ok);
+        },
+      },
+    });
+  });
+}
+
+/** Promise-based single-line prompt, rendered by PromptDialogHost. Null when cancelled. */
+export function requestPrompt(req: Omit<PromptRequest, 'resolve'>): Promise<string | null> {
+  return new Promise((resolve) => {
+    useUiStore.getState().prompt?.resolve(null);
+    useUiStore.setState({
+      prompt: {
+        ...req,
+        resolve: (value) => {
+          useUiStore.setState({ prompt: null });
+          resolve(value);
         },
       },
     });

@@ -24,7 +24,8 @@
 - [x] Visual-pane edits keep the source style of every block they don't
       touch (`domain/preserveBlocks.ts`); only edited blocks are rewritten.
 - [ ] Multiple open documents / tabs (as in tp-studio).
-- [ ] Visual-pane toolbar or slash menu for formatting without shortcuts.
+- [x] Visual-pane format toolbar (text style, inline marks, link, lists, quote,
+      code block, table, rule) with active-state buttons.
 - [ ] Image handling: paste/drop images and choose where they are stored.
 - [x] Find and replace across both panes; outline panel.
 - [x] **Export**: HTML (light/dark/auto theme), PDF, DOCX and plain text,

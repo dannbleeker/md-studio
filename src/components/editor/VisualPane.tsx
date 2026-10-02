@@ -4,6 +4,7 @@ import {
   editorViewCtx,
   editorViewOptionsCtx,
   prosePluginsCtx,
+  remarkPluginsCtx,
   rootCtx,
 } from '@milkdown/kit/core';
 import { clipboard } from '@milkdown/kit/plugin/clipboard';
@@ -11,6 +12,7 @@ import { history } from '@milkdown/kit/plugin/history';
 import { listener, listenerCtx } from '@milkdown/kit/plugin/listener';
 import { commonmark } from '@milkdown/kit/preset/commonmark';
 import { gfm } from '@milkdown/kit/preset/gfm';
+import { Plugin } from '@milkdown/kit/prose/state';
 import { search } from 'prosemirror-search';
 import { useEffect, useRef } from 'react';
 import { t } from '@/i18n';
@@ -18,6 +20,8 @@ import { perfMeasure } from '@/services/perfMarks';
 import { useStore } from '@/store';
 import { applyFull, applyIncremental } from './applyMarkdown';
 import { editors } from './editorRegistry';
+import { reportFormat } from './formatState';
+import { imageTitleFix } from './imageTitleFix';
 import { keepSourceStyle } from './keepSourceStyle';
 import type { ScrollAdapter } from './scrollAdapter';
 
@@ -88,7 +92,14 @@ export function VisualPane({ onAdapter }: Props) {
         ctx.set(rootCtx, rootEl);
         ctx.set(defaultValueCtx, useStore.getState().doc.markdown);
         // Match highlighting and search state for the app's find bar.
-        ctx.update(prosePluginsCtx, (plugins) => [...plugins, search()]);
+        // + the format toolbar's view of the selection, after every change
+        // (a mark toggle changes formatting without moving the selection).
+        ctx.update(prosePluginsCtx, (plugins) => [
+          ...plugins,
+          search(),
+          new Plugin({ view: () => ({ update: (view) => reportFormat(view.state) }) }),
+        ]);
+        ctx.update(remarkPluginsCtx, (plugins) => [...plugins, imageTitleFix]);
         ctx.update(editorViewOptionsCtx, (prev) => ({
           ...prev,
           attributes: { 'aria-label': t('pane.visual'), spellcheck: 'true' },
@@ -113,6 +124,7 @@ export function VisualPane({ onAdapter }: Props) {
         }
         editor = created;
         editors.visual = created.action((ctx) => ctx.get(editorViewCtx));
+        editors.milkdown = created;
         // The text pane may have changed while Milkdown was booting.
         flush();
       });
@@ -167,8 +179,9 @@ export function VisualPane({ onAdapter }: Props) {
       onAdapter(null);
       unsubscribe();
       rootEl.removeEventListener('focusin', onFocus);
-      if (editor && editors.visual === editor.action((ctx) => ctx.get(editorViewCtx))) {
+      if (editor && editors.milkdown === editor) {
         editors.visual = null;
+        editors.milkdown = null;
       }
       editor?.destroy();
     };
