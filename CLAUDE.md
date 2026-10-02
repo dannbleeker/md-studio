@@ -60,21 +60,28 @@ docs/guide/    the practitioner book (CC BY-NC 4.0)
   `applyIncremental` (editor/applyMarkdown.ts) re-parses only the changed
   blocks plus one neighbour each side and swaps just those top-level nodes,
   all with `addToHistory: false`. Anything it can't prove equal to a full
-  parse (loose lists, footnotes, reference links) falls back to
-  `applyFull`; a full parse also runs once 2.5 s after the last
-  incremental update so the panes can't drift. Hidden in text-only view,
+  parse (loose lists, footnotes, reference definitions, a changed run that
+  appears more than once) falls back to `applyFull`, which itself replaces
+  only the top-level blocks that differ (compared ignoring heading ids).
+  A full parse also runs 2.5 s after the last incremental update, or as
+  soon as the visual pane is focused, so the panes can't drift. Hidden in text-only view,
   the visual pane skips updates and catches up when shown.
   Milkdown's listener skips such transactions, so nothing echoes back and the
   user's source formatting is never rewritten by a text-side edit.
 - **Visual → text:** Milkdown's `markdownUpdated` (debounced 200 ms) calls
-  `setMarkdown(md, 'visual')`. TextPane applies a minimal single-range diff
+  `setMarkdown(md, 'visual')`, but only for user edits (an `unreported`
+  flag set by a ProseMirror plugin). `store/flush.ts` lets anything that
+  reads or replaces the document (save, tab switch, close, page hide,
+  focusing the text pane) report a pending visual edit first, so it is
+  never lost or written into another tab. TextPane applies a minimal single-range diff
   (`domain/textDiff.ts`) tagged with a `fromStore` annotation, so the cursor
   and scroll position survive.
 - **Source style is kept:** Milkdown re-serializes the whole document on
   every visual edit; `keepSourceStyle` (editor/) merges that with the old
   source via `domain/preserveBlocks.ts`, keeping the original text of every
   unchanged leading/trailing block. Only the edited blocks take the
-  serializer's style. The merge is verified (edited region + neighbours,
+  serializer's style. Reference definitions are compared in scope and kept
+  (the serializer inlines reference links). The merge is verified (edited region + neighbours,
   or the whole document when link reference definitions exist) and falls
   back to the serializer output if it would change meaning.
 - **Linked scroll:** both panes report heading offsets; `domain/scrollMap.ts`

@@ -1,3 +1,4 @@
+import { marked } from 'marked';
 import { describe, expect, it } from 'vitest';
 import { findHeadings } from './headings';
 
@@ -35,4 +36,28 @@ describe('findHeadings', () => {
   it('accepts an empty ATX heading', () => {
     expect(findHeadings('#\n')).toEqual([{ line: 0, level: 1, text: '' }]);
   });
+
+  // The visual pane pairs headings by index, so the scanner must agree with
+  // a real CommonMark parser on what counts as a top-level heading.
+  const parserHeadings = (md: string) =>
+    marked
+      .lexer(md)
+      .filter((t) => t.type === 'heading')
+      .map((t) => (t as { text: string }).text);
+  const cases: Record<string, string> = {
+    inlineTripleBackticks: '# One\n\n```npm install``` runs it\n\n# Two\n\n# Three\n',
+    fenceWithInfoInside: '# One\n\n```\n```js\n# not a heading\n```\n\n# Two\n',
+    lazySetextAfterList: '# One\n\n- item\n  more text\n---\n\n# Two\n',
+    setextInsideListItem: '# One\n\n1. item\n\n   sub para\n   ---\n\n# Two\n',
+    htmlBlock: '# One\n\n<div>\n# inside html\n</div>\n\n# Two\n',
+    htmlComment: '# One\n\n<!--\n# x\n-->\n\n# Two\n',
+    atxAfterList: '- a\n# Heading\n',
+    fenceAfterList: '- a\n```\n# code\n```\n\n# Real\n',
+    quote: '> # quoted\n> text\n\n# Real\n',
+  };
+  for (const [name, md] of Object.entries(cases)) {
+    it(`agrees with the parser: ${name}`, () => {
+      expect(findHeadings(md).map((h) => h.text)).toEqual(parserHeadings(md));
+    });
+  }
 });

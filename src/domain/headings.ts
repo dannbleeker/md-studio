@@ -8,6 +8,8 @@
  * block quotes, or lists.
  */
 
+import { closesFence, openFence } from './fences';
+
 export type Heading = {
   /** 0-based line index of the heading text. */
   line: number;
@@ -15,10 +17,14 @@ export type Heading = {
   text: string;
 };
 
-const FENCE = /^ {0,3}(`{3,}|~{3,})/;
 const ATX = /^ {0,3}(#{1,6})(?:[ \t]+(.*?))?(?:[ \t]+#+)?[ \t]*$/;
 const SETEXT_1 = /^ {0,3}=+[ \t]*$/;
 const SETEXT_2 = /^ {0,3}-+[ \t]*$/;
+/** Starts a list item or block quote: headings inside those aren't top-level. */
+const CONTAINER = /^ {0,3}(?:(?:[*+-]|\d{1,9}[.)])(?:[ \t]|$)|>)/;
+/** Starts an HTML block (CommonMark types 1, 2 and 6): its lines aren't Markdown. */
+const HTML_BLOCK =
+  /^ {0,3}<(?:!--|\/?(?:address|article|aside|blockquote|details|dialog|div|dl|fieldset|figcaption|figure|footer|form|h[1-6]|header|hr|li|main|nav|ol|p|pre|script|section|style|summary|table|tbody|td|tfoot|th|thead|tr|ul)(?:[\s/>]|$))/i;
 const NOT_PARAGRAPH = /^ {0,3}(?:[>*+-]|\d+[.)]|#|`{3,}|~{3,})|^(?: {4}|\t)/;
 
 export function findHeadings(markdown: string): Heading[] {
@@ -28,18 +34,56 @@ export function findHeadings(markdown: string): Heading[] {
   // Line index where the paragraph currently being read began, if any.
   // A setext underline turns that whole paragraph into one heading.
   let paragraphStart = -1;
+  // Inside a list item or block quote: its lines (indented, or lazy
+  // continuations) hold no top-level headings. Ends at an unindented line
+  // after a blank one, or at an ATX heading, which interrupts anything.
+  let container = false;
+  let blankBefore = false;
+  // Inside an HTML block: until a blank line, or `-->` for a comment.
+  let html: 'block' | 'comment' | null = null;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? '';
+    const blank = line.trim() === '';
 
-    const fenceMatch = FENCE.exec(line);
     if (fence) {
-      if (fenceMatch?.[1]?.startsWith(fence)) fence = null;
+      if (closesFence(line, fence)) fence = null;
       continue;
     }
-    if (fenceMatch?.[1]) {
-      fence = fenceMatch[1];
+    if (html) {
+      if (html === 'comment' ? line.includes('-->') : blank) html = null;
+      blankBefore = blank;
+      continue;
+    }
+    if (blank) {
       paragraphStart = -1;
+      blankBefore = true;
+      continue;
+    }
+
+    const indented = /^[ \t]/.test(line);
+    const interrupts = !indented && (ATX.test(line) || openFence(line) !== null);
+    if (container && !CONTAINER.test(line) && (indented || !blankBefore) && !interrupts) {
+      blankBefore = false;
+      continue;
+    }
+    if (CONTAINER.test(line)) {
+      container = true;
+      paragraphStart = -1;
+      blankBefore = false;
+      continue;
+    }
+    container = false;
+    blankBefore = false;
+
+    const open = openFence(line);
+    if (open) {
+      fence = open;
+      paragraphStart = -1;
+      continue;
+    }
+    if (paragraphStart < 0 && HTML_BLOCK.test(line)) {
+      html = /^ {0,3}<!--/.test(line) && !line.includes('-->') ? 'comment' : 'block';
       continue;
     }
 
@@ -63,8 +107,7 @@ export function findHeadings(markdown: string): Heading[] {
       continue;
     }
 
-    if (line.trim() === '') paragraphStart = -1;
-    else if (paragraphStart < 0 && !NOT_PARAGRAPH.test(line)) paragraphStart = i;
+    if (paragraphStart < 0 && !NOT_PARAGRAPH.test(line)) paragraphStart = i;
   }
   return headings;
 }

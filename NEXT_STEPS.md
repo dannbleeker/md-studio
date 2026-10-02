@@ -87,7 +87,7 @@
 
 ## Finish up
 
-- [ ] **Bug hunt**: a full pass over the app for correctness bugs, each
+- [x] **Bug hunt**: a full pass over the app for correctness bugs, each
       fix landing with a regression test. Three hunters (sync/editors,
       files/tabs/PWA, export/UI) plus the bugs found while writing the
       book produced ~30 confirmed bugs, fixed in three PRs:
@@ -109,7 +109,7 @@
         and heading anchors, PDF quotes/table cells/long words, palette
         scroll, 360 px toolbar overflow, dark danger-button contrast,
         confirm-dialog focus.
-  - [ ] PR 3, sync engine edge cases: incremental update targeting a
+  - [x] PR 3, sync engine edge cases: incremental update targeting a
         repeated block, reference definitions far from their use, fence
         and heading detection (inline triple backticks, info strings,
         lazy setext in lists, HTML blocks), reference links inlined by

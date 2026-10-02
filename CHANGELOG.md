@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **Bug hunt, part 3: sync engine.**
+  - A text edit among repeated blocks no longer lands on the wrong copy in
+    the visual pane (an ambiguous match now takes the full parse).
+  - Reference definitions and footnotes always take the full parse, so a
+    definition typed far from its use links it straight away.
+  - A visual edit keeps reference-style links and their definitions
+    instead of inlining the links and deleting the definitions.
+  - Visual undo and selection survive text-pane edits to neighbouring
+    blocks, and full updates no longer replace everything after the
+    first heading.
+  - Clicking into the visual pane settles a pending incremental update
+    first, so a divergence can't become permanent.
+  - Outline, linked scroll and the palette's heading jump agree with the
+    visual pane: inline triple backticks, fence info lines, headings
+    inside lists, quotes and HTML blocks no longer confuse them.
+  - Ctrl+F / Ctrl+H pressed again refocuses the find bar and searches the
+    pane you are in.
 - **Bug hunt, part 2: export and UI.**
   - Word: task items keep their text in the bullet, each numbered list
     starts at its own number instead of continuing the previous one.

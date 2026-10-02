@@ -57,6 +57,8 @@ export function VisualPane({ onAdapter }: Props) {
     let unreported = false;
     let pending: ReturnType<typeof setTimeout> | undefined;
     let reconcileTimer: ReturnType<typeof setTimeout> | undefined;
+    /** An incremental update hasn't been checked against a full parse yet. */
+    let reconcileDue = false;
     // The Markdown the visual document currently represents.
     let appliedMd = useStore.getState().doc.markdown;
     // Text-only view: the hidden pane skips updates and catches up when shown.
@@ -65,6 +67,7 @@ export function VisualPane({ onAdapter }: Props) {
     const applyAll = (markdown: string) => {
       if (!editor) return;
       clearTimeout(reconcileTimer);
+      reconcileDue = false;
       applyFull(editor, markdown);
       appliedMd = markdown;
     };
@@ -86,6 +89,7 @@ export function VisualPane({ onAdapter }: Props) {
       if (incremental) {
         appliedMd = doc.markdown;
         clearTimeout(reconcileTimer);
+        reconcileDue = true;
         reconcileTimer = setTimeout(() => {
           const t0 = performance.now();
           applyAll(useStore.getState().doc.markdown);
@@ -171,6 +175,7 @@ export function VisualPane({ onAdapter }: Props) {
         // reconcile could only disturb the cursor.
         appliedMd = state.doc.markdown;
         clearTimeout(reconcileTimer);
+        reconcileDue = false;
         return;
       }
       clearTimeout(pending);
@@ -182,6 +187,10 @@ export function VisualPane({ onAdapter }: Props) {
     const onFocus = () => {
       editors.lastFocused = 'visual';
       if (pending || staleWhileHidden) flush();
+      // Settle any incremental update before the user edits this tree:
+      // once they type, the tree is serialized as the truth, and a
+      // divergence from a full parse would become permanent.
+      if (reconcileDue) applyAll(useStore.getState().doc.markdown);
     };
     rootEl.addEventListener('focusin', onFocus);
 

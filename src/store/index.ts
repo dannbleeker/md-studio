@@ -50,6 +50,8 @@ type State = {
   exportOpen: boolean;
   findOpen: boolean;
   findWithReplace: boolean;
+  /** Bumped by every Ctrl+F / Ctrl+H, so an open find bar refocuses and retargets. */
+  findRequest: number;
 
   setMarkdown: (markdown: string, source: Exclude<ChangeSource, 'load'>) => void;
   /** Opens a document in a new tab (or in place of a blank one) and shows it. */
@@ -161,6 +163,7 @@ function initialState() {
     exportOpen: false,
     findOpen: false,
     findWithReplace: false,
+    findRequest: 0,
   };
 }
 
@@ -268,7 +271,11 @@ export const useStore = create<State>()((set, get) => ({
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
   setExportOpen: (exportOpen) => set({ exportOpen }),
   setFind: (findOpen, withReplace) =>
-    set((s) => ({ findOpen, findWithReplace: withReplace ?? s.findWithReplace })),
+    set((s) => ({
+      findOpen,
+      findWithReplace: withReplace ?? s.findWithReplace,
+      findRequest: findOpen ? s.findRequest + 1 : s.findRequest,
+    })),
 }));
 
 function rememberRecent(doc: MdDocument, handleId: string | null) {

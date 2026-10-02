@@ -92,3 +92,19 @@ test('the outline lists headings and jumps both panes to a section', async ({ pa
     .poll(() => nearTop(page.locator('.cm-line', { hasText: /^## Section 20$/ }), 'text'))
     .toBeLessThan(40);
 });
+
+test('Ctrl+H again from the other pane refocuses and retargets the find bar', async ({ page }) => {
+  await newDocument(page);
+  await setText(page, '# Title\n\napple pie\n');
+  await expect(visualPane(page).locator('p')).toHaveText('apple pie');
+  await textPane(page).click();
+  await page.keyboard.press('ControlOrMeta+H');
+  const search = page.getByRole('searchbox', { name: 'Find' });
+  await expect(search).toBeFocused();
+  await visualPane(page).locator('p').click();
+  await page.keyboard.press('ControlOrMeta+H');
+  await expect(search).toBeFocused();
+  await page.keyboard.type('apple');
+  // The term went into the find bar, not into the document.
+  await expect(visualPane(page).locator('p')).toHaveText('apple pie');
+});

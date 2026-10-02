@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { t } from '@/i18n';
 import { useStore } from '@/store';
 import { engineFor, type FindOptions, findTarget, type MatchInfo } from './findEngine';
@@ -14,6 +14,7 @@ export function FindBar() {
   const withReplace = useStore((s) => s.findWithReplace);
   const viewMode = useStore((s) => s.viewMode);
   const setFind = useStore((s) => s.setFind);
+  const request = useStore((s) => s.findRequest);
   const input = useRef<HTMLInputElement>(null);
   const [options, setOptions] = useState<FindOptions>({
     search: '',
@@ -23,7 +24,10 @@ export function FindBar() {
     wholeWord: false,
   });
   const [info, setInfo] = useState<MatchInfo>(EMPTY);
-  const target = findTarget(viewMode);
+  // The pane last worked in isn't reactive state, so re-read it on every
+  // Ctrl+F / Ctrl+H: pressed again from the other pane, the bar retargets.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `request` is the trigger.
+  const target = useMemo(() => findTarget(viewMode), [viewMode, request]);
 
   // Re-run whenever the query or the target pane changes.
   useEffect(() => {
@@ -40,10 +44,12 @@ export function FindBar() {
     []
   );
 
+  // Focus on open, and again when Ctrl+F / Ctrl+H is pressed while open.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `request` is the trigger.
   useEffect(() => {
     input.current?.focus();
     input.current?.select();
-  }, []);
+  }, [request]);
 
   const act = useCallback(
     (action: 'next' | 'prev' | 'replace' | 'replaceAll') => {
