@@ -3,6 +3,7 @@ import {
   Editor,
   editorViewCtx,
   editorViewOptionsCtx,
+  nodeViewCtx,
   prosePluginsCtx,
   remarkPluginsCtx,
   rootCtx,
@@ -21,6 +22,7 @@ import { useStore } from '@/store';
 import { applyFull, applyIncremental } from './applyMarkdown';
 import { editors } from './editorRegistry';
 import { reportFormat } from './formatState';
+import { imageNodeView, visualPaneImagePlugin } from './imageSupport';
 import { imageTitleFix } from './imageTitleFix';
 import { keepSourceStyle } from './keepSourceStyle';
 import type { ScrollAdapter } from './scrollAdapter';
@@ -98,8 +100,13 @@ export function VisualPane({ onAdapter }: Props) {
           ...plugins,
           search(),
           new Plugin({ view: () => ({ update: (view) => reportFormat(view.state) }) }),
+          visualPaneImagePlugin(() => editor),
         ]);
         ctx.update(remarkPluginsCtx, (plugins) => [...plugins, imageTitleFix]);
+        ctx.update(nodeViewCtx, (views) => {
+          const image: (typeof views)[number] = ['image', imageNodeView];
+          return [...views, image];
+        });
         ctx.update(editorViewOptionsCtx, (prev) => ({
           ...prev,
           attributes: { 'aria-label': t('pane.visual'), spellcheck: 'true' },

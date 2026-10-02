@@ -110,6 +110,15 @@ export const en = {
   'format.codeBlock': 'Code block',
   'format.table': 'Insert table',
   'format.rule': 'Horizontal rule',
+  'image.folderTitle': 'Save images next to the document?',
+  'image.folderBody':
+    'Pick the folder that contains {name} once, and pasted images are saved in an “images” folder beside it and linked from the document. Cancel embeds this image in the document instead.',
+  'image.folderChoose': 'Choose folder…',
+  'image.folderMismatch':
+    'That folder doesn’t contain {name}. Choose the folder the document is in.',
+  'image.largeEmbed':
+    'The embedded image makes the document large. Saving the document to disk lets images go in a folder instead.',
+  'image.failed': 'Could not add the image.',
   'confirm.discard.title': 'Discard unsaved changes?',
   'confirm.discard.body': '“{name}” has changes that are not saved to disk.',
   'confirm.discard.ok': 'Discard',

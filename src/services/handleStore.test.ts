@@ -1,6 +1,14 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
-import { ensurePermission, getHandle, pruneHandles, putHandle } from './handleStore';
+import {
+  ensurePermission,
+  getHandle,
+  getHandleAt,
+  imageFolderKey,
+  pruneHandles,
+  putHandle,
+  putHandleAt,
+} from './handleStore';
 
 // Plain objects stand in for FileSystemFileHandle: IndexedDB stores a
 // structured clone, which keeps data but drops methods.
@@ -20,6 +28,16 @@ describe('handleStore', () => {
     await pruneHandles(new Set([keep]));
     expect(await getHandle(keep)).not.toBeNull();
     expect(await getHandle(drop)).toBeNull();
+  });
+
+  it('keeps a document’s image folder exactly as long as the document', async () => {
+    const doc = (await putHandle(handle('doc.md')))!;
+    const other = (await putHandle(handle('other.md')))!;
+    await putHandleAt(imageFolderKey(doc), handle('folder'));
+    await putHandleAt(imageFolderKey(other), handle('folder2'));
+    await pruneHandles(new Set([doc]));
+    expect(await getHandleAt(imageFolderKey(doc))).toMatchObject({ name: 'folder' });
+    expect(await getHandleAt(imageFolderKey(other))).toBeNull();
   });
 
   it('asks for permission only when not already granted', async () => {

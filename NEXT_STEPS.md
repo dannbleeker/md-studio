@@ -26,7 +26,8 @@
 - [ ] Multiple open documents / tabs (as in tp-studio).
 - [x] Visual-pane format toolbar (text style, inline marks, link, lists, quote,
       code block, table, rule) with active-state buttons.
-- [ ] Image handling: paste/drop images and choose where they are stored.
+- [x] Paste/drop images: saved in `images/` next to the document (Chromium,
+      folder chosen once), otherwise shrunk and embedded.
 - [x] Find and replace across both panes; outline panel.
 - [x] **Export**: HTML (light/dark/auto theme), PDF, DOCX and plain text,
       from the toolbar and the command palette. Never changes the linked file.
