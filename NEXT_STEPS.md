@@ -39,8 +39,8 @@
       re-baselined.
 - [ ] Link the book (EPUB/PDF in `public/`) from the app, e.g. an About
       dialog or the start screen.
-- [ ] Strengthen domain tests where mutants survive: `fuzzy.ts` scores 41%
-      (overall 72%; see the Mutation workflow's report artifact).
+- [x] Strengthen domain tests where mutants survive: `fuzzy.ts` 41% -> 91%
+      (overall `src/domain` 84% of 579 mutants).
 - [ ] A stats dashboard page reading `public/stats.json`, as in the
       sibling studios.
 
