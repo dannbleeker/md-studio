@@ -30,7 +30,7 @@
     {
       "category": "Book",
       "files": 13,
-      "lines": 178
+      "lines": 2342
     }
   ],
   "tests": {
@@ -77,11 +77,11 @@
   },
   "book": {
     "chapters": 11,
-    "written": 0,
-    "words": 902
+    "written": 11,
+    "words": 22973
   },
   "git": {
-    "commits": 58,
+    "commits": 61,
     "firstCommit": "2026-10-02",
     "lastCommit": "2026-10-02",
     "activeDays": 1
