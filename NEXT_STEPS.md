@@ -80,13 +80,27 @@
       typing 290 -> 40 ms, text-to-visual 175 -> 165, visual-sync 13 -> 8,
       visual-to-text 345 -> 280 (best-of-3 p95 on ubuntu-latest). The
       container numbers were far looser, typing by ~7x.
-- [ ] Write the book chapters (currently outlines in `docs/guide/`).
+- [x] Write the book chapters: all 11 files drafted (~23,000 words) from
+      the outlines, checked against the code, and given a humanizer pass.
+      Drafts for the owner to edit; claims that couldn't be confirmed in
+      the running app are worded cautiously.
 
 ## Finish up
 
 - [ ] **Bug hunt**: a full pass over the app for correctness bugs (sync edge
       cases, file open/save flows, persistence, PWA update path, mobile
       layout), each fix landing with a regression test.
+      Found while writing the book (verified in the export code):
+      footnotes render in the visual pane but every export (HTML, PDF,
+      DOCX, plain text, the book PDF) prints `[^1]` literally; PDF export
+      drops nested list items and draws strikethrough as plain text; PDF
+      replaces every image with its alt text, DOCX and plain text with
+      `[alt]`; HTML drops embedded `data:` images; a tab left open does
+      not notice that its file changed on disk (another device, another
+      app), so saving it overwrites the newer version;
+      dropping a `.md` file onto the Markdown pane both inserts its text
+      there (CodeMirror's own drop) and opens it in a new tab
+      (`useFileDrop`), which the book currently warns about.
 - [ ] **Security sweep**: review untrusted input paths (opened and dropped
       files, pasted HTML, links and raw HTML in Markdown, HTML export),
       the service worker's caching rules, dependencies (`pnpm audit`), and
