@@ -389,3 +389,18 @@ test('blank lines typed in the visual pane never become <br /> in the Markdown',
   await expect.poll(() => textContent(page)).toContain('three');
   expect(await textContent(page)).not.toContain('<br');
 });
+
+test('a visual edit keeps headings, tables and front matter it didn’t touch exactly as written', async ({
+  page,
+}) => {
+  const source =
+    '---\ntitle: Post\ndate: 2024-01-01\ntags: [a, b]\n---\n\n# Title\nIntro\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\nEdit me\n\nSetext\n===\n\n## End\nLast para\n';
+  await newDocument(page);
+  await setText(page, source);
+  await expect(visualPane(page).locator('table')).toBeVisible();
+  await visualPane(page).locator('p', { hasText: 'Edit me' }).click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('Z');
+  await expect.poll(() => textContent(page)).toContain('Edit meZ');
+  expect(await textContent(page)).toBe(source.replace('Edit me', 'Edit meZ'));
+});

@@ -108,3 +108,14 @@ test('Ctrl+H again from the other pane refocuses and retargets the find bar', as
   // The term went into the find bar, not into the document.
   await expect(visualPane(page).locator('p')).toHaveText('apple pie');
 });
+
+test('replacing in the visual pane keeps inline code and other marks', async ({ page }) => {
+  await newDocument(page);
+  await setText(page, 'x `foo` y and **foo** z\n');
+  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  await page.keyboard.press('ControlOrMeta+H');
+  await page.getByRole('searchbox', { name: 'Find' }).fill('foo');
+  await page.getByRole('textbox', { name: 'Replace with' }).fill('bar');
+  await page.getByRole('button', { name: 'Replace all' }).click();
+  await expect.poll(() => textContent(page)).toContain('x `bar` y and **bar** z');
+});

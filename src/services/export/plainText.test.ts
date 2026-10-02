@@ -47,4 +47,14 @@ describe('markdownToPlainText', () => {
     );
     expect(markdownToPlainText('```\n  x\n```')).toBe('  x\n');
   });
+
+  it('underlines a heading as wide as it shows', () => {
+    expect(markdownToPlainText('# 日本語')).toBe('日本語\n======\n');
+    expect(markdownToPlainText('## Hi 👍🏽')).toBe('Hi 👍🏽\n-----\n');
+  });
+
+  it('lines nested content up with the text after a list marker', () => {
+    expect(markdownToPlainText('10. ten\n    - nested')).toBe('10. ten\n    - nested\n');
+    expect(markdownToPlainText('> - a\n>\n>   more')).not.toMatch(/^ +$/m);
+  });
 });

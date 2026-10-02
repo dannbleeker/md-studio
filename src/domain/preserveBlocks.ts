@@ -93,12 +93,21 @@ export function preserveUnchangedBlocks(
   };
 }
 
+/** An ATX heading line: always a block of its own. */
+const ATX = /^ {0,3}#{1,6}(?:[ \t]|$)/;
+/** A setext underline (after paragraph text) or, at a block's start, a thematic break. */
+const SETEXT = /^ {0,3}(?:=+|-+)[ \t]*$/;
+const THEMATIC_BREAK = /^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$/;
+
 /**
  * Cheap top-level block split for `preserveUnchangedBlocks`: runs of
- * non-blank lines, with fenced code kept whole across blank lines. It
+ * non-blank lines, with fenced code kept whole across blank lines, and a
+ * heading or thematic break ending the run it closes (`# Title` directly
+ * followed by text is two blocks, as the serializer writes them). It
  * doesn't need to match the Markdown parser exactly (a loose list becomes
- * several chunks, which compare fine on their own); a full parse per edit
- * costs ~150 ms on a 3,000-line document, this costs ~1 ms.
+ * several chunks, which compare fine on their own, and the merge is
+ * verified anyway); a full parse per edit costs ~150 ms on a 3,000-line
+ * document, this costs ~1 ms.
  */
 export function splitBlocks(md: string): BlockRange[] {
   const out: BlockRange[] = [];
@@ -106,6 +115,10 @@ export function splitBlocks(md: string): BlockRange[] {
   let end = 0;
   let fence: string | null = null;
   let pos = 0;
+  const close = () => {
+    if (start >= 0) out.push({ start, end });
+    start = -1;
+  };
   for (const line of md.split('\n')) {
     const lineEnd = pos + line.length;
     const blank = line.trim() === '';
@@ -113,8 +126,15 @@ export function splitBlocks(md: string): BlockRange[] {
       if (closesFence(line, fence)) fence = null;
       end = lineEnd;
     } else if (blank) {
-      if (start >= 0) out.push({ start, end });
-      start = -1;
+      close();
+    } else if (ATX.test(line) || (start < 0 && THEMATIC_BREAK.test(line))) {
+      // A block of its own, ending whatever came before.
+      close();
+      out.push({ start: pos, end: lineEnd });
+    } else if (start >= 0 && SETEXT.test(line)) {
+      // Underlines the paragraph so far into a heading, which ends there.
+      end = lineEnd;
+      close();
     } else {
       if (start < 0) start = pos;
       end = lineEnd;
@@ -123,6 +143,6 @@ export function splitBlocks(md: string): BlockRange[] {
     }
     pos = lineEnd + 1;
   }
-  if (start >= 0) out.push({ start, end });
+  close();
   return out;
 }

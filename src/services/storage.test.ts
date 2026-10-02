@@ -94,7 +94,7 @@ describe('storage', () => {
       'md-studio:recents:v1',
       JSON.stringify([
         { ...recent('a.md'), openedAt: 'garbage' },
-        { ...recent('b.md'), openedAt: 1e400 },
+        { ...recent('b.md'), openedAt: Number.POSITIVE_INFINITY },
         { ...recent('c.md'), openedAt: 9e15 },
         { ...recent('d.md'), fileName: 7 },
         null,
