@@ -4,6 +4,7 @@ name: Rebuild book artifacts
 #
 #   public/Writing-in-Plain-Text.epub   reflowable, e-reader friendly
 #   public/Writing-in-Plain-Text.pdf    fixed A4, cover + clickable contents
+#   public/User-Guide.pdf               the user guide (USER_GUIDE.md), A4
 #
 # Both are derived from docs/guide/*.md by the pure-Node builders in scripts/
 # (ported from mindmap-studio), so review happens on the Markdown and the
@@ -20,6 +21,8 @@ on:
       - 'docs/guide/**.md'
       - 'scripts/build-book-epub.mjs'
       - 'scripts/build-book-pdf.mjs'
+      - 'scripts/build-guide-pdf.mjs'
+      - 'USER_GUIDE.md'
       - 'scripts/lib/bookChapters.mjs'
   workflow_dispatch:
 
@@ -56,7 +59,8 @@ jobs:
         run: |
           EPUB=public/Writing-in-Plain-Text.epub
           PDF=public/Writing-in-Plain-Text.pdf
-          git add "$EPUB" "$PDF"
+          GUIDE=public/User-Guide.pdf
+          git add "$EPUB" "$PDF" "$GUIDE"
           if git diff --cached --quiet; then
             echo "Book artifacts unchanged — nothing to commit."
             exit 0

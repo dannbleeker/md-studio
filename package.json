@@ -19,9 +19,10 @@
     "test:e2e": "playwright test",
     "check:bundle-size": "node ./scripts/check-bundle-size.mjs",
     "verify": "pnpm typecheck && pnpm lint && pnpm knip && pnpm test && pnpm build && pnpm test:e2e && pnpm check:bundle-size",
-    "book": "pnpm book:epub && pnpm book:pdf",
+    "book": "pnpm book:epub && pnpm book:pdf && pnpm book:guide",
     "book:epub": "node ./scripts/build-book-epub.mjs",
     "book:pdf": "node ./scripts/build-book-pdf.mjs",
+    "book:guide": "node ./scripts/build-guide-pdf.mjs",
     "mutation": "stryker run stryker.mutation.config.mjs && node ./scripts/mutation-score.mjs"
   },
   "engines": {

@@ -17,8 +17,10 @@
     Actions. `qs` lifted past three advisories (dev-only, via Stryker).
 - **The user guide and the book open from inside the app**: start screen,
   a Help and reading section in Settings, and the command palette. The
-  guide opens as a document tab; the guide and the book are precached, so
-  both work offline.
+  guide opens as a document tab, or as a PDF (`public/User-Guide.pdf`,
+  built by `pnpm book:guide` and rebuilt by the book workflow when
+  `USER_GUIDE.md` changes). The guide and the book are precached, so they
+  work offline.
 
 - **Bug hunt, part 3: sync engine.**
   - A text edit among repeated blocks no longer lands on the wrong copy in

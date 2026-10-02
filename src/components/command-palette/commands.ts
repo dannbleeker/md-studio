@@ -9,7 +9,7 @@ import {
   saveDocument,
 } from '@/services/documentActions';
 import { exportDocument } from '@/services/export';
-import { BOOK_EPUB, BOOK_PDF, DASHBOARD } from '@/services/links';
+import { BOOK_EPUB, BOOK_PDF, DASHBOARD, GUIDE_PDF } from '@/services/links';
 import { useStore } from '@/store';
 
 /** Same as clicking an `<a download>`: saves the file instead of navigating. */
@@ -112,6 +112,11 @@ export const COMMANDS: readonly Command[] = [
   { id: 'home', label: 'cmd.home', run: () => state().setScreen('start') },
   { id: 'welcome', label: 'cmd.welcome', run: () => void openWelcome() },
   { id: 'guide', label: 'cmd.guide', run: () => void openUserGuide() },
+  {
+    id: 'guidePdf',
+    label: 'cmd.guidePdf',
+    run: () => window.open(GUIDE_PDF, '_blank', 'noopener'),
+  },
   { id: 'book', label: 'cmd.book', run: () => window.open(BOOK_PDF, '_blank', 'noopener') },
   { id: 'bookEpub', label: 'cmd.bookEpub', run: () => downloadLink(BOOK_EPUB) },
   {

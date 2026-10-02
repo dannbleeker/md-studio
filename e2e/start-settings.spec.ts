@@ -57,6 +57,10 @@ test('the user guide and the book are reachable from the start screen, settings 
     'href',
     '/Writing-in-Plain-Text.pdf'
   );
+  await expect(links.getByRole('link', { name: 'User guide (PDF)' })).toHaveAttribute(
+    'href',
+    '/User-Guide.pdf'
+  );
   await links.getByRole('button', { name: 'User guide' }).click();
   await expect(visualPane(page).locator('h1')).toHaveText('MD Studio quick reference');
   await page.getByRole('button', { name: 'New', exact: true }).click();
@@ -78,9 +82,16 @@ test('the user guide and the book are reachable from the start screen, settings 
 
   await page.keyboard.press('ControlOrMeta+K');
   await page.keyboard.type('user guide');
-  await expect(page.getByRole('option', { name: /Open the user guide/ })).toBeVisible();
+  await expect(
+    page.getByRole('option', { name: 'Open the user guide', exact: true })
+  ).toBeVisible();
+  await expect(page.getByRole('option', { name: 'Open the user guide (PDF)' })).toBeVisible();
 
-  for (const file of ['/Writing-in-Plain-Text.pdf', '/Writing-in-Plain-Text.epub']) {
+  for (const file of [
+    '/Writing-in-Plain-Text.pdf',
+    '/Writing-in-Plain-Text.epub',
+    '/User-Guide.pdf',
+  ]) {
     const response = await page.request.get(file);
     expect(response.ok()).toBe(true);
   }

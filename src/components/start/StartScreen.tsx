@@ -12,7 +12,7 @@ import {
   openWelcome,
   switchTab,
 } from '@/services/documentActions';
-import { BOOK_EPUB, BOOK_PDF, DASHBOARD } from '@/services/links';
+import { BOOK_EPUB, BOOK_PDF, DASHBOARD, GUIDE_PDF } from '@/services/links';
 import { syncedTabs, useStore } from '@/store';
 
 export function StartScreen() {
@@ -106,6 +106,9 @@ export function StartScreen() {
         <button type="button" className="link-button" onClick={() => void openUserGuide()}>
           {t('start.guide')}
         </button>
+        <a href={GUIDE_PDF} target="_blank" rel="noopener">
+          {t('start.guidePdf')}
+        </a>
         <a href={BOOK_PDF} target="_blank" rel="noopener">
           {t('start.bookPdf')}
         </a>

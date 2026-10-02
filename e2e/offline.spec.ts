@@ -26,7 +26,11 @@ test('offline, the app, the user guide and the book are served by the service wo
 
   const book = await page.evaluate(async () => {
     const sizes: Record<string, number> = {};
-    for (const file of ['/Writing-in-Plain-Text.pdf', '/Writing-in-Plain-Text.epub']) {
+    for (const file of [
+      '/Writing-in-Plain-Text.pdf',
+      '/Writing-in-Plain-Text.epub',
+      '/User-Guide.pdf',
+    ]) {
       const response = await fetch(file);
       sizes[file] = response.ok ? (await response.arrayBuffer()).byteLength : -response.status;
     }
@@ -34,5 +38,6 @@ test('offline, the app, the user guide and the book are served by the service wo
   });
   expect(book['/Writing-in-Plain-Text.pdf']).toBeGreaterThan(10_000);
   expect(book['/Writing-in-Plain-Text.epub']).toBeGreaterThan(10_000);
+  expect(book['/User-Guide.pdf']).toBeGreaterThan(10_000);
   await context.setOffline(false);
 });

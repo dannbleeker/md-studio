@@ -1,7 +1,7 @@
 import { t } from '@/i18n';
 import { LOCALES, type LocalePreference, SUPPORTED_LOCALES } from '@/i18n/locales';
 import { openUserGuide } from '@/services/documentActions';
-import { BOOK_EPUB, BOOK_PDF } from '@/services/links';
+import { BOOK_EPUB, BOOK_PDF, GUIDE_PDF } from '@/services/links';
 import { useStore } from '@/store';
 import { FONT_SIZES, type ThemePreference, type ViewMode } from '@/store/settings';
 import { Dialog } from '../ui/Dialog';
@@ -125,6 +125,9 @@ export function SettingsDialog() {
           >
             {t('start.guide')}
           </button>
+          <a href={GUIDE_PDF} target="_blank" rel="noopener">
+            {t('start.guidePdf')}
+          </a>
           <a href={BOOK_PDF} target="_blank" rel="noopener">
             {t('start.bookPdf')}
           </a>
