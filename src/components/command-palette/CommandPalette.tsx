@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { fuzzyFilter } from '@/domain/fuzzy';
 import { findHeadings } from '@/domain/headings';
+import { forPlatform } from '@/domain/keys';
 import { t } from '@/i18n';
+import { isMac } from '@/services/platform';
 import { useStore } from '@/store';
 import { useUiStore } from '@/store/ui';
 import { jumpToHeading } from '../editor/jumpToHeading';
@@ -50,10 +52,10 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
       }));
       return fuzzyFilter(items, query.slice(1).trim(), (item) => item.text);
     }
-    const items = COMMANDS.map((c) => ({
+    const items = COMMANDS.filter((c) => inEditor || !c.editorOnly).map((c) => ({
       id: c.id,
       text: t(c.label),
-      ...(c.shortcut ? { hint: c.shortcut } : {}),
+      ...(c.shortcut ? { hint: forPlatform(c.shortcut, isMac()) } : {}),
       pick: () => {
         if (c.query !== undefined) {
           setQuery(c.query);
@@ -61,7 +63,10 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
           return;
         }
         onDone();
-        c.run();
+        // After the palette has closed and returned focus to whatever
+        // opened it: a dialog the command opens then hands focus back there,
+        // not to the palette's input, which is gone by then.
+        setTimeout(c.run, 0);
       },
     }));
     return fuzzyFilter(items, query, (item) => item.text);
@@ -75,9 +80,11 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
 
   const emptyText = !headingMode
     ? t('palette.empty')
-    : query.length > 1 && inEditor && findHeadings(markdown).length > 0
-      ? t('palette.empty')
-      : t('palette.noHeadings');
+    : !inEditor
+      ? t('palette.headingsNeedDocument')
+      : query.length > 1 && findHeadings(markdown).length > 0
+        ? t('palette.empty')
+        : t('palette.noHeadings');
 
   return (
     <div className="palette-body">

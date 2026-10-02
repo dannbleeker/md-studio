@@ -5,6 +5,7 @@
  */
 import type { MdDocument } from '@/domain/document';
 import type { Tab, Tabs } from '@/domain/tabs';
+import type { TextFormat } from '@/domain/textFormat';
 
 const DOC_KEY = 'md-studio:document:v1';
 const SETTINGS_KEY = 'md-studio:settings:v1';
@@ -53,8 +54,15 @@ function toDocument(doc: Partial<MdDocument> | null | undefined): MdDocument | n
     fileName: typeof doc.fileName === 'string' ? doc.fileName : 'Untitled.md',
     savedMarkdown: typeof doc.savedMarkdown === 'string' ? doc.savedMarkdown : doc.markdown,
     updatedAt: typeof doc.updatedAt === 'number' ? doc.updatedAt : Date.now(),
+    ...(isTextFormat(doc.format) ? { format: doc.format } : {}),
   };
 }
+
+const isTextFormat = (value: unknown): value is TextFormat =>
+  typeof value === 'object' &&
+  value !== null &&
+  ((value as TextFormat).lineEnding === '\n' || (value as TextFormat).lineEnding === '\r\n') &&
+  typeof (value as TextFormat).bom === 'boolean';
 
 /**
  * The open tabs. Falls back to the single document older builds kept
@@ -104,7 +112,12 @@ export function saveTabs(state: Tabs): boolean {
       handleId,
       doc:
         doc.savedMarkdown === doc.markdown
-          ? { markdown: doc.markdown, fileName: doc.fileName, updatedAt: doc.updatedAt }
+          ? {
+              markdown: doc.markdown,
+              fileName: doc.fileName,
+              updatedAt: doc.updatedAt,
+              ...(doc.format ? { format: doc.format } : {}),
+            }
           : doc,
     })),
   });
@@ -123,9 +136,33 @@ export function saveSettings(settings: object): void {
   write(SETTINGS_KEY, settings);
 }
 
+/**
+ * The recent list, without entries the start screen can't show: one bad
+ * value (an `openedAt` that isn't a time) would otherwise break the page
+ * on every load.
+ */
 export function loadRecents(): RecentEntry[] {
-  const list = read<RecentEntry[]>(RECENTS_KEY);
-  return Array.isArray(list) ? list.filter((r) => typeof r?.markdown === 'string') : [];
+  const list = read<unknown[]>(RECENTS_KEY);
+  if (!Array.isArray(list)) return [];
+  return list.flatMap((raw): RecentEntry[] => {
+    const r = raw as Partial<RecentEntry> | null;
+    if (
+      typeof r?.markdown !== 'string' ||
+      typeof r.fileName !== 'string' ||
+      typeof r.openedAt !== 'number' ||
+      !Number.isFinite(new Date(r.openedAt).getTime())
+    )
+      return [];
+    return [
+      {
+        fileName: r.fileName,
+        title: typeof r.title === 'string' ? r.title : '',
+        markdown: r.markdown,
+        openedAt: r.openedAt,
+        ...(typeof r.handleId === 'string' ? { handleId: r.handleId } : {}),
+      },
+    ];
+  });
 }
 
 /**
@@ -144,7 +181,11 @@ const sameRecent = (a: RecentEntry, b: RecentEntry) =>
 
 export function pushRecent(entry: RecentEntry): RecentEntry[] {
   const rest = loadRecents().filter((r) => !sameRecent(r, entry));
-  const next = entry.markdown.length <= MAX_RECENT_BYTES ? [entry, ...rest] : rest;
+  // Too large to keep a snapshot of: a linked file is still listed (it
+  // reopens from disk), an unlinked one has nothing to reopen.
+  const fits = entry.markdown.length <= MAX_RECENT_BYTES;
+  const kept = fits ? entry : entry.handleId ? { ...entry, markdown: '' } : null;
+  const next = kept ? [kept, ...rest] : rest;
   const capped = next.slice(0, MAX_RECENTS);
   write(RECENTS_KEY, capped);
   return capped;

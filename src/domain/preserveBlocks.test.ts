@@ -109,3 +109,31 @@ describe('splitBlocks', () => {
     ]);
   });
 });
+
+describe('splitBlocks: headings and rules end the run they close', () => {
+  const texts = (md: string) => splitBlocks(md).map((b) => md.slice(b.start, b.end));
+
+  it('splits a heading from the text right under it', () => {
+    expect(texts('# Title\nIntro\n\nSetext\n===\nAfter\n')).toEqual([
+      '# Title',
+      'Intro',
+      'Setext\n===',
+      'After',
+    ]);
+  });
+
+  it('keeps front matter in step with how the serializer splits it', () => {
+    expect(texts('---\ntitle: Post\ndate: 2024\n---\n\nBody\n')).toEqual([
+      '---',
+      'title: Post\ndate: 2024\n---',
+      'Body',
+    ]);
+  });
+
+  it('leaves fenced code and tables whole', () => {
+    expect(texts('```\n# not a heading\n---\n```\n\n| a |\n|---|\n| 1 |\n')).toEqual([
+      '```\n# not a heading\n---\n```',
+      '| a |\n|---|\n| 1 |',
+    ]);
+  });
+});

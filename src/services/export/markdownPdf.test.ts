@@ -21,6 +21,24 @@ function drawnText(bytes: Uint8Array): string {
   return out.join(' ');
 }
 
+/** Where each word is drawn: its x position on the page. */
+function wordPositions(bytes: Uint8Array): Map<string, number> {
+  const raw = Buffer.from(bytes).toString('latin1');
+  const at = new Map<string, number>();
+  for (const m of raw.matchAll(/stream\r?\n([\s\S]*?)\r?\nendstream/g)) {
+    let content: string;
+    try {
+      content = inflateSync(Buffer.from(m[1] ?? '', 'latin1')).toString('latin1');
+    } catch {
+      continue;
+    }
+    for (const t of content.matchAll(/1 0 0 1 ([\d.]+) [\d.]+ Tm\s*<([0-9A-Fa-f]+)> Tj/g)) {
+      at.set(Buffer.from(t[2] ?? '', 'hex').toString('latin1'), Number(t[1]));
+    }
+  }
+  return at;
+}
+
 describe('markdownToPdf', () => {
   it('starts a single document on its first page, with no cover or contents', async () => {
     const pdf = await PDFDocument.load(
@@ -142,5 +160,28 @@ describe('markdownToPdf', () => {
       await markdownToPdf({ sources: ['```\nblåbærgrød ─ box\n```'], title: 'T' })
     );
     expect(text).toContain('blåbærgrød');
+  });
+
+  it('adds no space where the source has none between styled runs', async () => {
+    const glued = wordPositions(await markdownToPdf({ sources: ['Mid**word**, end'], title: 'T' }));
+    const spaced = wordPositions(
+      await markdownToPdf({ sources: ['Mid **word** , end'], title: 'T' })
+    );
+    // "word" follows "Mid" directly, and "," follows "word" directly.
+    expect(glued.get('word')).toBeLessThan(spaced.get('word') ?? 0);
+    const wordToComma = (at: Map<string, number>) => (at.get(',') ?? 0) - (at.get('word') ?? 0);
+    expect(wordToComma(glued)).toBeLessThan(wordToComma(spaced));
+  });
+
+  it('aligns table columns as the delimiter row says', async () => {
+    const at = async (delimiter: string) =>
+      wordPositions(
+        await markdownToPdf({ sources: [`| head |\n| ${delimiter} |\n| x |`], title: 'T' })
+      ).get('x') ?? 0;
+    const left = await at(':--');
+    const center = await at(':-:');
+    const right = await at('--:');
+    expect(center).toBeGreaterThan(left);
+    expect(right).toBeGreaterThan(center);
   });
 });

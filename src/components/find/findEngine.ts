@@ -8,6 +8,8 @@ import {
   setSearchQuery,
 } from '@codemirror/search';
 import type { EditorView as TextView } from '@codemirror/view';
+import { Fragment, type Mark, type Node as PmNode, Slice } from '@milkdown/kit/prose/model';
+import type { EditorState } from '@milkdown/kit/prose/state';
 import {
   getSearchState,
   SearchQuery as PmQuery,
@@ -91,6 +93,47 @@ function textEngine(): Engine | null {
   };
 }
 
+/** Marks every text node between `from` and `to` carries. */
+function sharedMarks(doc: PmNode, from: number, to: number): readonly Mark[] {
+  let shared: readonly Mark[] | null = null;
+  doc.nodesBetween(from, to, (node) => {
+    if (!node.isText) return true;
+    shared = shared ? shared.filter((m) => m.isInSet(node.marks)) : node.marks;
+    return false;
+  });
+  return shared ?? [];
+}
+
+/**
+ * prosemirror-search gives replacement text only the marks that continue
+ * past the match's edges, so a mark that doesn't extend (inline code is
+ * not inclusive) is lost when the match covers it to its end: `foo` → bar
+ * dropped the backticks. Replacement text keeps every mark the whole match
+ * had.
+ */
+class MarkKeepingQuery extends PmQuery {
+  override getReplacements(
+    state: EditorState,
+    result: Parameters<PmQuery['getReplacements']>[1]
+  ): ReturnType<PmQuery['getReplacements']> {
+    const replacements = super.getReplacements(state, result);
+    const marks = sharedMarks(state.doc, result.from, result.to);
+    if (marks.length === 0) return replacements;
+    const withMarks = (node: PmNode) =>
+      node.isText ? node.mark(marks.reduce((set, m) => m.addToSet(set), node.marks)) : node;
+    return replacements.map((r) => {
+      const nodes: PmNode[] = [];
+      r.insert.content.forEach((node) => {
+        nodes.push(withMarks(node));
+      });
+      return {
+        ...r,
+        insert: new Slice(Fragment.fromArray(nodes), r.insert.openStart, r.insert.openEnd),
+      };
+    });
+  }
+}
+
 function visualEngine(): Engine | null {
   const view = editors.visual;
   if (!view) return null;
@@ -118,7 +161,7 @@ function visualEngine(): Engine | null {
   };
   return {
     apply(options) {
-      view.dispatch(setSearchState(view.state.tr, new PmQuery(options)));
+      view.dispatch(setSearchState(view.state.tr, new MarkKeepingQuery(options)));
       return info();
     },
     next: () => run(pmFindNext),

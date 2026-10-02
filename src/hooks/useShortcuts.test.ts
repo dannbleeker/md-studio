@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { COMMANDS } from '@/components/command-palette/commands';
 import * as actions from '@/services/documentActions';
 import { resetStoreForTest, useStore } from '@/store';
@@ -102,4 +102,34 @@ describe('shortcut hints in the command palette', () => {
       expect(effect()).toEqual(byCommand);
     });
   }
+});
+
+describe('shortcuts on a Mac', () => {
+  beforeEach(() => {
+    fresh();
+    vi.spyOn(navigator, 'platform', 'get').mockReturnValue('MacIntel');
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  const press = (init: KeyboardEventInit) => {
+    const { unmount } = renderHook(() => useShortcuts());
+    const event = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init });
+    window.dispatchEvent(event);
+    unmount();
+    return event.defaultPrevented;
+  };
+
+  it('use Command, and leave Ctrl to text editing', () => {
+    expect(press({ key: 'f', code: 'KeyF', ctrlKey: true })).toBe(false);
+    expect(press({ key: 'h', code: 'KeyH', ctrlKey: true })).toBe(false);
+    expect(press({ key: 'k', code: 'KeyK', ctrlKey: true })).toBe(false);
+    expect(useUiStore.getState().findOpen).toBe(false);
+    expect(press({ key: 'f', code: 'KeyF', metaKey: true })).toBe(true);
+    expect(useUiStore.getState().findOpen).toBe(true);
+  });
+
+  it('let Option type accented letters', () => {
+    expect(press({ key: 'Dead', code: 'KeyN', altKey: true })).toBe(false);
+    expect(vi.mocked(actions.newDocument)).not.toHaveBeenCalled();
+  });
 });

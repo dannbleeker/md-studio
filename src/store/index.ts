@@ -51,7 +51,9 @@ type State = {
   loadDocument: (
     doc: MdDocument,
     handle: FileSystemFileHandle | null,
-    handleId?: string | null
+    handleId?: string | null,
+    /** False when the document is itself a recent entry's snapshot. */
+    remember?: boolean
   ) => void;
   /**
    * Records a finished save. `written` names the tab the save started in and
@@ -153,15 +155,18 @@ export const useStore = create<State>()((set, get) => ({
     set((s) => ({ doc: { ...s.doc, markdown, updatedAt: Date.now() }, source }));
   },
 
-  loadDocument: (doc, handle, handleId = null) => {
+  loadDocument: (doc, handle, handleId = null, remember = true) => {
     flushEditors();
     const id = handle ? handleId : null;
     const tab: OpenTab = { id: newTabId(), doc, handleId: id, fileHandle: handle };
     set((s) => {
       const { tabs } = openTab({ tabs: leaveActive(s), activeId: s.activeTabId }, tab);
+      // A blank tab the file took the place of is closed: merging must not
+      // bring it back from storage.
+      if (!tabs.some((t) => t.id === s.activeTabId)) closedTabIds.add(s.activeTabId);
       return { tabs: tabs as OpenTab[], ...show(tab, s.loadId), screen: 'editor' };
     });
-    if (doc.markdown || handle) rememberRecent(doc, id);
+    if (remember && (doc.markdown || handle)) rememberRecent(doc, id);
   },
 
   markSaved: (fileName, handle, handleId = null, written) => {
@@ -275,16 +280,26 @@ export function resetStoreForTest(): void {
 const closedTabIds = new Set<string>();
 let warnedStorageFull = false;
 
+/** The store changed since the last write (a write on page hide needs no other reason). */
+let unpersisted = false;
+
 /**
- * Writes the open tabs. Another window of the app shares the same storage,
- * so tabs it saved that this window doesn't know (and didn't close) are
- * kept instead of overwritten. Warns once if the tabs no longer fit.
+ * Writes the open tabs. Another window of the app shares the same storage:
+ * tabs it saved that this window doesn't know (and didn't close) are kept,
+ * and so is its copy of a shared tab when that copy was edited more
+ * recently, so an idle window never writes its old copy over newer work.
+ * Warns once if the tabs no longer fit.
  */
 function persist(): void {
+  unpersisted = false;
   const s = useStore.getState();
-  const mine = syncedTabs(s).map(({ id, doc, handleId }) => ({ id, doc, handleId }));
+  const stored = new Map((storage.loadTabs()?.tabs ?? []).map((tab) => [tab.id, tab]));
+  const mine = syncedTabs(s).map(({ id, doc, handleId }) => {
+    const theirs = stored.get(id);
+    return theirs && theirs.doc.updatedAt > doc.updatedAt ? theirs : { id, doc, handleId };
+  });
   const ids = new Set(mine.map((tab) => tab.id));
-  const others = (storage.loadTabs()?.tabs ?? []).filter(
+  const others = [...stored.values()].filter(
     (tab) => !ids.has(tab.id) && !closedTabIds.has(tab.id)
   );
   const ok = storage.saveTabs({ activeId: s.activeTabId, tabs: [...mine, ...others] });
@@ -305,6 +320,7 @@ useStore.subscribe((state, prev) => {
     state.handleId === prev.handleId
   )
     return;
+  unpersisted = true;
   clearTimeout(persistTimer);
   persistTimer = setTimeout(persist, 300);
 });
@@ -314,7 +330,7 @@ if (typeof window !== 'undefined') {
   const flush = () => {
     flushEditors();
     clearTimeout(persistTimer);
-    persist();
+    if (unpersisted) persist();
   };
   window.addEventListener('pagehide', flush);
   document.addEventListener('visibilitychange', () => {

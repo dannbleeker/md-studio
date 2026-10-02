@@ -102,4 +102,10 @@ describe('markdownToDocx', () => {
     const numbering = await documentXml('1. a\n   5. x\n   6. y', 'word/numbering.xml');
     expect(numbering).toContain('w:start w:val="5"');
   });
+
+  it('aligns table columns as the delimiter row says', async () => {
+    const xml = await documentXml('| l | c | r |\n| :- | :-: | -: |\n| 1 | 2 | 3 |');
+    expect(xml).toContain('<w:jc w:val="center"/>');
+    expect(xml).toContain('<w:jc w:val="end"/>');
+  });
 });

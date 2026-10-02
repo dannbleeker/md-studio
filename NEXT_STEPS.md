@@ -144,3 +144,12 @@
         `editor/visualSync.ts`, with unit tests that pin its timing (150 ms
         debounce, 2.5 s reconcile, reconcile on focus, catch-up when
         shown, own edits taken as the truth, parse-failure recovery).
+
+- [x] **Bug hunt, part 5**: 21 confirmed bugs fixed (see the changelog).
+  - [ ] YAML front matter is now kept exactly as written, but the visual
+        pane still shows it as a rule and a heading. Showing it as a
+        plain metadata block (or hiding it) is open.
+  - [ ] Unconfirmed: a click in the visual pane right after typing
+        sometimes leaves the cursor where it was (seen only in quick
+        automated sequences).
+

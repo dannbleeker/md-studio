@@ -4,16 +4,19 @@
  */
 import { createDocument, isDirty, normalizeFileName } from '@/domain/document';
 import { neighbourTab, tabForFile } from '@/domain/tabs';
+import { writeText } from '@/domain/textFormat';
 import { t } from '@/i18n';
 import { syncedTabs, useStore } from '@/store';
 import { flushEditors } from '@/store/flush';
 import { requestConfirm, showToast } from '@/store/ui';
-import { type OpenedFile, openFile, readHandle, saveFile } from './fileSystem';
+import { type OpenedFile, openFile, readFile, readHandle, saveFile } from './fileSystem';
 import { ensurePermission, getHandle, pruneHandles, putHandle } from './handleStore';
 import { loadTabs, type RecentEntry } from './storage';
 
 /** Asks before closing a tab whose changes are not saved to disk. */
 async function confirmClose(id: string): Promise<boolean> {
+  // A visual edit still in its debounce would otherwise look like no edit.
+  flushEditors();
   const tab = syncedTabs(useStore.getState()).find((t) => t.id === id);
   if (!tab || !isDirty(tab.doc)) return true;
   return requestConfirm({
@@ -36,7 +39,9 @@ async function load(file: OpenedFile) {
   // means the file is already open.
   const handleId = file.handle ? await putHandle(file.handle) : null;
   if (showOpenTab({ handleId, fileName: file.name, markdown: file.markdown })) return;
-  useStore.getState().loadDocument(createDocument(file.markdown, file.name), file.handle, handleId);
+  useStore
+    .getState()
+    .loadDocument(createDocument(file.markdown, file.name, file.format), file.handle, handleId);
   showToast(t('toast.opened', { name: file.name }));
   void forgetUnusedHandles();
 }
@@ -106,7 +111,7 @@ export const openHandle = (handle: FileSystemFileHandle): Promise<void> =>
   openOrToast(() => readHandle(handle));
 
 export const openDroppedFile = (file: File): Promise<void> =>
-  openOrToast(async () => ({ name: file.name, markdown: await file.text(), handle: null }));
+  openOrToast(async () => ({ name: file.name, ...(await readFile(file)), handle: null }));
 
 /**
  * Reopens a recent file from disk when its handle is still usable, so the
@@ -122,17 +127,32 @@ export async function openRecent(entry: RecentEntry): Promise<void> {
         const file = await readHandle(handle);
         useStore
           .getState()
-          .loadDocument(createDocument(file.markdown, file.name), handle, entry.handleId ?? null);
+          .loadDocument(
+            createDocument(file.markdown, file.name, file.format),
+            handle,
+            entry.handleId ?? null
+          );
         return;
       } catch {
-        showToast(t('toast.recentMissing', { name: entry.fileName }));
+        showToast(
+          t(entry.markdown ? 'toast.recentMissing' : 'toast.recentUnavailable', {
+            name: entry.fileName,
+          })
+        );
       }
     } else {
-      showToast(t('toast.recentCopy', { name: entry.fileName }));
+      showToast(
+        t(entry.markdown ? 'toast.recentCopy' : 'toast.recentUnavailable', {
+          name: entry.fileName,
+        })
+      );
     }
   }
-  // Falling back to the snapshot: if that very snapshot is already open, show it.
-  openSnapshot(entry.markdown, entry.fileName);
+  // Falling back to the snapshot: if that very snapshot is already open,
+  // show it. The entry stays as it is (with its handle, for next time)
+  // rather than gaining an unlinked twin. A large file's entry has no
+  // snapshot: nothing to fall back to.
+  if (entry.markdown) openSnapshot(entry.markdown, entry.fileName, false);
 }
 
 export async function saveDocument(saveAs = false): Promise<void> {
@@ -158,7 +178,11 @@ export async function saveDocument(saveAs = false): Promise<void> {
       });
       if (!overwrite) return;
     }
-    const result = await saveFile(doc.markdown, normalizeFileName(doc.fileName), target);
+    const result = await saveFile(
+      writeText(doc.markdown, doc.format),
+      normalizeFileName(doc.fileName),
+      target
+    );
     if (!result) return;
     const newHandle = result.handle && result.handle !== fileHandle ? result.handle : null;
     const handleId = newHandle ? await putHandle(newHandle) : startHandleId;
@@ -214,9 +238,9 @@ export async function clearRecents(): Promise<void> {
  * Shows text not linked to a file (a recent file's snapshot, a document
  * bundled with the app), in its open tab if there is one.
  */
-function openSnapshot(markdown: string, fileName: string): void {
+function openSnapshot(markdown: string, fileName: string, remember = true): void {
   if (showOpenTab({ handleId: null, fileName, markdown })) return;
-  useStore.getState().loadDocument(createDocument(markdown, fileName), null);
+  useStore.getState().loadDocument(createDocument(markdown, fileName), null, null, remember);
 }
 
 /**
@@ -237,7 +261,9 @@ export async function openUserGuide(): Promise<void> {
 /** The file's current text, or null when it can't be read (moved, deleted, no permission). */
 async function diskText(handle: FileSystemFileHandle): Promise<string | null> {
   try {
-    return await (await handle.getFile()).text();
+    // As the editors see it, so a file differing only in line endings
+    // (it is CRLF, saved by us) doesn't count as changed.
+    return (await readFile(await handle.getFile())).markdown;
   } catch {
     return null;
   }

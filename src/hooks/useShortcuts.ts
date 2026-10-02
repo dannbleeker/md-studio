@@ -6,6 +6,7 @@ import {
   openDocument,
   saveDocument,
 } from '@/services/documentActions';
+import { isMac } from '@/services/platform';
 import { useStore } from '@/store';
 import { useUiStore } from '@/store/ui';
 
@@ -17,7 +18,12 @@ export function useShortcuts(): void {
       // an open dialog (settings, confirm, palette…) owns the keyboard:
       // Alt+W behind a modal would close a tab the user can't even see.
       if (e.isComposing || document.querySelector('dialog[open]')) return;
-      const mod = e.ctrlKey || e.metaKey;
+      const mac = isMac();
+      // Command on a Mac (Ctrl is for text editing there), Ctrl elsewhere.
+      const mod = mac ? e.metaKey : e.ctrlKey;
+      // Option+N, Option+E… type accented letters on a Mac: a dead key
+      // starts a character, never an app shortcut.
+      if (e.altKey && e.key === 'Dead') return;
       const s = useStore.getState();
       const key = e.key.toLowerCase();
       // With Alt, e.key is layout-dependent (macOS Option+W types "∑"), so

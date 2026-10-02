@@ -16,8 +16,10 @@ import {
 import { insertTableCommand, toggleStrikethroughCommand } from '@milkdown/kit/preset/gfm';
 import { callCommand } from '@milkdown/kit/utils';
 import type { ReactNode } from 'react';
+import { forPlatform } from '@/domain/keys';
 import { t } from '@/i18n';
 import type { MessageKey } from '@/i18n/en';
+import { isMac } from '@/services/platform';
 import { requestPrompt, useUiStore } from '@/store/ui';
 import { editors } from './editorRegistry';
 
@@ -61,8 +63,8 @@ function Button({
     <button
       type="button"
       className="format-btn"
-      aria-label={t(label)}
-      title={t(label)}
+      aria-label={forPlatform(t(label), isMac())}
+      title={forPlatform(t(label), isMac())}
       aria-pressed={pressed}
       // mousedown, not click: the visual pane keeps its selection and focus.
       onMouseDown={(e) => {

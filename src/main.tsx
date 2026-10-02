@@ -18,7 +18,9 @@ createRoot(document.getElementById('root')!).render(
 
 registerLaunchQueue();
 registerStaleBuildHandler();
-void restoreDocumentHandle();
+// A restored tab may be older than its file (edited elsewhere while the
+// app was closed): check once the handle is back.
+void restoreDocumentHandle().then(checkDiskChanges);
 // Back from another app (or another device synced the folder): pick up
 // changes made to the open file in the meantime.
 window.addEventListener('focus', () => void checkDiskChanges());

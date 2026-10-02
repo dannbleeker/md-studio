@@ -18,6 +18,7 @@ import { Plugin } from '@milkdown/kit/prose/state';
 import { getMarkdown } from '@milkdown/kit/utils';
 import { search } from 'prosemirror-search';
 import { useEffect, useRef } from 'react';
+import { dropEmptyLineMarkers } from '@/domain/emptyLines';
 import { t } from '@/i18n';
 import { perfMeasure } from '@/services/perfMarks';
 import { useStore } from '@/store';
@@ -46,6 +47,12 @@ export function VisualPane({ onAdapter }: Props) {
     let editor: Editor | null = null;
     /** A user edit not yet reported to the store (see the listener below). */
     let unreported = false;
+    /**
+     * The pane shows an empty placeholder for a document it can't parse.
+     * Nothing may reach the store from it: serializing that empty tree
+     * would replace the whole document.
+     */
+    let failed = false;
 
     /**
      * Hands a user edit to the store, in the source's own style. Cleared
@@ -53,8 +60,10 @@ export function VisualPane({ onAdapter }: Props) {
      */
     const report = (ctx: Ctx, markdown: string) => {
       unreported = false;
+      if (failed) return;
       const previous = useStore.getState().doc.markdown;
-      useStore.getState().setMarkdown(keepSourceStyle(ctx, previous, markdown), 'visual');
+      const serialized = dropEmptyLineMarkers(markdown);
+      useStore.getState().setMarkdown(keepSourceStyle(ctx, previous, serialized), 'visual');
     };
 
     const create = (initial: string) =>
@@ -117,7 +126,9 @@ export function VisualPane({ onAdapter }: Props) {
         rootEl.replaceChildren();
       },
       setEditor: (next) => {
-        if (next) {
+        // The placeholder stays unregistered, so the format toolbar and
+        // find bar can't act on it.
+        if (next && !failed) {
           editors.visual = next.action((ctx) => ctx.get(editorViewCtx));
           editors.milkdown = next;
         } else if (editor && editors.milkdown === editor) {
@@ -129,10 +140,11 @@ export function VisualPane({ onAdapter }: Props) {
       },
       applyFull,
       applyIncremental,
-      setFailed: (failed, firstTime) => {
+      setFailed: (value, firstTime) => {
         if (firstTime) showToast(t('toast.visualFailed'));
-        rootEl.inert = failed;
-        rootEl.classList.toggle('visual-failed', failed);
+        failed = value;
+        rootEl.inert = value;
+        rootEl.classList.toggle('visual-failed', value);
       },
       measure: perfMeasure,
     });

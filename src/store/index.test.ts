@@ -194,6 +194,42 @@ describe('tabs', () => {
     expect(names()).toEqual(['c.md', 'a.md', 'b.md']);
   });
 
+  it('never writes an older copy of a tab over another window’s newer edit', () => {
+    vi.useFakeTimers();
+    open('v1', 'shared.md');
+    vi.advanceTimersByTime(350);
+    // Another window edits the same tab later and saves it.
+    const stored = JSON.parse(localStorage.getItem('md-studio:tabs:v1') ?? '{}');
+    stored.tabs[0].doc = {
+      ...stored.tabs[0].doc,
+      markdown: 'v2, theirs',
+      updatedAt: Date.now() + 1000,
+    };
+    localStorage.setItem('md-studio:tabs:v1', JSON.stringify(stored));
+    // This window, idle, is hidden or closed: nothing of its own to write.
+    window.dispatchEvent(new Event('pagehide'));
+    expect(loadTabs()?.tabs[0]?.doc.markdown).toBe('v2, theirs');
+    // Even when it writes for another reason, the newer copy stays.
+    open('other', 'other.md');
+    vi.advanceTimersByTime(350);
+    vi.useRealTimers();
+    expect(loadTabs()?.tabs.find((t) => t.doc.fileName === 'shared.md')?.doc.markdown).toBe(
+      'v2, theirs'
+    );
+  });
+
+  it('does not bring back a blank tab that an opened file took the place of', () => {
+    vi.useFakeTimers();
+    open('a', 'a.md');
+    useStore.getState().closeTab(useStore.getState().activeTabId);
+    vi.advanceTimersByTime(350);
+    open('b', 'b.md');
+    vi.advanceTimersByTime(350);
+    vi.useRealTimers();
+    resetStoreForTest();
+    expect(names()).toEqual(['b.md']);
+  });
+
   it('keeps tabs another window saved instead of overwriting them', () => {
     vi.useFakeTimers();
     open('mine', 'mine.md');

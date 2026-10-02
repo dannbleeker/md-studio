@@ -537,7 +537,12 @@ kbd {
 }
 
 @media print {
+  /* Only the document prints: none of the app around it. */
   .toolbar,
+  .tab-bar,
+  .format-toolbar,
+  .outline,
+  .findbar,
   .toasts,
   .pane-text {
     display: none !important;

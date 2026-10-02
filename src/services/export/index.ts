@@ -3,6 +3,7 @@
  * The converters (and their libraries: marked, docx, pdf-lib) load on first
  * use, so they stay out of the start-up bundle.
  */
+
 import { documentTitle } from '@/domain/document';
 import {
   type ExportFormat,
@@ -11,6 +12,7 @@ import {
   type HtmlTheme,
 } from '@/domain/exportFormats';
 import { inlineFootnotes } from '@/domain/footnotes';
+import { hasCharactersPdfCantShow } from '@/domain/pdfCharacters';
 import { t } from '@/i18n';
 import { useStore } from '@/store';
 import { showToast } from '@/store/ui';
@@ -61,6 +63,9 @@ export async function exportDocument(format: ExportFormat, options: ExportOption
     showToast(
       t(result.kind === 'written' ? 'toast.exported' : 'toast.downloaded', { name: result.name })
     );
+    if (format === 'pdf' && hasCharactersPdfCantShow(doc.markdown)) {
+      showToast(t('toast.pdfMissingCharacters'), undefined, 10000);
+    }
   } catch {
     showToast(t('toast.exportFailed'));
   }

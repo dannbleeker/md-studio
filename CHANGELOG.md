@@ -2,6 +2,35 @@
 
 ## Unreleased
 
+- **Bug hunt, part 5** (editors and sync; files, tabs and persistence;
+  UI, accessibility and exports).
+  - Data loss: an idle second window no longer writes its old copy of a
+    tab over newer edits; closing a tab right after a visual edit asks
+    first; the format toolbar can no longer replace a document the visual
+    pane can't show.
+  - Windows files keep their CRLF line endings and byte-order mark.
+  - A visual edit keeps untouched headings written directly above text,
+    setext headings, tables and YAML front matter exactly as written.
+  - Empty paragraphs and list items made in the visual pane no longer
+    reach the Markdown as `<br />`.
+  - Replacing text in the visual pane keeps inline code.
+  - Setext headings whose text starts with `*`, `#` or a number are found,
+    so outline jumps and linked scroll pair the right headings.
+  - A blank tab replaced by an opened file no longer comes back after a
+    reload; a recent file that can't be reopened opens its snapshot
+    without adding a duplicate entry, and large linked files stay listed;
+    after a restart the open file is checked against the disk at once.
+  - A corrupt recent-files entry no longer blanks the start screen.
+  - On a Mac, shortcuts use Command only, Option types accented letters,
+    and hints show ⌘ ⌥ ⇧.
+  - The palette doesn't offer document commands on the start screen, and
+    a dialog opened from it hands focus back properly.
+  - Printing hides all the app's chrome.
+  - PDF: no gap at style boundaries (the book is rebuilt), a notice when
+    characters the PDF fonts lack were left out, and table alignment (also
+    in Word). Plain text: heading underlines fit CJK and emoji, nested
+    content lines up after wide list markers.
+
 - **Refactor (no behaviour change): the visual pane's sync logic is its
   own module.** `editor/visualSync.ts` decides when and how text-pane
   edits reach the visual pane (debounce, incremental or full update,

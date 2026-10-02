@@ -75,9 +75,33 @@ describe('storage', () => {
     expect(new Set(names).size).toBe(8);
   });
 
-  it('skips oversized snapshots', () => {
+  it('skips oversized snapshots, but keeps a large linked file listed', () => {
     pushRecent(recent('big.md', 'x'.repeat(300 * 1024)));
     expect(loadRecents()).toEqual([]);
+    pushRecent({ ...recent('linked.md', 'x'.repeat(300 * 1024)), handleId: 'h1' });
+    expect(loadRecents()).toMatchObject([{ fileName: 'linked.md', handleId: 'h1', markdown: '' }]);
+  });
+
+  it('keeps a file’s line endings and BOM with its tab', () => {
+    const doc = createDocument('a\n', 'win.md', { lineEnding: '\r\n', bom: true });
+    saveTabs({ tabs: [{ id: 't', doc, handleId: null }], activeId: 't' });
+    expect(loadTabs()?.tabs[0]?.doc.format).toEqual({ lineEnding: '\r\n', bom: true });
+  });
+
+  it('drops recent entries the start screen could not show', () => {
+    const good = recent('good.md');
+    localStorage.setItem(
+      'md-studio:recents:v1',
+      JSON.stringify([
+        { ...recent('a.md'), openedAt: 'garbage' },
+        { ...recent('b.md'), openedAt: Number.POSITIVE_INFINITY },
+        { ...recent('c.md'), openedAt: 9e15 },
+        { ...recent('d.md'), fileName: 7 },
+        null,
+        good,
+      ])
+    );
+    expect(loadRecents()).toEqual([good]);
   });
 
   it('keeps a linked file and a same-named file without a link apart in recents', () => {

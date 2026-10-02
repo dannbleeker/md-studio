@@ -25,7 +25,13 @@ const CONTAINER = /^ {0,3}(?:(?:[*+-]|\d{1,9}[.)])(?:[ \t]|$)|>)/;
 /** Starts an HTML block (CommonMark types 1, 2 and 6): its lines aren't Markdown. */
 const HTML_BLOCK =
   /^ {0,3}<(?:!--|\/?(?:address|article|aside|blockquote|details|dialog|div|dl|fieldset|figcaption|figure|footer|form|h[1-6]|header|hr|li|main|nav|ol|p|pre|script|section|style|summary|table|tbody|td|tfoot|th|thead|tr|ul)(?:[\s/>]|$))/i;
-const NOT_PARAGRAPH = /^ {0,3}(?:[>*+-]|\d+[.)]|#|`{3,}|~{3,})|^(?: {4}|\t)/;
+/**
+ * Lines that can't start a paragraph, once containers, fences, HTML and ATX
+ * headings are ruled out: a thematic break, or indented code. A line merely
+ * starting with `*`, `#` or a number (`*Intro* text`, `#tag`, `1.5 m`) is
+ * prose, and a setext underline below it makes it a heading.
+ */
+const NOT_PARAGRAPH = /^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$|^(?: {4}|\t)/;
 
 export function findHeadings(markdown: string): Heading[] {
   const lines = markdown.split(/\r?\n/);
