@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **The book is written.** *Writing in Plain Text* now has a foreword,
+  seven chapters and three appendices (~23,000 words) instead of outlines,
+  in the same voice as the mindmap-studio book. The PDF and EPUB are
+  rebuilt from them. The user guide and the book had a humanizer pass
+  (no dashes, straight quotes, prose instead of label lists).
+- **Perf baseline from CI.** `perf-baseline.json` now holds the numbers
+  from the first Perf trace run on GitHub's runner; the earlier container
+  numbers were far looser.
 - **Settings:** text size (both panes), line wrapping and line numbers
   (Markdown pane). The Export dialog starts from the last format and
   theme used.
