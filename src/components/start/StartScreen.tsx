@@ -1,15 +1,14 @@
 import { documentTitle, isDirty } from '@/domain/document';
-import { t } from '@/i18n';
+import { dateTimeFormat, t } from '@/i18n';
 import { newDocument, openDocument, openRecent } from '@/services/documentActions';
 import { BOOK_EPUB, BOOK_PDF, DASHBOARD } from '@/services/links';
 import { useStore } from '@/store';
-
-const timeFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
 export function StartScreen() {
   const doc = useStore((s) => s.doc);
   const recents = useStore((s) => s.recents);
   const setScreen = useStore((s) => s.setScreen);
+  const timeFormat = dateTimeFormat({ dateStyle: 'medium', timeStyle: 'short' });
   const hasCurrent = doc.markdown.length > 0 || isDirty(doc);
 
   return (

@@ -43,7 +43,8 @@ src/
                settings/ · command-palette/ · toolbar/ · toast/ · ui/
   hooks/       useTheme, useIsMobile, useShortcuts, useFileDrop
   pwa/         service-worker registration, launchQueue (Windows file open)
-  i18n/        en.ts message catalogue + t()
+  i18n/        en.ts message catalogue (reference), locales.ts registry +
+               resolveLocale, index.ts t() / setLocale / dateTimeFormat
   styles/      tokens.css (slate theme), app.css, editor.css; mobile.css
 e2e/           Playwright specs against the built app
 test/          Vitest setup + stubs
@@ -88,7 +89,9 @@ docs/guide/    the practitioner book (CC BY-NC 4.0)
   store, then UI.
 - No `any`. Prefer `unknown` + narrowing.
 - Comments explain *why*, not *what*.
-- User-facing copy goes through `src/i18n/en.ts`.
+- User-facing copy goes through `t()` with keys in `src/i18n/en.ts`; every
+  other locale must cover every key (type `Messages`). Format dates with
+  `dateTimeFormat()`, not a bare `Intl.DateTimeFormat`.
 - `pnpm verify` must be green before pushing. It is the CI gate.
 - Bundle growth: re-pin `bundle-budget.json` deliberately and say why.
 

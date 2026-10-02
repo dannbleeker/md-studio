@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Locale support.** The UI language follows the browser (exact tag,
+  then base language) or a `language` setting, with English as the
+  fallback; dates on the start screen use it and `<html lang>` follows
+  it. English is the only language so far, so the settings language
+  picker stays hidden until a second one is registered.
 - **Book and dashboard links.** The start screen links the book (PDF and
   EPUB) and a new project dashboard at `/dashboard.html`: code size,
   tests, coverage, bundle size, book progress and trends from
