@@ -158,3 +158,17 @@ test('deeply nested brackets neither stall nor crash the editors', async ({ page
   ).not.toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+test('the format toolbar cannot overwrite a document the visual pane can’t show', async ({
+  page,
+}) => {
+  await newDocument(page);
+  const doc = `My notes\n\n${'['.repeat(300)}`;
+  await setText(page, doc);
+  await expect(page.getByText(/nested too deeply for the visual pane/)).toBeVisible();
+  const toolbar = page.getByRole('toolbar', { name: 'Formatting' });
+  await toolbar.getByRole('button', { name: 'Insert table' }).click();
+  await toolbar.getByRole('button', { name: 'Horizontal rule' }).click();
+  await page.waitForTimeout(500);
+  expect(await textContent(page)).toBe(doc);
+});

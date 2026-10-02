@@ -60,4 +60,17 @@ describe('findHeadings', () => {
       expect(findHeadings(md).map((h) => h.text)).toEqual(parserHeadings(md));
     });
   }
+
+  it('reads prose that merely starts with *, # or a number as a setext heading', () => {
+    expect(findHeadings('*Intro* text\n---')).toEqual([
+      { line: 0, level: 2, text: '*Intro* text' },
+    ]);
+    expect(findHeadings('#tag\n===')).toEqual([{ line: 0, level: 1, text: '#tag' }]);
+    expect(findHeadings('1.5 m\n---')).toEqual([{ line: 0, level: 2, text: '1.5 m' }]);
+  });
+
+  it('does not read a thematic break as the start of a paragraph', () => {
+    expect(findHeadings('***\n---')).toEqual([]);
+    expect(findHeadings('- - -\n===')).toEqual([]);
+  });
 });
