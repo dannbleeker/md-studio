@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocument } from '@/domain/document';
 import { resetStoreForTest, syncedTabs, useStore } from '@/store';
+import { registerFlush } from '@/store/flush';
 import { useUiStore } from '@/store/ui';
 import {
   checkDiskChanges,
+  closeTab,
   openDroppedFile,
+  openHandle,
   openRecent,
   openUserGuide,
   restoreDocumentHandle,
@@ -313,5 +316,58 @@ describe('Save As onto a file another tab has open', () => {
       ['# A, edited', null],
       ['# B, written over a.md', 'id-a'],
     ]);
+  });
+});
+
+describe('closing a tab right after a visual edit', () => {
+  beforeEach(() => resetStoreForTest());
+
+  it('asks first: the pending edit counts as unsaved', async () => {
+    useStore.getState().loadDocument(createDocument('saved', 'a.md'), null);
+    useStore.getState().loadDocument(createDocument('other', 'b.md'), null);
+    // The visual pane holds an edit its debounce hasn't reported yet.
+    const off = registerFlush(() => useStore.getState().setMarkdown('saved, edited', 'visual'));
+    const closing = closeTab();
+    await vi.waitFor(() => expect(useUiStore.getState().confirm).not.toBeNull());
+    useUiStore.getState().confirm?.resolve(false);
+    await closing;
+    off();
+    expect(useStore.getState().tabs).toHaveLength(2);
+  });
+});
+
+describe('Windows files', () => {
+  beforeEach(() => {
+    handles.clear();
+    resetStoreForTest();
+  });
+
+  it('are edited as LF and saved back with CRLF and their BOM', async () => {
+    const h = fakeHandle('win.md', '\uFEFF# Title\r\n\r\nline one\r\n');
+    await openHandle(h);
+    expect(useStore.getState().doc.markdown).toBe('# Title\n\nline one\n');
+    useStore.getState().setMarkdown('# Title\n\nline one!\nline two\n', 'text');
+    await saveDocument();
+    expect(h.content).toBe('\uFEFF# Title\r\n\r\nline one!\r\nline two\r\n');
+    // Saved as CRLF, the file is not "changed on disk" afterwards.
+    await checkDiskChanges();
+    expect(useUiStore.getState().confirm).toBeNull();
+    expect(useStore.getState().doc.markdown).toBe('# Title\n\nline one!\nline two\n');
+  });
+});
+
+describe('recent files that can’t be reopened from disk', () => {
+  beforeEach(() => {
+    handles.clear();
+    resetStoreForTest();
+  });
+
+  it('open their snapshot without adding a second, unlinked entry', async () => {
+    handles.set('h1', fakeHandle('notes.md', 'x', { granted: false }));
+    localStorage.setItem('md-studio:recents:v1', JSON.stringify([recent('h1')]));
+    resetStoreForTest();
+    await openRecent(recent('h1'));
+    expect(useStore.getState().doc.markdown).toBe('# Snapshot');
+    expect(useStore.getState().recents.map((r) => r.handleId ?? null)).toEqual(['h1']);
   });
 });

@@ -75,9 +75,17 @@ describe('storage', () => {
     expect(new Set(names).size).toBe(8);
   });
 
-  it('skips oversized snapshots', () => {
+  it('skips oversized snapshots, but keeps a large linked file listed', () => {
     pushRecent(recent('big.md', 'x'.repeat(300 * 1024)));
     expect(loadRecents()).toEqual([]);
+    pushRecent({ ...recent('linked.md', 'x'.repeat(300 * 1024)), handleId: 'h1' });
+    expect(loadRecents()).toMatchObject([{ fileName: 'linked.md', handleId: 'h1', markdown: '' }]);
+  });
+
+  it('keeps a file’s line endings and BOM with its tab', () => {
+    const doc = createDocument('a\n', 'win.md', { lineEnding: '\r\n', bom: true });
+    saveTabs({ tabs: [{ id: 't', doc, handleId: null }], activeId: 't' });
+    expect(loadTabs()?.tabs[0]?.doc.format).toEqual({ lineEnding: '\r\n', bom: true });
   });
 
   it('keeps a linked file and a same-named file without a link apart in recents', () => {

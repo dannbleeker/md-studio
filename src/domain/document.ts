@@ -1,3 +1,5 @@
+import { PLAIN_TEXT, type TextFormat } from './textFormat';
+
 /**
  * The one document both editors edit. `markdown` is the single source of
  * truth; the visual pane's ProseMirror tree and the text pane's CodeMirror
@@ -10,12 +12,21 @@ export type MdDocument = {
   /** Markdown as last written to (or read from) disk; drives the dirty flag. */
   savedMarkdown: string;
   updatedAt: number;
+  /** The file's line endings and BOM, to write it back the same way (absent: LF, no BOM). */
+  format?: TextFormat;
 };
 
 export const UNTITLED = 'Untitled.md';
 
-export function createDocument(markdown = '', fileName = UNTITLED): MdDocument {
-  return { markdown, fileName, savedMarkdown: markdown, updatedAt: Date.now() };
+export function createDocument(
+  markdown = '',
+  fileName = UNTITLED,
+  format?: TextFormat
+): MdDocument {
+  const doc: MdDocument = { markdown, fileName, savedMarkdown: markdown, updatedAt: Date.now() };
+  return format && format !== PLAIN_TEXT && (format.bom || format.lineEnding !== '\n')
+    ? { ...doc, format }
+    : doc;
 }
 
 export function isDirty(doc: MdDocument): boolean {

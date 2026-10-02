@@ -172,6 +172,8 @@ export const en = {
   'toast.opened': 'Opened {name}',
   'toast.exported': 'Exported {name}',
   'toast.exportFailed': 'Could not export the document.',
+  'toast.recentUnavailable':
+    'Couldn’t open {name}: it is gone or access was refused, and it is too large to keep a copy of.',
   'toast.recentMissing': 'Couldn’t find {name} on disk any more, so opened the saved copy.',
   'toast.recentCopy':
     'Opened the saved copy of {name}. Allow file access to work on the file itself.',

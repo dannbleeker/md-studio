@@ -7,6 +7,8 @@
  * type=file> picker for open and a download for save.
  */
 
+import { readText, type TextFormat } from '@/domain/textFormat';
+
 export const MARKDOWN_TYPES: FilePickerAcceptType[] = [
   {
     description: 'Markdown',
@@ -16,15 +18,26 @@ export const MARKDOWN_TYPES: FilePickerAcceptType[] = [
 
 export type OpenedFile = {
   name: string;
+  /** LF line endings, no BOM: what the editors work with. */
   markdown: string;
+  /** How the file spells it, to save it back the same way. */
+  format: TextFormat;
   handle: FileSystemFileHandle | null;
 };
+
+/**
+ * A file's text as the editors see it, and its format. Decoded by hand:
+ * `File.text()` silently drops a UTF-8 BOM, so it could not be kept.
+ */
+export async function readFile(file: Blob): Promise<{ markdown: string; format: TextFormat }> {
+  return readText(new TextDecoder('utf-8', { ignoreBOM: true }).decode(await file.arrayBuffer()));
+}
 
 const isAbort = (err: unknown) => err instanceof DOMException && err.name === 'AbortError';
 
 export async function readHandle(handle: FileSystemFileHandle): Promise<OpenedFile> {
   const file = await handle.getFile();
-  return { name: file.name, markdown: await file.text(), handle };
+  return { name: file.name, ...(await readFile(file)), handle };
 }
 
 /** Resolves to null when the user cancels the picker. */
@@ -49,7 +62,7 @@ function openWithInput(): Promise<OpenedFile | null> {
     input.addEventListener('change', () => {
       const file = input.files?.[0];
       if (!file) return resolve(null);
-      file.text().then((markdown) => resolve({ name: file.name, markdown, handle: null }), reject);
+      readFile(file).then((text) => resolve({ name: file.name, ...text, handle: null }), reject);
     });
     input.addEventListener('cancel', () => resolve(null));
     input.click();
