@@ -83,3 +83,44 @@ test('documents open in tabs that keep their own content', async ({ page }) => {
   await expect(page.getByRole('tablist')).toHaveCount(0);
   await expect.poll(() => textContent(page)).toBe('first doc');
 });
+
+test('switching tabs returns to the same scroll position; tabs can be dragged', async ({
+  page,
+}) => {
+  await newDocument(page);
+  const long = Array.from({ length: 200 }, (_, i) => `## Section ${i}\n\nline ${i}`).join('\n\n');
+  await setText(page, `# Long\n\n${long}\n`);
+  await expect(visualPane(page).locator('h2').last()).toHaveText('Section 199');
+  const textScroller = page.getByTestId('text-editor').locator('.cm-scroller');
+  const visualScroller = page.locator('.pane-scroll');
+  await textScroller.evaluate((el) => {
+    el.scrollTop = 2400;
+  });
+  await page.waitForTimeout(300); // let linked scroll settle the visual pane
+  const saved = {
+    text: await textScroller.evaluate((el) => el.scrollTop),
+    visual: await visualScroller.evaluate((el) => el.scrollTop),
+  };
+  expect(saved.text).toBeGreaterThan(1000);
+
+  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await setText(page, '# Short\n');
+  const tabs = page.getByRole('tablist', { name: 'Open documents' });
+  await tabs.getByRole('tab').first().click();
+  await expect(visualPane(page).locator('h1')).toHaveText('Long');
+  await expect
+    .poll(() => textScroller.evaluate((el) => el.scrollTop))
+    .toBeGreaterThan(saved.text - 5);
+  expect(await textScroller.evaluate((el) => el.scrollTop)).toBeLessThan(saved.text + 5);
+  expect(
+    Math.abs((await visualScroller.evaluate((el) => el.scrollTop)) - saved.visual)
+  ).toBeLessThan(5);
+
+  // Drag the second tab in front of the first.
+  const second = tabs.locator('.tab').nth(1);
+  await second.dragTo(tabs.locator('.tab').first(), { targetPosition: { x: 4, y: 10 } });
+  // Same file names, so each tab shows its first heading.
+  await expect(tabs.getByRole('tab').first()).toContainText('Untitled.md · Short');
+  await expect(tabs.getByRole('tab').nth(1)).toContainText('Untitled.md · Long');
+  await expect(tabs.getByRole('tab').nth(1)).toHaveAttribute('aria-selected', 'true');
+});

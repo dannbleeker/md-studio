@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { createDocument } from './document';
-import { closeTab, isBlank, neighbourTab, openTab, type Tab, tabForHandle } from './tabs';
+import {
+  closeTab,
+  isBlank,
+  moveTab,
+  neighbourTab,
+  openTab,
+  type Tab,
+  tabForFile,
+  tabLabels,
+} from './tabs';
 
 const tab = (id: string, markdown = id, handleId: string | null = null): Tab => ({
   id,
@@ -71,11 +80,71 @@ describe('neighbourTab', () => {
   });
 });
 
-describe('tabForHandle', () => {
-  it('finds the tab showing a file', () => {
-    const tabs = [tab('a', 'a', 'h1'), tab('b', 'b', 'h2')];
-    expect(tabForHandle(tabs, 'h2')?.id).toBe('b');
-    expect(tabForHandle(tabs, null)).toBeUndefined();
-    expect(tabForHandle(tabs, 'h3')).toBeUndefined();
+describe('tabForFile', () => {
+  const tabs = [tab('a', 'a', 'h1'), tab('b', 'b')];
+  const file = (fileName: string, markdown: string, handleId: string | null = null) => ({
+    fileName,
+    markdown,
+    handleId,
+  });
+
+  it('matches a handle id exactly', () => {
+    expect(tabForFile(tabs, file('x.md', 'x', 'h1'))?.id).toBe('a');
+    expect(tabForFile(tabs, file('a.md', 'a', 'h9'))).toBeUndefined();
+  });
+
+  it('without a handle, matches name and opened content of a handle-less tab', () => {
+    expect(tabForFile(tabs, file('b.md', 'b'))?.id).toBe('b');
+    expect(tabForFile(tabs, file('b.md', 'other'))).toBeUndefined();
+    expect(tabForFile(tabs, file('a.md', 'a'))).toBeUndefined(); // that one has a file handle
+  });
+
+  it('still matches after the tab was edited', () => {
+    const edited = { ...tab('b'), doc: { ...tab('b').doc, markdown: 'b, edited' } };
+    expect(tabForFile([edited], file('b.md', 'b'))?.id).toBe('b');
+  });
+});
+
+describe('tabLabels', () => {
+  const named = (id: string, fileName: string, markdown: string): Tab => ({
+    id,
+    doc: createDocument(markdown, fileName),
+    handleId: null,
+  });
+
+  it('leaves unique names alone', () => {
+    expect(tabLabels([named('1', 'a.md', '# A'), named('2', 'b.md', '# B')])).toEqual([
+      'a.md',
+      'b.md',
+    ]);
+  });
+
+  it('adds the first heading to tell same-named tabs apart', () => {
+    expect(
+      tabLabels([
+        named('1', 'notes.md', '# Plan'),
+        named('2', 'notes.md', '# Log'),
+        named('3', 'x.md', ''),
+      ])
+    ).toEqual(['notes.md · Plan', 'notes.md · Log', 'x.md']);
+  });
+
+  it('falls back to numbers when headings do not differ', () => {
+    expect(
+      tabLabels([
+        named('1', 'Untitled.md', ''),
+        named('2', 'Untitled.md', ''),
+        named('3', 'Untitled.md', '# T'),
+      ])
+    ).toEqual(['Untitled.md (1)', 'Untitled.md (2)', 'Untitled.md · T']);
+  });
+});
+
+describe('moveTab', () => {
+  it('moves and clamps', () => {
+    const tabs = [tab('a'), tab('b'), tab('c')];
+    expect(ids(moveTab(tabs, 'a', 2))).toEqual(['b', 'c', 'a']);
+    expect(ids(moveTab(tabs, 'c', -5))).toEqual(['c', 'a', 'b']);
+    expect(ids(moveTab(tabs, 'x', 0))).toEqual(['a', 'b', 'c']);
   });
 });

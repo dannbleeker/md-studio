@@ -65,9 +65,15 @@ Paste an image (Ctrl+V) or drop an image file into either pane.
 
 - **New**, **Open**, a **Recent** file or a dropped file each open in a new
   tab. An empty, untouched new document is reused instead of piling up.
-- Opening a file that is already open switches to its tab.
+- Opening a file that is already open switches to its tab. Without a link
+  to the file on disk (other browsers, dropped files) MD Studio goes by the
+  name and the content it was opened with.
 - The tab bar appears once two documents are open. Click a tab to switch;
-  the arrow keys move between tabs when one has focus.
+  the arrow keys move between tabs when one has focus. Each tab keeps its
+  cursor and scroll position.
+- Drag a tab to reorder, or press Shift+← / Shift+→ on a focused tab.
+- Two tabs with the same file name show the document's first heading,
+  for example *notes.md · Plan*.
 - **×** or a middle click closes a tab. A tab with unsaved changes asks
   first. Closing the last tab returns to the start screen.
 - All open tabs, saved or not, are still there after closing and

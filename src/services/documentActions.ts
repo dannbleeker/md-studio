@@ -3,7 +3,7 @@
  * keyboard shortcuts, command palette and file-launch handler.
  */
 import { createDocument, isDirty, normalizeFileName } from '@/domain/document';
-import { neighbourTab, tabForHandle } from '@/domain/tabs';
+import { neighbourTab, tabForFile } from '@/domain/tabs';
 import { t } from '@/i18n';
 import { syncedTabs, useStore } from '@/store';
 import { requestConfirm, showToast } from '@/store/ui';
@@ -23,8 +23,8 @@ async function confirmClose(id: string): Promise<boolean> {
 }
 
 /** Shows the tab already holding this file, if any; true when it did. */
-function showOpenTab(handleId: string | null): boolean {
-  const tab = tabForHandle(syncedTabs(useStore.getState()), handleId);
+function showOpenTab(file: Parameters<typeof tabForFile>[1]): boolean {
+  const tab = tabForFile(syncedTabs(useStore.getState()), file);
   if (!tab) return false;
   void switchTab(tab.id);
   return true;
@@ -34,7 +34,7 @@ async function load(file: OpenedFile) {
   // putHandle reuses the id of a handle to the same file, so an id match
   // means the file is already open.
   const handleId = file.handle ? await putHandle(file.handle) : null;
-  if (showOpenTab(handleId)) return;
+  if (showOpenTab({ handleId, fileName: file.name, markdown: file.markdown })) return;
   useStore.getState().loadDocument(createDocument(file.markdown, file.name), file.handle, handleId);
   showToast(t('toast.opened', { name: file.name }));
   void forgetUnusedHandles();
@@ -116,7 +116,7 @@ export async function openDroppedFile(file: File): Promise<void> {
  * permission refused, file moved or deleted) opens the saved snapshot.
  */
 export async function openRecent(entry: RecentEntry): Promise<void> {
-  if (showOpenTab(entry.handleId ?? null)) return;
+  if (entry.handleId && showOpenTab({ ...entry, handleId: entry.handleId })) return;
   const handle = entry.handleId ? await getHandle(entry.handleId) : null;
   if (handle) {
     if (await ensurePermission(handle, 'readwrite')) {
@@ -133,6 +133,9 @@ export async function openRecent(entry: RecentEntry): Promise<void> {
       showToast(t('toast.recentCopy', { name: entry.fileName }));
     }
   }
+  // Falling back to the snapshot: if that very snapshot is already open, show it.
+  const snapshot = { handleId: null, fileName: entry.fileName, markdown: entry.markdown };
+  if (showOpenTab(snapshot)) return;
   useStore.getState().loadDocument(createDocument(entry.markdown, entry.fileName), null);
 }
 

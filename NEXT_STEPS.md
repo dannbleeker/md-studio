@@ -27,8 +27,10 @@
       (an untouched blank tab is reused), a file already open is switched
       to, closing a tab with unsaved changes asks, all tabs survive a
       reload. Tab bar shows from two tabs; Alt+W, Alt+PageUp/PageDown.
-- [ ] Tabs, later: keep cursor and scroll per tab (they reset on switch),
-      drag to reorder, tell apart two tabs with the same file name.
+- [x] Tabs, follow-ups: cursor and scroll kept per tab (in memory), drag
+      or Shift+Arrow to reorder, same-name tabs labelled by first heading
+      (else a number), a dropped file or recent snapshot already open is
+      switched to (same name and opened content).
 - [x] Visual-pane format toolbar (text style, inline marks, link, lists, quote,
       code block, table, rule) with active-state buttons.
 - [x] Paste/drop images: saved in `images/` next to the document (Chromium,

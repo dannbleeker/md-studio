@@ -1,9 +1,10 @@
 import { create } from 'zustand';
 import { createDocument, documentTitle, type MdDocument } from '@/domain/document';
-import { closeTab, openTab, type Tab } from '@/domain/tabs';
+import { closeTab, moveTab, openTab, type Tab } from '@/domain/tabs';
 import type { RecentEntry } from '@/services/storage';
 import * as storage from '@/services/storage';
 import { type Settings, sanitizeSettings, type ViewMode } from './settings';
+import { captureView, type TabView } from './viewState';
 
 /**
  * Who produced the latest `markdown`. Each pane ignores updates it made
@@ -14,7 +15,11 @@ export type ChangeSource = 'text' | 'visual' | 'load';
 type Screen = 'start' | 'editor';
 
 /** A tab plus its live file handle (handles can't be serialized). */
-export type OpenTab = Tab & { fileHandle: FileSystemFileHandle | null };
+export type OpenTab = Tab & {
+  fileHandle: FileSystemFileHandle | null;
+  /** Cursor and scroll when the tab was last left (memory only). */
+  view?: TabView;
+};
 
 type State = {
   /**
@@ -28,6 +33,8 @@ type State = {
   source: ChangeSource;
   /** Bumped on every load so panes can reset selection/scroll for a new file. */
   loadId: number;
+  /** Where the panes should put cursor and scroll for this load (null: the top). */
+  restoreView: TabView | null;
   fileHandle: FileSystemFileHandle | null;
   /** IndexedDB id of `fileHandle` (persisted, so the handle survives a reload). */
   handleId: string | null;
@@ -56,6 +63,7 @@ type State = {
   activateTab: (id: string) => void;
   /** Closes a tab without asking; closing the last one returns to the start screen. */
   closeTab: (id: string) => void;
+  moveTab: (id: string, toIndex: number) => void;
   /** Re-attaches the open document's file after a reload. */
   restoreFileHandle: (handle: FileSystemFileHandle) => void;
   setScreen: (screen: Screen) => void;
@@ -88,6 +96,24 @@ export function syncedTabs(s: LiveTab): OpenTab[] {
   );
 }
 
+/** The tabs with the active one's live state and current view written back. */
+function leaveActive(s: LiveTab): OpenTab[] {
+  return s.tabs.map((tab) =>
+    tab.id === s.activeTabId
+      ? {
+          ...tab,
+          doc: s.doc,
+          fileHandle: s.fileHandle,
+          handleId: s.handleId,
+          ...withView(captureView(tab.view)),
+        }
+      : tab
+  );
+}
+
+// exactOptionalPropertyTypes: leave `view` out rather than set it to undefined.
+const withView = (view: TabView | undefined) => (view ? { view } : {});
+
 /** Live fields for showing `tab`; the new `loadId` makes the panes reset for it. */
 function show(tab: OpenTab, loadId: number) {
   return {
@@ -97,6 +123,7 @@ function show(tab: OpenTab, loadId: number) {
     handleId: tab.handleId,
     source: 'load' as ChangeSource,
     loadId: loadId + 1,
+    restoreView: tab.view ?? null,
   };
 }
 
@@ -136,7 +163,7 @@ export const useStore = create<State>()((set, get) => ({
     const id = handle ? handleId : null;
     const tab: OpenTab = { id: newTabId(), doc, handleId: id, fileHandle: handle };
     set((s) => {
-      const { tabs } = openTab({ tabs: syncedTabs(s), activeId: s.activeTabId }, tab);
+      const { tabs } = openTab({ tabs: leaveActive(s), activeId: s.activeTabId }, tab);
       return { tabs: tabs as OpenTab[], ...show(tab, s.loadId), screen: 'editor' };
     });
     if (doc.markdown || handle) rememberRecent(doc, id);
@@ -157,14 +184,14 @@ export const useStore = create<State>()((set, get) => ({
       set({ screen: 'editor' });
       return;
     }
-    const tabs = syncedTabs(s);
+    const tabs = leaveActive(s);
     const target = tabs.find((t) => t.id === id);
     if (target) set({ tabs, ...show(target, s.loadId), screen: 'editor' });
   },
 
   closeTab: (id) => {
     const s = get();
-    const result = closeTab({ tabs: syncedTabs(s), activeId: s.activeTabId }, id);
+    const result = closeTab({ tabs: leaveActive(s), activeId: s.activeTabId }, id);
     const tabs = result.tabs as OpenTab[];
     const next = tabs.find((t) => t.id === result.activeId);
     if (!next) {
@@ -176,6 +203,8 @@ export const useStore = create<State>()((set, get) => ({
       set({ tabs });
     }
   },
+
+  moveTab: (id, toIndex) => set((s) => ({ tabs: moveTab(s.tabs, id, toIndex) })),
 
   restoreFileHandle: (fileHandle) => set({ fileHandle }),
 

@@ -10,7 +10,8 @@ import { findHeadings } from '@/domain/headings';
 import { minimalChange } from '@/domain/textDiff';
 import { t } from '@/i18n';
 import { useStore } from '@/store';
-import { editors } from './editorRegistry';
+import { registerViewPart } from '@/store/viewState';
+import { editors, isHidden, restoreScroll } from './editorRegistry';
 import { highlightStyle } from './highlight';
 import { textPaneImageHandlers } from './imageSupport';
 import type { ScrollAdapter } from './scrollAdapter';
@@ -75,18 +76,29 @@ export function TextPane({ onAdapter }: Props) {
       if (!loaded && (state.doc.markdown === prev.doc.markdown || state.source === 'text')) return;
       const current = view.state.doc.toString();
       if (loaded) {
+        // A tab switched back to returns to its cursor and scroll; a newly
+        // opened document starts at the top.
+        const at = state.restoreView;
+        const clamp = (n: number) => Math.min(Math.max(n, 0), state.doc.markdown.length);
         view.dispatch({
           changes: { from: 0, to: current.length, insert: state.doc.markdown },
-          selection: { anchor: 0 },
+          selection: { anchor: clamp(at?.textAnchor ?? 0), head: clamp(at?.textHead ?? 0) },
           annotations: [fromStore.of(true), Transaction.addToHistory.of(false)],
         });
-        view.scrollDOM.scrollTop = 0;
+        restoreScroll(view.scrollDOM, at?.textScroll ?? 0);
         return;
       }
       // Apply only the span the visual pane changed, so the cursor and
       // scroll position here survive.
       const change = minimalChange(current, state.doc.markdown);
       if (change) view.dispatch({ changes: change, annotations: fromStore.of(true) });
+    });
+
+    const unregisterView = registerViewPart(() => {
+      const { anchor, head } = view.state.selection.main;
+      return isHidden(view.dom)
+        ? { textAnchor: anchor, textHead: head }
+        : { textAnchor: anchor, textHead: head, textScroll: view.scrollDOM.scrollTop };
     });
 
     onAdapter({
@@ -102,6 +114,7 @@ export function TextPane({ onAdapter }: Props) {
     return () => {
       onAdapter(null);
       unsubscribe();
+      unregisterView();
       view.contentDOM.removeEventListener('focus', onFocus);
       if (editors.text === view) editors.text = null;
       view.destroy();

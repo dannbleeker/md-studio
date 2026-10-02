@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocument } from '@/domain/document';
 import { resetStoreForTest, useStore } from '@/store';
-import { openRecent, restoreDocumentHandle, saveDocument } from './documentActions';
+import {
+  openDroppedFile,
+  openRecent,
+  restoreDocumentHandle,
+  saveDocument,
+} from './documentActions';
 
 const handles = new Map<string, FileSystemFileHandle>();
 vi.mock('./handleStore', () => ({
@@ -109,5 +114,34 @@ describe('recent files with handles', () => {
     expect(h.content).toBe('original');
     expect(click).toHaveBeenCalled(); // fell back to a download
     click.mockRestore();
+  });
+});
+
+describe('opening a file that is already open', () => {
+  beforeEach(() => resetStoreForTest());
+  const fileNames = () => useStore.getState().tabs.map((t) => t.doc.fileName);
+
+  it('switches to the tab of a file dropped twice, keeping its edits', async () => {
+    await openDroppedFile(new File(['# Same'], 'same.md'));
+    useStore.getState().setMarkdown('# Same, edited', 'text');
+    await openDroppedFile(new File(['other'], 'other.md'));
+    await openDroppedFile(new File(['# Same'], 'same.md'));
+    expect(fileNames()).toEqual(['same.md', 'other.md']);
+    expect(useStore.getState().doc.markdown).toBe('# Same, edited');
+  });
+
+  it('opens a new tab when the dropped content differs', async () => {
+    await openDroppedFile(new File(['v1'], 'same.md'));
+    await openDroppedFile(new File(['v2'], 'same.md'));
+    expect(fileNames()).toEqual(['same.md', 'same.md']);
+  });
+
+  it('switches to an open snapshot instead of opening it again', async () => {
+    const entry = { fileName: 'snap.md', title: '', markdown: 'snap', openedAt: 0 };
+    await openRecent(entry);
+    await openDroppedFile(new File(['x'], 'x.md'));
+    await openRecent(entry);
+    expect(fileNames()).toEqual(['snap.md', 'x.md']);
+    expect(useStore.getState().doc.fileName).toBe('snap.md');
   });
 });

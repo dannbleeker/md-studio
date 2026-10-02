@@ -22,3 +22,20 @@ export const editors: {
    */
   linkedScrollPausedUntil: number;
 } = { text: null, visual: null, milkdown: null, lastFocused: 'text', linkedScrollPausedUntil: 0 };
+
+/** A pane hidden by the current view mode (its scroll offset reads as 0). */
+export const isHidden = (el: Element): boolean => el.closest('[hidden]') !== null;
+
+/**
+ * Puts a pane back at a saved offset after a tab switch. Repeated on the
+ * next frame because the new document's layout (CodeMirror's height
+ * estimates, images) settles after the first paint; linked scroll is held
+ * off meanwhile so the two restored offsets don't fight.
+ */
+export function restoreScroll(el: HTMLElement, top: number): void {
+  editors.linkedScrollPausedUntil = performance.now() + 400;
+  el.scrollTop = top;
+  requestAnimationFrame(() => {
+    el.scrollTop = top;
+  });
+}
