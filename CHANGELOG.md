@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Fix: images disappeared from the visual pane.** Any image without a
+  title (`![alt](src)`, the usual form) made the visual pane throw and
+  render an empty paragraph instead, and a later edit in the visual pane
+  could then drop the image from the Markdown. Image titles are now
+  normalised before reaching the editor.
 - **Format toolbar** above the visual pane: text style (paragraph,
   heading 1–4), bold, italic, strikethrough, inline code, link (via a
   prompt dialog), bulleted and numbered lists, quote, code block, table

@@ -4,6 +4,7 @@ import {
   editorViewCtx,
   editorViewOptionsCtx,
   prosePluginsCtx,
+  remarkPluginsCtx,
   rootCtx,
 } from '@milkdown/kit/core';
 import { clipboard } from '@milkdown/kit/plugin/clipboard';
@@ -20,6 +21,7 @@ import { useStore } from '@/store';
 import { applyFull, applyIncremental } from './applyMarkdown';
 import { editors } from './editorRegistry';
 import { reportFormat } from './formatState';
+import { imageTitleFix } from './imageTitleFix';
 import { keepSourceStyle } from './keepSourceStyle';
 import type { ScrollAdapter } from './scrollAdapter';
 
@@ -97,6 +99,7 @@ export function VisualPane({ onAdapter }: Props) {
           search(),
           new Plugin({ view: () => ({ update: (view) => reportFormat(view.state) }) }),
         ]);
+        ctx.update(remarkPluginsCtx, (plugins) => [...plugins, imageTitleFix]);
         ctx.update(editorViewOptionsCtx, (prev) => ({
           ...prev,
           attributes: { 'aria-label': t('pane.visual'), spellcheck: 'true' },
