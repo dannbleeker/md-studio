@@ -280,3 +280,74 @@ test('switching tabs right after a visual edit keeps the edit in its own tab', a
   await tabs.getByRole('tab').first().click();
   await expect.poll(() => textContent(page)).toBe('# Alpha\n\nalpha textX\n');
 });
+
+test('a text edit among repeated blocks lands on the right block', async ({ page }) => {
+  await newDocument(page);
+  let md = '';
+  for (let i = 0; i < 5; i++) md += `# A${i}\npara${i}\n\n`;
+  for (let i = 0; i < 10; i++) md += 'x\n\n';
+  await setText(page, md);
+  await expect(visualPane(page).locator('p')).toHaveCount(15);
+  // Line 21 is the fourth "x" paragraph.
+  await textPane(page).locator('.cm-line').nth(21).click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('y');
+  // Check after the 150 ms update but well before the 2.5 s full-parse
+  // reconcile, which would hide a wrongly placed incremental update.
+  await page.waitForTimeout(500);
+  const texts = await visualPane(page).locator('p').allTextContents();
+  expect(texts.filter((t) => /^xy?$/.test(t))).toEqual([
+    'x',
+    'x',
+    'x',
+    'xy',
+    'x',
+    'x',
+    'x',
+    'x',
+    'x',
+    'x',
+  ]);
+});
+
+test('a reference definition typed far from its use links it, and survives a visual edit', async ({
+  page,
+}) => {
+  await newDocument(page);
+  let md = 'see [foo] here\n\n';
+  for (let i = 0; i < 6; i++) md += `filler ${i}\n\n`;
+  md += 'last\n';
+  await setText(page, md);
+  await expect(visualPane(page).locator('p')).toHaveCount(8);
+  await textPane(page).locator('.cm-line').nth(14).click();
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.insertText('[foo]: http://x.y');
+  await expect(visualPane(page).locator('a')).toHaveCount(1);
+  await visualPane(page).locator('p').nth(1).click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('Z');
+  await expect.poll(() => textContent(page)).toContain('filler 0Z');
+  await page.waitForTimeout(800);
+  expect(await textContent(page)).toContain('[foo]: http://x.y');
+});
+
+test('visual undo still works next to a block the text pane changed', async ({ page }) => {
+  await newDocument(page);
+  await setText(page, '# T\n\nfirst para\n\nsecond para\n\nthird para\n');
+  const paras = visualPane(page).locator('p');
+  await expect(paras).toHaveCount(3);
+  await paras.nth(0).click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('HELLO');
+  await expect.poll(() => textContent(page)).toContain('first paraHELLO');
+  await textPane(page).locator('.cm-line').nth(4).click();
+  await page.keyboard.press('End');
+  await page.keyboard.type(' WORLD');
+  await expect(paras.nth(1)).toHaveText('second para WORLD');
+  await paras.nth(2).click();
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(paras.nth(0)).toHaveText('first para');
+  await expect.poll(() => textContent(page)).toContain('first para\n');
+});

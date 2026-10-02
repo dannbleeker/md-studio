@@ -100,4 +100,12 @@ describe('splitBlocks', () => {
     expect(splitBlocks('')).toEqual([]);
     expect(splitBlocks('\n  \n')).toEqual([]);
   });
+
+  it('does not open a fence on inline triple backticks or close one on an info line', () => {
+    expect(texts('```npm i``` here\n\nnext')).toEqual(['```npm i``` here', 'next']);
+    expect(texts('```\n```js\n\nstill code\n```\n\nafter')).toEqual([
+      '```\n```js\n\nstill code\n```',
+      'after',
+    ]);
+  });
 });

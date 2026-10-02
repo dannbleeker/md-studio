@@ -14,6 +14,8 @@
  * two blocks are "the same" exactly when they mean the same thing.
  */
 
+import { closesFence, openFence } from './fences';
+
 export type BlockRange = { start: number; end: number };
 
 export type PreserveResult = {
@@ -91,8 +93,6 @@ export function preserveUnchangedBlocks(
   };
 }
 
-const FENCE = /^ {0,3}(`{3,}|~{3,})/;
-
 /**
  * Cheap top-level block split for `preserveUnchangedBlocks`: runs of
  * non-blank lines, with fenced code kept whole across blank lines. It
@@ -110,7 +110,7 @@ export function splitBlocks(md: string): BlockRange[] {
     const lineEnd = pos + line.length;
     const blank = line.trim() === '';
     if (fence) {
-      if (FENCE.exec(line)?.[1]?.startsWith(fence)) fence = null;
+      if (closesFence(line, fence)) fence = null;
       end = lineEnd;
     } else if (blank) {
       if (start >= 0) out.push({ start, end });
@@ -118,7 +118,7 @@ export function splitBlocks(md: string): BlockRange[] {
     } else {
       if (start < 0) start = pos;
       end = lineEnd;
-      const open = FENCE.exec(line)?.[1];
+      const open = openFence(line);
       if (open) fence = open;
     }
     pos = lineEnd + 1;
