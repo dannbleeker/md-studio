@@ -39,6 +39,7 @@
     "@milkdown/kit": "^7.22.2",
     "codemirror": "^6.0.2",
     "docx": "^9.8.1",
+    "entities": "^7.0.1",
     "marked": "^18.0.14",
     "pdf-lib": "^1.17.1",
     "prosemirror-search": "^1.1.1",

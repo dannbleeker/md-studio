@@ -19,9 +19,30 @@ const RASTER_DATA_URL = /^data:image\/(?:png|jpeg|gif|webp);base64,[A-Za-z0-9+/=
  * exported page should never run code that came from a document someone
  * sent you.
  */
+/** Heading ids already used in the page being rendered (reset per export). */
+let usedIds = new Map<string, number>();
+
+/** A GitHub-style anchor id, so `[jump](#usage)` links inside the page work. */
+function headingId(text: string): string {
+  const base =
+    text
+      .toLowerCase()
+      .trim()
+      .replace(/[^\p{L}\p{N}\s-]/gu, '')
+      .replace(/\s+/g, '-') || 'section';
+  const seen = usedIds.get(base) ?? 0;
+  usedIds.set(base, seen + 1);
+  return seen === 0 ? base : `${base}-${seen}`;
+}
+
 const marked = new Marked({
   gfm: true,
   renderer: {
+    heading({ tokens, depth }) {
+      const inner = this.parser.parseInline(tokens);
+      const id = headingId(inner.replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ''));
+      return `<h${depth} id="${escapeHtml(id)}">${inner}</h${depth}>\n`;
+    },
     html({ text }) {
       return escapeHtml(text);
     },
@@ -51,6 +72,7 @@ function themeCss(theme: HtmlTheme): string {
 
 /** Standalone HTML page styled like the visual pane, in the chosen theme. */
 export function markdownToHtml(markdown: string, title: string, theme: HtmlTheme): string {
+  usedIds = new Map();
   const body = marked.parse(markdown, { async: false });
   return `<!doctype html>
 <html lang="en">
@@ -72,11 +94,12 @@ code{font-family:ui-monospace,"Cascadia Code",Consolas,monospace;font-size:.9em;
 pre{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:.8rem 1rem;overflow-x:auto}
 pre code{background:none;padding:0}
 blockquote{margin:1em 0;padding-left:1rem;border-left:3px solid var(--accent);color:var(--muted)}
-table{border-collapse:collapse;margin:1em 0}th,td{border:1px solid var(--border);padding:.35rem .7rem;text-align:left;vertical-align:top}th{background:var(--surface-2)}
+table{border-collapse:collapse;margin:1em 0}th,td{border:1px solid var(--border);padding:.35rem .7rem;text-align:start;vertical-align:top}th{background:var(--surface-2)}
+[align=center]{text-align:center}[align=right]{text-align:right}
 hr{border:0;border-top:1px solid var(--border);margin:2em 0}
 img{max-width:100%}
 li>input[type=checkbox]{margin-right:.4em}
-@media print{body{background:#fff;color:#000}main{padding:0}}
+@media print{:root{${LIGHT}}body{background:#fff;color:#000}main{padding:0}}
 </style>
 </head>
 <body>

@@ -105,4 +105,28 @@ describe('markdownToPdf', () => {
     expect(Buffer.from(bytes).toString('latin1')).toMatch(/\/Subtype \/Image/);
     expect(drawnText(bytes)).toContain('[missing]');
   });
+
+  it('draws everything inside quotes, parsed table cells and entities', async () => {
+    const text = drawnText(
+      await markdownToPdf({
+        sources: [
+          '> outer\n>\n> > inner quote\n>\n> ```\n> code in quote\n> ```\n\n| **bold** | [link](https://e.dk) |\n| - | - |\n| a &copy; | b |',
+        ],
+        title: 'x',
+      })
+    );
+    for (const word of ['outer', 'inner', 'code in quote', 'bold', 'link'])
+      expect(text).toContain(word);
+    expect(text).not.toContain('**');
+    expect(text).not.toContain('](');
+    expect(text).toContain('\xa9'); // ©, WinAnsi 0xA9
+  });
+
+  it('splits a word wider than the page instead of drawing past the edge', async () => {
+    const text = drawnText(
+      await markdownToPdf({ sources: [`https://example.com/${'a'.repeat(200)}`], title: 'x' })
+    );
+    const pieces = text.split(' ').filter((p) => p.includes('aaa'));
+    expect(pieces.length).toBeGreaterThan(1);
+  });
 });

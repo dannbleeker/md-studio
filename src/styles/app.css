@@ -79,7 +79,7 @@ body {
 .btn-danger {
   background: var(--danger);
   border-color: var(--danger);
-  color: #fff;
+  color: var(--danger-contrast);
 }
 .btn-small {
   padding: 0.15rem 0.6rem;

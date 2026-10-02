@@ -6,7 +6,7 @@ describe('markdownToHtml', () => {
     const html = markdownToHtml('# Hi\n\n| a |\n| - |\n| 1 |', 'Notes <1>', 'dark');
     expect(html).toMatch(/^<!doctype html>/);
     expect(html).toContain('<title>Notes &lt;1&gt;</title>');
-    expect(html).toContain('<h1>Hi</h1>');
+    expect(html).toContain('<h1 id="hi">Hi</h1>');
     expect(html).toContain('<table>');
     expect(html).toContain('color-scheme:dark');
     expect(html).not.toContain('prefers-color-scheme');
@@ -50,5 +50,28 @@ describe('markdownToHtml', () => {
     );
     expect(html).toContain(`<img src="${png}" alt="dot">`);
     expect(html).not.toContain('svg+xml');
+  });
+
+  it('gives headings unique anchor ids so in-page links work', () => {
+    const html = markdownToHtml(
+      '## Get *started*\n\n[go](#get-started)\n\n## Get started\n\n## Ærø & co.',
+      't',
+      'light'
+    );
+    expect(html).toContain('<h2 id="get-started">Get <em>started</em></h2>');
+    expect(html).toContain('<h2 id="get-started-1">Get started</h2>');
+    expect(html).toContain('<h2 id="ærø-co">');
+    expect(html).toContain('href="#get-started"');
+  });
+
+  it('honours table column alignment', () => {
+    const html = markdownToHtml('| L | C | R |\n|:--|:-:|--:|\n| 1 | 2 | 3 |', 't', 'light');
+    expect(html).toContain('<td align="center">2</td>');
+    expect(html).toContain('[align=center]{text-align:center}');
+    expect(html).not.toContain('text-align:left');
+  });
+
+  it('prints in light colours whatever the theme', () => {
+    expect(markdownToHtml('x', 't', 'dark')).toMatch(/@media print\{:root\{--bg:#fafbfc/);
   });
 });

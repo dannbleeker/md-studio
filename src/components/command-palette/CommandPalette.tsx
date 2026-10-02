@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { fuzzyFilter } from '@/domain/fuzzy';
 import { findHeadings } from '@/domain/headings';
 import { t } from '@/i18n';
@@ -65,6 +65,12 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
     }));
     return fuzzyFilter(items, query, (item) => item.text);
   }, [headingMode, inEditor, markdown, query, onDone]);
+
+  // Keep the keyboard selection visible in a long list.
+  useEffect(() => {
+    const id = results[active]?.id;
+    if (id) document.getElementById(`cmd-${id}`)?.scrollIntoView?.({ block: 'nearest' });
+  }, [active, results]);
 
   const emptyText = !headingMode
     ? t('palette.empty')

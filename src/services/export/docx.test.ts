@@ -52,4 +52,29 @@ describe('markdownToDocx', () => {
     expect(xml).toContain('descr="dot"');
     expect(xml).toContain('[gone]');
   });
+
+  it('keeps task item text in its bullet', async () => {
+    const xml = await documentXml('- [x] done item\n- [ ] todo item');
+    expect(xml).toMatch(/☑ <\/w:t>.*?done item/s);
+    // One paragraph per item: the text is not split off into its own paragraph.
+    expect(xml.match(/<w:p>|<w:p /g)?.length).toBe(2);
+  });
+
+  it('numbers each ordered list on its own, from its start', async () => {
+    const zip = await JSZip.loadAsync(
+      await Packer.toBuffer(
+        markdownToDocxDocument('1. a\n2. b\n\npara\n\n1. c\n\nmore\n\n5. five', 'T')
+      )
+    );
+    const xml = (await zip.file('word/document.xml')?.async('string')) ?? '';
+    const numIds = [...xml.matchAll(/<w:numId w:val="(\d+)"\/>/g)].map((m) => m[1]);
+    expect(new Set(numIds).size).toBe(3);
+    const numbering = (await zip.file('word/numbering.xml')?.async('string')) ?? '';
+    expect(numbering).toContain('<w:start w:val="5"/>');
+  });
+
+  it('decodes named HTML entities', async () => {
+    const xml = await documentXml('A &copy; B &mdash; C');
+    expect(xml).toContain('A © B — C');
+  });
 });
