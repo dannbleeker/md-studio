@@ -8,6 +8,7 @@ import {
   remarkPluginsCtx,
   rootCtx,
 } from '@milkdown/kit/core';
+import type { Ctx } from '@milkdown/kit/ctx';
 import { clipboard } from '@milkdown/kit/plugin/clipboard';
 import { history } from '@milkdown/kit/plugin/history';
 import { listener, listenerCtx } from '@milkdown/kit/plugin/listener';
@@ -25,7 +26,7 @@ import { registerFlush } from '@/store/flush';
 import { showToast } from '@/store/ui';
 import { registerViewPart } from '@/store/viewState';
 import { applyFull, applyIncremental } from './applyMarkdown';
-import { editors, isHidden, restoreScroll } from './editorRegistry';
+import { editors, isHidden, restoreScroll, visualHeadings } from './editorRegistry';
 import { reportFormat } from './formatState';
 import { imageNodeView, visualPaneImagePlugin } from './imageSupport';
 import { imageTitleFix } from './imageTitleFix';
@@ -40,8 +41,6 @@ const TEXT_TO_VISUAL_DEBOUNCE_MS = 150;
  * long guarantees the panes can never drift apart.
  */
 const RECONCILE_AFTER_MS = 2500;
-
-const HEADINGS = ':scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6';
 
 type Props = { onAdapter: (adapter: ScrollAdapter | null) => void };
 
@@ -81,6 +80,24 @@ export function VisualPane({ onAdapter }: Props) {
       rootEl.classList.toggle('visual-failed', value);
     };
 
+    /**
+     * Hands a user edit to the store, in the source's own style. Cleared
+     * first: the store's subscribers run inside setMarkdown.
+     */
+    const report = (ctx: Ctx, markdown: string) => {
+      unreported = false;
+      const previous = useStore.getState().doc.markdown;
+      useStore.getState().setMarkdown(keepSourceStyle(ctx, previous, markdown), 'visual');
+    };
+
+    /** Unregisters an editor this pane is done with, unless another already took its place. */
+    const release = (old: Editor | null) => {
+      if (old && editors.milkdown === old) {
+        editors.visual = null;
+        editors.milkdown = null;
+      }
+    };
+
     const applyAll = (markdown: string) => {
       if (!editor) return;
       clearTimeout(reconcileTimer);
@@ -97,7 +114,11 @@ export function VisualPane({ onAdapter }: Props) {
       }
     };
 
-    const flush = () => {
+    /**
+     * Brings this pane up to the store's Markdown (text-pane edits). Not to
+     * be confused with store/flush.ts, which goes the other way.
+     */
+    const catchUp = () => {
       clearTimeout(pending);
       pending = undefined;
       if (!editor) return;
@@ -167,12 +188,7 @@ export function VisualPane({ onAdapter }: Props) {
           ctx.get(listenerCtx).markdownUpdated((listenerCtx, markdown) => {
             // Already flushed, or fired after a load (another tab, a reload
             // from disk): nothing of the user's to report.
-            if (!unreported) return;
-            unreported = false;
-            const previous = useStore.getState().doc.markdown;
-            useStore
-              .getState()
-              .setMarkdown(keepSourceStyle(listenerCtx, previous, markdown), 'visual');
+            if (unreported) report(listenerCtx, markdown);
           });
         })
         .use(commonmark)
@@ -186,10 +202,7 @@ export function VisualPane({ onAdapter }: Props) {
     const mount = (markdown: string): Promise<void> => {
       const previous = editor;
       editor = null;
-      if (previous && editors.milkdown === previous) {
-        editors.visual = null;
-        editors.milkdown = null;
-      }
+      release(previous);
       previous?.destroy();
       rootEl.replaceChildren();
       clearTimeout(reconcileTimer);
@@ -217,7 +230,7 @@ export function VisualPane({ onAdapter }: Props) {
           editors.visual = created.action((ctx) => ctx.get(editorViewCtx));
           editors.milkdown = created;
           // The text pane may have changed while Milkdown was booting.
-          flush();
+          catchUp();
         });
     };
     void mount(appliedMd);
@@ -230,7 +243,7 @@ export function VisualPane({ onAdapter }: Props) {
         return;
       }
       if (staleWhileHidden && state.viewMode !== 'text' && prev.viewMode === 'text') {
-        flush();
+        catchUp();
         return;
       }
       if (state.doc.markdown === prev.doc.markdown) return;
@@ -243,14 +256,14 @@ export function VisualPane({ onAdapter }: Props) {
         return;
       }
       clearTimeout(pending);
-      pending = setTimeout(flush, TEXT_TO_VISUAL_DEBOUNCE_MS);
+      pending = setTimeout(catchUp, TEXT_TO_VISUAL_DEBOUNCE_MS);
     });
 
     // About to type here: land any batched text-pane edits first, so the
     // visual tree never edits a stale copy of the document.
     const onFocus = () => {
       editors.lastFocused = 'visual';
-      if (pending || staleWhileHidden) flush();
+      if (pending || staleWhileHidden) catchUp();
       // Settle any incremental update before the user edits this tree:
       // once they type, the tree is serialized as the truth, and a
       // divergence from a full parse would become permanent.
@@ -259,14 +272,7 @@ export function VisualPane({ onAdapter }: Props) {
     rootEl.addEventListener('focusin', onFocus);
 
     const unregisterFlush = registerFlush(() => {
-      if (!unreported || !editor) return;
-      unreported = false;
-      editor.action((ctx) => {
-        const previous = useStore.getState().doc.markdown;
-        useStore
-          .getState()
-          .setMarkdown(keepSourceStyle(ctx, previous, getMarkdown()(ctx)), 'visual');
-      });
+      if (unreported) editor?.action((ctx) => report(ctx, getMarkdown()(ctx)));
     });
 
     const unregisterView = registerViewPart(() =>
@@ -279,9 +285,7 @@ export function VisualPane({ onAdapter }: Props) {
         const pm = rootEl.querySelector('.ProseMirror');
         if (!pm) return [];
         const base = scrollEl.getBoundingClientRect().top - scrollEl.scrollTop;
-        return Array.from(pm.querySelectorAll<HTMLElement>(HEADINGS)).map(
-          (el) => el.getBoundingClientRect().top - base
-        );
+        return visualHeadings(pm).map((el) => el.getBoundingClientRect().top - base);
       },
     });
 
@@ -294,10 +298,7 @@ export function VisualPane({ onAdapter }: Props) {
       unregisterView();
       unregisterFlush();
       rootEl.removeEventListener('focusin', onFocus);
-      if (editor && editors.milkdown === editor) {
-        editors.visual = null;
-        editors.milkdown = null;
-      }
+      release(editor);
       editor?.destroy();
     };
   }, [onAdapter]);
