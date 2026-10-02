@@ -5,17 +5,17 @@
     {
       "category": "App code",
       "files": 68,
-      "lines": 5853
+      "lines": 5915
     },
     {
       "category": "Unit tests",
       "files": 36,
-      "lines": 2229
+      "lines": 2305
     },
     {
       "category": "E2E tests",
-      "files": 10,
-      "lines": 1097
+      "files": 11,
+      "lines": 1145
     },
     {
       "category": "Scripts",
@@ -25,7 +25,7 @@
     {
       "category": "Styles",
       "files": 4,
-      "lines": 1048
+      "lines": 1056
     },
     {
       "category": "Book",
@@ -35,19 +35,19 @@
   ],
   "tests": {
     "files": 34,
-    "total": 185,
-    "passed": 185,
+    "total": 194,
+    "passed": 194,
     "failed": 0,
-    "e2eSpecs": 9
+    "e2eSpecs": 10
   },
   "coverage": {
-    "lines": 55.32,
-    "statements": 53.47,
-    "functions": 49.69,
-    "branches": 51.82
+    "lines": 55.89,
+    "statements": 54.13,
+    "functions": 50.38,
+    "branches": 52.52
   },
   "bundle": {
-    "eagerGzipBytes": 444738,
+    "eagerGzipBytes": 444783,
     "eager": [
       "codemirror",
       "index",
@@ -56,19 +56,20 @@
       "rolldown-runtime"
     ],
     "chunks": {
-      "FindBar": 1570,
+      "FindBar": 1569,
       "FormatToolbar": 1005,
-      "OutlinePanel": 757,
+      "OutlinePanel": 759,
       "codemirror": 215588,
-      "docx": 115782,
-      "exportImages": 811,
-      "html": 1388,
-      "images": 1299,
-      "index": 22525,
-      "markdownPdf": 178372,
+      "decode": 22186,
+      "docx": 115890,
+      "exportImages": 810,
+      "html": 1591,
+      "images": 1300,
+      "index": 22570,
+      "markdownPdf": 178495,
       "marked.esm": 13334,
       "milkdown": 138475,
-      "plainText": 780,
+      "plainText": 731,
       "react": 67523,
       "rolldown-runtime": 627,
       "welcome.en": 989,
@@ -82,7 +83,7 @@
     "words": 23045
   },
   "git": {
-    "commits": 64,
+    "commits": 67,
     "firstCommit": "2026-10-02",
     "lastCommit": "2026-10-02",
     "activeDays": 1
