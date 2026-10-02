@@ -1,4 +1,5 @@
 import { t } from '@/i18n';
+import { LOCALES, type LocalePreference, SUPPORTED_LOCALES } from '@/i18n/locales';
 import { useStore } from '@/store';
 import type { ThemePreference, ViewMode } from '@/store/settings';
 import { Dialog } from '../ui/Dialog';
@@ -49,6 +50,24 @@ export function SettingsDialog() {
             </label>
           ))}
         </fieldset>
+
+        {/* Hidden while English is the only language: a one-option picker is noise. */}
+        {SUPPORTED_LOCALES.length > 1 ? (
+          <label className="field">
+            {t('settings.language')}
+            <select
+              value={settings.language}
+              onChange={(e) => update({ language: e.target.value as LocalePreference })}
+            >
+              <option value="system">{t('settings.language.system')}</option>
+              {SUPPORTED_LOCALES.map((locale) => (
+                <option key={locale} value={locale} lang={locale}>
+                  {LOCALES[locale].name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
 
         <label className="checkbox">
           <input

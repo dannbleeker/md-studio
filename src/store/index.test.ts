@@ -69,6 +69,7 @@ describe('store', () => {
       linkedScroll: false,
       defaultViewMode: 'text',
       showOutline: false,
+      language: 'system',
     });
     expect(useStore.getState().viewMode).toBe('text');
   });

@@ -9,6 +9,7 @@ import { StartScreen } from './components/start/StartScreen';
 import { ToastHost } from './components/toast/ToastHost';
 import { Toolbar } from './components/toolbar/Toolbar';
 import { useFileDrop } from './hooks/useFileDrop';
+import { useLocale } from './hooks/useLocale';
 import { useShortcuts } from './hooks/useShortcuts';
 import { useTheme } from './hooks/useTheme';
 import { useStore } from './store';
@@ -26,6 +27,7 @@ export function App() {
   const screen = useStore((s) => s.screen);
   const showOutline = useStore((s) => s.settings.showOutline);
   const findOpen = useStore((s) => s.findOpen);
+  useLocale();
   useTheme();
   useShortcuts();
   useFileDrop();

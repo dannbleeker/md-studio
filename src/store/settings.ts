@@ -1,3 +1,5 @@
+import { isLocale, type LocalePreference } from '@/i18n/locales';
+
 export type ViewMode = 'split' | 'text' | 'visual';
 export type ThemePreference = 'system' | 'light' | 'dark';
 
@@ -6,6 +8,7 @@ export type Settings = {
   linkedScroll: boolean;
   defaultViewMode: ViewMode;
   showOutline: boolean;
+  language: LocalePreference;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -13,6 +16,7 @@ export const DEFAULT_SETTINGS: Settings = {
   linkedScroll: true,
   defaultViewMode: 'split',
   showOutline: false,
+  language: 'system',
 };
 
 const VIEW_MODES: readonly ViewMode[] = ['split', 'text', 'visual'];
@@ -31,5 +35,9 @@ export function sanitizeSettings(raw: Record<string, unknown>): Settings {
       : DEFAULT_SETTINGS.defaultViewMode,
     showOutline:
       typeof raw.showOutline === 'boolean' ? raw.showOutline : DEFAULT_SETTINGS.showOutline,
+    language:
+      raw.language === 'system' || isLocale(raw.language)
+        ? raw.language
+        : DEFAULT_SETTINGS.language,
   };
 }

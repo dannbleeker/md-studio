@@ -41,6 +41,8 @@ export const en = {
   'settings.linkedScroll': 'Link scrolling between panes in split view',
   'settings.defaultView': 'Default view mode',
   'settings.close': 'Done',
+  'settings.language': 'Language',
+  'settings.language.system': 'Match browser',
   'palette.placeholder': 'Type a command…',
   'palette.empty': 'No matching commands',
   'cmd.new': 'New document',

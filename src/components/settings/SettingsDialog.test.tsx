@@ -19,6 +19,7 @@ describe('SettingsDialog', () => {
       defaultViewMode: 'visual',
       linkedScroll: false,
       showOutline: false,
+      language: 'system',
     });
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     expect(useStore.getState().settingsOpen).toBe(false);

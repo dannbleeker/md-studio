@@ -31,7 +31,12 @@
 - [x] Find and replace across both panes; outline panel.
 - [x] **Export**: HTML (light/dark/auto theme), PDF, DOCX and plain text,
       from the toolbar and the command palette. Never changes the linked file.
-- [ ] Translate the UI: the catalogue is in `src/i18n/en.ts`.
+- [x] Locale support: `src/i18n/locales.ts` registry, language chosen from
+      the browser or a `language` setting, dates in the UI language,
+      `<html lang>` kept in step. English only for now.
+- [ ] Add a second UI language (e.g. Danish): copy `en.ts` to `xx.ts`
+      typed as `Messages`, register it in `locales.ts`. The settings
+      language picker appears automatically.
 - [x] **Large-document performance**: the visual pane re-parses only the
       changed blocks (with a full parse as fallback and once while idle) and
       skips updates while hidden. On ~3,000 lines, text → visual p95 went
