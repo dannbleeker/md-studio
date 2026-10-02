@@ -61,6 +61,18 @@ Paste an image (Ctrl+V) or drop an image file into either pane.
   Click one to bring that section to the top of both panes; the section
   you are reading is highlighted.
 
+## Tabs
+
+- **New**, **Open**, a **Recent** file or a dropped file each open in a new
+  tab. An empty, untouched new document is reused instead of piling up.
+- Opening a file that is already open switches to its tab.
+- The tab bar appears once two documents are open. Click a tab to switch;
+  the arrow keys move between tabs when one has focus.
+- **×** or a middle click closes a tab. A tab with unsaved changes asks
+  first. Closing the last tab returns to the start screen.
+- All open tabs, saved or not, are still there after closing and
+  reopening the app.
+
 ## Saving
 
 - **Save** (Ctrl+S) writes back to the file you opened in Edge or Chrome,
@@ -104,6 +116,8 @@ app.
 | Ctrl+S / Ctrl+Shift+S | Save / Save as |
 | Ctrl+O | Open file |
 | Alt+N | New document |
+| Alt+W | Close tab |
+| Alt+PageDown / Alt+PageUp | Next / previous tab |
 | Ctrl+1 / Ctrl+2 / Ctrl+3 | Split / Text / Visual view |
 | Ctrl+F / Ctrl+H | Find / Find and replace |
 | Ctrl+Shift+O | Show or hide the outline |
@@ -112,5 +126,7 @@ app.
 | Ctrl+Z / Ctrl+Y | Undo / redo (in the focused pane) |
 
 On macOS use Cmd in place of Ctrl. In a normal browser tab, Ctrl+1–3 switch
-browser tabs instead; use the toolbar or the command palette there. The
+browser tabs instead; use the toolbar or the command palette there.
+Ctrl+W and Ctrl+Tab always belong to the browser, which is why closing
+and switching MD Studio tabs uses Alt. The
 shortcuts work in the installed app.

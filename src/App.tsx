@@ -6,6 +6,7 @@ import { ExportDialog } from './components/export/ExportDialog';
 import { PromptDialogHost } from './components/PromptDialogHost';
 import { SettingsDialog } from './components/settings/SettingsDialog';
 import { StartScreen } from './components/start/StartScreen';
+import { TabBar } from './components/tabs/TabBar';
 import { ToastHost } from './components/toast/ToastHost';
 import { Toolbar } from './components/toolbar/Toolbar';
 import { useFileDrop } from './hooks/useFileDrop';
@@ -27,6 +28,7 @@ export function App() {
   const screen = useStore((s) => s.screen);
   const showOutline = useStore((s) => s.settings.showOutline);
   const findOpen = useStore((s) => s.findOpen);
+  const manyTabs = useStore((s) => s.tabs.length > 1);
   useLocale();
   useTheme();
   useShortcuts();
@@ -39,6 +41,8 @@ export function App() {
       ) : (
         <>
           <Toolbar />
+          {/* Only with two or more open documents. */}
+          {manyTabs ? <TabBar /> : null}
           <div className="workspace">
             {showOutline ? (
               <Suspense fallback={null}>

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Tabs.** Several documents can be open at once. New, Open, Recent,
+  drop and Windows file-open each open a tab (an untouched blank document
+  is reused); a file that is already open is switched to. The tab bar
+  appears with two or more tabs; closing a tab with unsaved changes asks
+  first, and closing the last returns to the start screen. Alt+W closes,
+  Alt+PageDown/PageUp switch, also in the command palette. All tabs are
+  restored after a reload; the single document older versions kept is
+  migrated. Opening a file no longer asks to discard the current
+  document, since it no longer replaces it.
 - **Locale support.** The UI language follows the browser (exact tag,
   then base language) or a `language` setting, with English as the
   fallback; dates on the start screen use it and `<html lang>` follows

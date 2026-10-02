@@ -1,5 +1,11 @@
 import type { MessageKey } from '@/i18n/en';
-import { newDocument, openDocument, saveDocument } from '@/services/documentActions';
+import {
+  closeTab,
+  cycleTab,
+  newDocument,
+  openDocument,
+  saveDocument,
+} from '@/services/documentActions';
 import { exportDocument } from '@/services/export';
 import { BOOK_PDF, DASHBOARD } from '@/services/links';
 import { useStore } from '@/store';
@@ -23,6 +29,9 @@ export const COMMANDS: readonly Command[] = [
     shortcut: 'Ctrl+Shift+S',
     run: () => void saveDocument(true),
   },
+  { id: 'close-tab', label: 'cmd.closeTab', shortcut: 'Alt+W', run: () => void closeTab() },
+  { id: 'next-tab', label: 'cmd.nextTab', shortcut: 'Alt+PageDown', run: () => cycleTab(1) },
+  { id: 'prev-tab', label: 'cmd.prevTab', shortcut: 'Alt+PageUp', run: () => cycleTab(-1) },
   {
     id: 'view-split',
     label: 'cmd.viewSplit',

@@ -3,25 +3,38 @@
  * keyboard shortcuts, command palette and file-launch handler.
  */
 import { createDocument, isDirty, normalizeFileName } from '@/domain/document';
+import { neighbourTab, tabForHandle } from '@/domain/tabs';
 import { t } from '@/i18n';
-import { useStore } from '@/store';
+import { syncedTabs, useStore } from '@/store';
 import { requestConfirm, showToast } from '@/store/ui';
 import { type OpenedFile, openFile, readHandle, saveFile } from './fileSystem';
 import { ensurePermission, getHandle, pruneHandles, putHandle } from './handleStore';
 import type { RecentEntry } from './storage';
 
-async function confirmDiscard(): Promise<boolean> {
-  const { doc } = useStore.getState();
-  if (!isDirty(doc)) return true;
+/** Asks before closing a tab whose changes are not saved to disk. */
+async function confirmClose(id: string): Promise<boolean> {
+  const tab = syncedTabs(useStore.getState()).find((t) => t.id === id);
+  if (!tab || !isDirty(tab.doc)) return true;
   return requestConfirm({
     title: t('confirm.discard.title'),
-    body: t('confirm.discard.body', { name: doc.fileName }),
+    body: t('confirm.discard.body', { name: tab.doc.fileName }),
     confirmLabel: t('confirm.discard.ok'),
   });
 }
 
+/** Shows the tab already holding this file, if any; true when it did. */
+function showOpenTab(handleId: string | null): boolean {
+  const tab = tabForHandle(syncedTabs(useStore.getState()), handleId);
+  if (!tab) return false;
+  void switchTab(tab.id);
+  return true;
+}
+
 async function load(file: OpenedFile) {
+  // putHandle reuses the id of a handle to the same file, so an id match
+  // means the file is already open.
   const handleId = file.handle ? await putHandle(file.handle) : null;
+  if (showOpenTab(handleId)) return;
   useStore.getState().loadDocument(createDocument(file.markdown, file.name), file.handle, handleId);
   showToast(t('toast.opened', { name: file.name }));
   void forgetUnusedHandles();
@@ -29,10 +42,29 @@ async function load(file: OpenedFile) {
 
 /** Drops stored handles no recent entry or open document points at any more. */
 async function forgetUnusedHandles() {
-  const { recents, handleId } = useStore.getState();
-  const keep = new Set(recents.flatMap((r) => (r.handleId ? [r.handleId] : [])));
-  if (handleId) keep.add(handleId);
+  const state = useStore.getState();
+  const keep = new Set(
+    [...state.recents, ...syncedTabs(state)].flatMap((r) => (r.handleId ? [r.handleId] : []))
+  );
   await pruneHandles(keep);
+}
+
+export async function switchTab(id: string): Promise<void> {
+  useStore.getState().activateTab(id);
+  await restoreDocumentHandle();
+}
+
+/** Activates the tab `step` places to the right (negative: left), wrapping. */
+export function cycleTab(step: number): void {
+  const { tabs, activeTabId } = useStore.getState();
+  if (tabs.length > 1) void switchTab(neighbourTab({ tabs, activeId: activeTabId }, step));
+}
+
+export async function closeTab(id = useStore.getState().activeTabId): Promise<void> {
+  if (!(await confirmClose(id))) return;
+  useStore.getState().closeTab(id);
+  await restoreDocumentHandle();
+  void forgetUnusedHandles();
 }
 
 /**
@@ -50,12 +82,10 @@ export async function restoreDocumentHandle(): Promise<void> {
 }
 
 export async function newDocument(): Promise<void> {
-  if (!(await confirmDiscard())) return;
   useStore.getState().loadDocument(createDocument(), null);
 }
 
 export async function openDocument(): Promise<void> {
-  if (!(await confirmDiscard())) return;
   try {
     const file = await openFile();
     if (file) await load(file);
@@ -65,7 +95,6 @@ export async function openDocument(): Promise<void> {
 }
 
 export async function openHandle(handle: FileSystemFileHandle): Promise<void> {
-  if (!(await confirmDiscard())) return;
   try {
     await load(await readHandle(handle));
   } catch {
@@ -74,7 +103,6 @@ export async function openHandle(handle: FileSystemFileHandle): Promise<void> {
 }
 
 export async function openDroppedFile(file: File): Promise<void> {
-  if (!(await confirmDiscard())) return;
   try {
     await load({ name: file.name, markdown: await file.text(), handle: null });
   } catch {
@@ -88,7 +116,7 @@ export async function openDroppedFile(file: File): Promise<void> {
  * permission refused, file moved or deleted) opens the saved snapshot.
  */
 export async function openRecent(entry: RecentEntry): Promise<void> {
-  if (!(await confirmDiscard())) return;
+  if (showOpenTab(entry.handleId ?? null)) return;
   const handle = entry.handleId ? await getHandle(entry.handleId) : null;
   if (handle) {
     if (await ensurePermission(handle, 'readwrite')) {

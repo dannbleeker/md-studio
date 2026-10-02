@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createDocument } from '@/domain/document';
 import { pushRecent } from '@/services/storage';
@@ -29,8 +29,9 @@ describe('StartScreen', () => {
     resetStoreForTest();
     render(<StartScreen />);
     fireEvent.click(screen.getByRole('button', { name: /old\.md/ }));
-    await screen.findByText('old.md');
-    expect(useStore.getState().doc).toMatchObject({ fileName: 'old.md', markdown: '# Old' });
+    await waitFor(() =>
+      expect(useStore.getState().doc).toMatchObject({ fileName: 'old.md', markdown: '# Old' })
+    );
     expect(useStore.getState().screen).toBe('editor');
   });
 
