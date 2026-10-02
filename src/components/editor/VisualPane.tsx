@@ -14,11 +14,13 @@ import { listener, listenerCtx } from '@milkdown/kit/plugin/listener';
 import { commonmark } from '@milkdown/kit/preset/commonmark';
 import { gfm } from '@milkdown/kit/preset/gfm';
 import { Plugin } from '@milkdown/kit/prose/state';
+import { getMarkdown } from '@milkdown/kit/utils';
 import { search } from 'prosemirror-search';
 import { useEffect, useRef } from 'react';
 import { t } from '@/i18n';
 import { perfMeasure } from '@/services/perfMarks';
 import { useStore } from '@/store';
+import { registerFlush } from '@/store/flush';
 import { registerViewPart } from '@/store/viewState';
 import { applyFull, applyIncremental } from './applyMarkdown';
 import { editors, isHidden, restoreScroll } from './editorRegistry';
@@ -51,6 +53,8 @@ export function VisualPane({ onAdapter }: Props) {
     if (!rootEl || !scrollEl) return;
     let disposed = false;
     let editor: Editor | null = null;
+    /** A user edit not yet reported to the store (see the listener below). */
+    let unreported = false;
     let pending: ReturnType<typeof setTimeout> | undefined;
     let reconcileTimer: ReturnType<typeof setTimeout> | undefined;
     // The Markdown the visual document currently represents.
@@ -101,6 +105,15 @@ export function VisualPane({ onAdapter }: Props) {
           ...plugins,
           search(),
           new Plugin({ view: () => ({ update: (view) => reportFormat(view.state) }) }),
+          // A user edit the debounced listener hasn't reported yet. Store
+          // updates are applied with addToHistory false and don't count.
+          new Plugin({
+            appendTransaction: (trs) => {
+              if (trs.some((tr) => tr.docChanged && tr.getMeta('addToHistory') !== false))
+                unreported = true;
+              return null;
+            },
+          }),
           visualPaneImagePlugin(() => editor),
         ]);
         ctx.update(remarkPluginsCtx, (plugins) => [...plugins, imageTitleFix]);
@@ -113,6 +126,10 @@ export function VisualPane({ onAdapter }: Props) {
           attributes: { 'aria-label': t('pane.visual'), spellcheck: 'true' },
         }));
         ctx.get(listenerCtx).markdownUpdated((listenerCtx, markdown) => {
+          // Already flushed, or fired after a load (another tab, a reload
+          // from disk): nothing of the user's to report.
+          if (!unreported) return;
+          unreported = false;
           const previous = useStore.getState().doc.markdown;
           useStore
             .getState()
@@ -168,6 +185,17 @@ export function VisualPane({ onAdapter }: Props) {
     };
     rootEl.addEventListener('focusin', onFocus);
 
+    const unregisterFlush = registerFlush(() => {
+      if (!unreported || !editor) return;
+      unreported = false;
+      editor.action((ctx) => {
+        const previous = useStore.getState().doc.markdown;
+        useStore
+          .getState()
+          .setMarkdown(keepSourceStyle(ctx, previous, getMarkdown()(ctx)), 'visual');
+      });
+    });
+
     const unregisterView = registerViewPart(() =>
       isHidden(scrollEl) ? {} : { visualScroll: scrollEl.scrollTop }
     );
@@ -191,6 +219,7 @@ export function VisualPane({ onAdapter }: Props) {
       onAdapter(null);
       unsubscribe();
       unregisterView();
+      unregisterFlush();
       rootEl.removeEventListener('focusin', onFocus);
       if (editor && editors.milkdown === editor) {
         editors.visual = null;

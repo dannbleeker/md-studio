@@ -73,4 +73,15 @@ describe('StartScreen', () => {
     expect(useStore.getState().doc.markdown).toMatch(/^# Welcome to MD Studio/);
     expect(useStore.getState().screen).toBe('editor');
   });
+
+  it('offers to continue a tab with work when the active tab is a blank new one', async () => {
+    useStore.getState().loadDocument(createDocument('# Draft', 'draft.md'), null);
+    useStore.getState().setMarkdown('# Draft, unsaved', 'text');
+    useStore.getState().loadDocument(createDocument(), null);
+    useStore.getState().setScreen('start');
+    render(<StartScreen />);
+    fireEvent.click(screen.getByRole('button', { name: /Continue editing/ }));
+    await waitFor(() => expect(useStore.getState().doc.fileName).toBe('draft.md'));
+    expect(useStore.getState().screen).toBe('editor');
+  });
 });

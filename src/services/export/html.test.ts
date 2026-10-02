@@ -39,4 +39,16 @@ describe('markdownToHtml', () => {
     expect(html).toContain('<a href="https://x.dk">good</a>');
     expect(html).toContain('<a href="notes.md">rel</a>');
   });
+
+  it('keeps pasted raster images and drops SVG data', () => {
+    const png =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+    const html = markdownToHtml(
+      `![dot](${png}) ![svg](data:image/svg+xml;base64,PHN2Zz4=)`,
+      'T',
+      'auto'
+    );
+    expect(html).toContain(`<img src="${png}" alt="dot">`);
+    expect(html).not.toContain('svg+xml');
+  });
 });

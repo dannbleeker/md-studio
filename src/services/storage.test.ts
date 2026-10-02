@@ -79,4 +79,31 @@ describe('storage', () => {
     pushRecent(recent('big.md', 'x'.repeat(300 * 1024)));
     expect(loadRecents()).toEqual([]);
   });
+
+  it('keeps a linked file and a same-named file without a link apart in recents', () => {
+    pushRecent({ ...recent('README.md'), handleId: 'hX' });
+    pushRecent(recent('README.md'));
+    expect(loadRecents().map((r) => r.handleId ?? null)).toEqual([null, 'hX']);
+  });
+
+  it('stores an unchanged tab once, not twice, and reports a full storage', () => {
+    const doc = createDocument('# same text', 'a.md');
+    expect(saveTabs({ tabs: [{ id: 't', doc, handleId: null }], activeId: 't' })).toBe(true);
+    const raw = localStorage.getItem('md-studio:tabs:v1') ?? '';
+    expect(raw.match(/same text/g)).toHaveLength(1);
+    expect(loadTabs()?.tabs[0]?.doc).toMatchObject({
+      markdown: '# same text',
+      savedMarkdown: '# same text',
+    });
+
+    const setItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = () => {
+      throw new DOMException('full', 'QuotaExceededError');
+    };
+    try {
+      expect(saveTabs({ tabs: [{ id: 't', doc, handleId: null }], activeId: 't' })).toBe(false);
+    } finally {
+      Storage.prototype.setItem = setItem;
+    }
+  });
 });

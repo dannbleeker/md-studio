@@ -78,6 +78,9 @@ export default defineConfig({
         // Chromium-only; Windows offers the association when the app is
         // installed. Mobile OSes ignore this, which is why the start screen
         // has its own Open action.
+        // Double-clicked files go to the open window (via launchQueue)
+        // instead of a second window competing for the same storage.
+        launch_handler: { client_mode: 'focus-existing' },
         file_handlers: [
           {
             action: '/',

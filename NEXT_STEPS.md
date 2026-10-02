@@ -87,20 +87,34 @@
 
 ## Finish up
 
-- [ ] **Bug hunt**: a full pass over the app for correctness bugs (sync edge
-      cases, file open/save flows, persistence, PWA update path, mobile
-      layout), each fix landing with a regression test.
-      Found while writing the book (verified in the export code):
-      footnotes render in the visual pane but every export (HTML, PDF,
-      DOCX, plain text, the book PDF) prints `[^1]` literally; PDF export
-      drops nested list items and draws strikethrough as plain text; PDF
-      replaces every image with its alt text, DOCX and plain text with
-      `[alt]`; HTML drops embedded `data:` images; a tab left open does
-      not notice that its file changed on disk (another device, another
-      app), so saving it overwrites the newer version;
-      dropping a `.md` file onto the Markdown pane both inserts its text
-      there (CodeMirror's own drop) and opens it in a new tab
-      (`useFileDrop`), which the book currently warns about.
+- [ ] **Bug hunt**: a full pass over the app for correctness bugs, each
+      fix landing with a regression test. Three hunters (sync/editors,
+      files/tabs/PWA, export/UI) plus the bugs found while writing the
+      book produced ~30 confirmed bugs, fixed in three PRs:
+  - [x] PR 1, data loss and the book's five: Save recording unwritten
+        text or patching the wrong tab after a switch; visual edits lost
+        or written into another tab within the 200 ms debounce; a text
+        edit right after a visual edit reverted; two windows overwriting
+        each other's tabs (merge + `launch_handler: focus-existing`,
+        handles kept while any saved tab uses them); storage full
+        failing silently; recents merging a linked file with a
+        same-named unlinked one; shortcuts firing behind dialogs, during
+        IME composition, and Alt shortcuts dead on macOS; "Continue
+        editing" missing when the active tab is blank; only the first
+        of several dropped or launched files opening; file changes on
+        disk not noticed; footnotes, nested lists, strikethrough and
+        images in exports; a dropped `.md` pasted into the Markdown pane.
+  - [ ] PR 2, export and UI: DOCX task lists and list numbering,
+        named HTML entities in DOCX/TXT/PDF, HTML table alignment, print
+        and heading anchors, PDF quotes/table cells/long words, palette
+        scroll, 360 px toolbar overflow, dark danger-button contrast,
+        confirm-dialog focus.
+  - [ ] PR 3, sync engine edge cases: incremental update targeting a
+        repeated block, reference definitions far from their use, fence
+        and heading detection (inline triple backticks, info strings,
+        lazy setext in lists, HTML blocks), reference links inlined by
+        a visual edit, visual undo lost next to a text edit, find bar
+        not refocusing.
 - [ ] **Security sweep**: review untrusted input paths (opened and dropped
       files, pasted HTML, links and raw HTML in Markdown, HTML export),
       the service worker's caching rules, dependencies (`pnpm audit`), and

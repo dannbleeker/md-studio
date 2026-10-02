@@ -4,6 +4,7 @@ import {
   Document,
   ExternalHyperlink,
   HeadingLevel,
+  ImageRun,
   LevelFormat,
   Packer,
   Paragraph,
@@ -16,6 +17,7 @@ import {
   WidthType,
 } from 'docx';
 import { marked, type Token, type Tokens } from 'marked';
+import type { ExportImages } from './exportImages';
 
 /**
  * Markdown → Word (.docx) with real Word structure: Heading 1–6 styles,
@@ -86,9 +88,28 @@ function inline(tokens: Token[] | undefined, style: Style = {}): ParagraphChild[
         }
         break;
       }
-      case 'image':
-        out.push(run(`[${(t as Tokens.Image).text}]`, { ...style, italics: true }));
+      case 'image': {
+        const image = t as Tokens.Image;
+        const loaded = images.get(image.href);
+        if (loaded) {
+          // Pixel sizes; fit to the text width (about 6.3 in at 96 dpi).
+          const scale = Math.min(1, MAX_IMAGE_PX / loaded.width);
+          out.push(
+            new ImageRun({
+              type: loaded.type,
+              data: loaded.bytes,
+              transformation: {
+                width: Math.round(loaded.width * scale),
+                height: Math.round(loaded.height * scale),
+              },
+              altText: { name: image.text || 'image', description: image.text, title: image.text },
+            })
+          );
+        } else {
+          out.push(run(`[${image.text}]`, { ...style, italics: true }));
+        }
         break;
+      }
       case 'br':
         out.push(new TextRun({ break: 1 }));
         break;
@@ -220,7 +241,16 @@ function blocks(tokens: Token[], level = 0, quote = false): (Paragraph | Table)[
   return out;
 }
 
-export function markdownToDocxDocument(markdown: string, title: string): Document {
+const MAX_IMAGE_PX = 600;
+/** The current conversion's images; set per call (conversions run synchronously). */
+let images: ExportImages = new Map();
+
+export function markdownToDocxDocument(
+  markdown: string,
+  title: string,
+  embedded: ExportImages = new Map()
+): Document {
+  images = embedded;
   return new Document({
     title,
     creator: 'MD Studio',
@@ -245,6 +275,10 @@ export function markdownToDocxDocument(markdown: string, title: string): Documen
   });
 }
 
-export function markdownToDocx(markdown: string, title: string): Promise<Blob> {
-  return Packer.toBlob(markdownToDocxDocument(markdown, title));
+export function markdownToDocx(
+  markdown: string,
+  title: string,
+  embedded: ExportImages = new Map()
+): Promise<Blob> {
+  return Packer.toBlob(markdownToDocxDocument(markdown, title, embedded));
 }

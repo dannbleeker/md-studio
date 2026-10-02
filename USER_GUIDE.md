@@ -3,7 +3,8 @@
 ## Getting started
 
 - **New document**, **Open file…**, or pick a file from **Recent** on the start
-  screen. You can also drop a `.md` file anywhere on the window.
+  screen. You can also drop `.md` files anywhere on the window; each opens
+  in its own tab.
 - Click **MD Studio** in the toolbar to return to the start screen.
 - In Edge and Chrome, a recent file marked **File on disk** reopens the
   file itself, with its current content, and Save writes back to it. The
@@ -106,6 +107,10 @@ The Export dialog remembers the format and theme you used last.
 - **Save as…** (Ctrl+Shift+S) always asks.
 - In Firefox, Safari and on phones, Save downloads the file instead.
 - A dot next to the file name means there are unsaved changes.
+- If the file changed on disk (another app, another device syncing the
+  folder), MD Studio notices when you come back to the window: a tab
+  without unsaved changes reloads, and Save asks before overwriting the
+  newer version.
 
 ## Exporting
 
@@ -119,6 +124,10 @@ file that Save writes to.
 | PDF | An A4 document for sharing and printing |
 | Word document (DOCX) | Editable in Word, with real headings, lists, tables and links |
 | Plain text | Formatting marks removed, structure kept |
+
+Pasted images and images in the document's `images` folder come along (PDF:
+PNG and JPEG; Word also GIF); images on the web are not fetched and show
+their alt text. Footnotes become numbered notes at the end.
 
 The command palette also has a direct command per format, e.g. *Export as
 PDF*. PDF uses standard fonts: Latin text (including æ, ø, å) comes through,

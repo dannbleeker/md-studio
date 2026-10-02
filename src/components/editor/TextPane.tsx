@@ -10,6 +10,7 @@ import { findHeadings } from '@/domain/headings';
 import { minimalChange } from '@/domain/textDiff';
 import { t } from '@/i18n';
 import { useStore } from '@/store';
+import { flushEditors } from '@/store/flush';
 import { registerViewPart } from '@/store/viewState';
 import { editors, isHidden, restoreScroll } from './editorRegistry';
 import { highlightStyle } from './highlight';
@@ -72,6 +73,10 @@ export function TextPane({ onAdapter }: Props) {
     editors.text = view;
     const onFocus = () => {
       editors.lastFocused = 'text';
+      // About to type here: report the visual pane's pending edit first, so
+      // the two panes never hold different unsynced changes (the later
+      // sync would revert one of them).
+      flushEditors();
     };
     view.contentDOM.addEventListener('focus', onFocus);
 

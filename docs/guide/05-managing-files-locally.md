@@ -115,7 +115,7 @@ MD Studio does the editing and the sync client does the moving, and neither need
 
 Two habits keep this smooth. First, save before you leave a machine: unsaved changes live only in that browser's storage and will not follow you home.
 
-Second, reopen rather than continue. If the file may have changed on another machine, start from **Recent** (a **File on disk** entry reads the current content) or from **Open file…**, not from a tab that has been sitting open since yesterday. A tab that is already open keeps what it had, and saving it would write the old version over the newer one. Close the stale tab first, then open the file again.
+Second, let MD Studio notice. When you come back to the window, or switch to a tab, MD Studio checks whether the file changed on disk since it last read or wrote it. A tab with no unsaved changes quietly picks up the newer version. A tab with unsaved changes keeps your work and tells you the file changed, and **Save** then asks before writing over the newer version. Answer **Cancel** if you want to compare first: open the file again in another tab and copy across what you need.
 
 ### A git repository
 

@@ -10,10 +10,14 @@ const escapeHtml = (s: string) =>
 /** Link targets that can't run script when the exported page is opened. */
 const SAFE_URL = /^(?:https?:|mailto:|tel:|#|\/|\.{0,2}\/|[^:]*$)/i;
 
+/** Pasted raster images (base64). SVG stays out: it can carry script. */
+const RASTER_DATA_URL = /^data:image\/(?:png|jpeg|gif|webp);base64,[A-Za-z0-9+/=]+$/i;
+
 /**
  * Raw HTML in the source is shown as text, not rendered, and script-capable
- * URLs (javascript:, data:, …) are dropped: an exported page should never
- * run code that came from a document someone sent you.
+ * URLs (javascript:, data: other than raster images, …) are dropped: an
+ * exported page should never run code that came from a document someone
+ * sent you.
  */
 const marked = new Marked({
   gfm: true,
@@ -28,7 +32,8 @@ const marked = new Marked({
       return `<a href="${escapeHtml(href)}"${t}>${text}</a>`;
     },
     image({ href, title, text }) {
-      if (!SAFE_URL.test(href) || /^data:/i.test(href)) return escapeHtml(text);
+      const safe = RASTER_DATA_URL.test(href) || (SAFE_URL.test(href) && !/^data:/i.test(href));
+      if (!safe) return escapeHtml(text);
       const t = title ? ` title="${escapeHtml(title)}"` : '';
       return `<img src="${escapeHtml(href)}" alt="${escapeHtml(text)}"${t}>`;
     },

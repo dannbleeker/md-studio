@@ -240,3 +240,43 @@ test('images without a title render, and survive a visual edit', async ({ page }
   await expect.poll(() => textContent(page)).toContain('After edited');
   expect(await textContent(page)).toContain('![a chart](https://example.com/chart.png)');
 });
+
+test('a text edit right after a visual edit is not reverted', async ({ page }) => {
+  await newDocument(page);
+  await setText(page, '# Alpha\n\nalpha text\n\nsecond para\n');
+  const para = visualPane(page).locator('p').first();
+  await expect(para).toHaveText('alpha text');
+  await para.click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('X');
+  // Straight into the text pane, inside the visual pane's 200 ms window.
+  await textPane(page).locator('.cm-line').nth(4).click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('Y');
+  await expect
+    .poll(() => textContent(page), { timeout: 5000 })
+    .toBe('# Alpha\n\nalpha textX\n\nsecond paraY\n');
+  await page.waitForTimeout(800);
+  expect(await textContent(page)).toBe('# Alpha\n\nalpha textX\n\nsecond paraY\n');
+  await expect(visualPane(page).locator('p').nth(1)).toHaveText('second paraY');
+});
+
+test('switching tabs right after a visual edit keeps the edit in its own tab', async ({ page }) => {
+  await newDocument(page);
+  await setText(page, '# Alpha\n\nalpha text\n');
+  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await setText(page, '# Beta\n\nbeta text\n');
+  const tabs = page.getByRole('tablist', { name: 'Open documents' });
+  await tabs.getByRole('tab').first().click();
+  const para = visualPane(page).locator('p').first();
+  await expect(para).toHaveText('alpha text');
+  await para.click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('X');
+  await page.keyboard.press('Alt+PageDown');
+  await expect(visualPane(page).locator('h1')).toHaveText('Beta');
+  await page.waitForTimeout(800);
+  expect(await textContent(page)).toBe('# Beta\n\nbeta text\n');
+  await tabs.getByRole('tab').first().click();
+  await expect.poll(() => textContent(page)).toBe('# Alpha\n\nalpha textX\n');
+});

@@ -7,8 +7,10 @@ import { openHandle } from '@/services/documentActions';
  * straight back to that file.
  */
 export function registerLaunchQueue(): void {
-  window.launchQueue?.setConsumer((params) => {
-    const handle = params.files.find((f): f is FileSystemFileHandle => f.kind === 'file');
-    if (handle) void openHandle(handle);
+  window.launchQueue?.setConsumer(async (params) => {
+    // One after another: each open stores a handle and prunes unused ones.
+    for (const handle of params.files) {
+      if (handle.kind === 'file') await openHandle(handle as FileSystemFileHandle);
+    }
   });
 }

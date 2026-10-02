@@ -1,4 +1,6 @@
-import { documentTitle, isDirty } from '@/domain/document';
+import { useShallow } from 'zustand/react/shallow';
+import { documentTitle } from '@/domain/document';
+import { isBlank } from '@/domain/tabs';
 import { dateTimeFormat, t } from '@/i18n';
 import {
   clearRecents,
@@ -7,16 +9,25 @@ import {
   openDocument,
   openRecent,
   openWelcome,
+  switchTab,
 } from '@/services/documentActions';
 import { BOOK_EPUB, BOOK_PDF, DASHBOARD } from '@/services/links';
-import { useStore } from '@/store';
+import { syncedTabs, useStore } from '@/store';
 
 export function StartScreen() {
-  const doc = useStore((s) => s.doc);
   const recents = useStore((s) => s.recents);
-  const setScreen = useStore((s) => s.setScreen);
+  // The tab to continue: the active one, or, when that is an untouched new
+  // document, the first tab that holds work (it would be unreachable
+  // otherwise: the tab bar isn't shown on the start screen).
+  const [resumeId, resumeName, resumeMarkdown] = useStore(
+    useShallow((s) => {
+      const tabs = syncedTabs(s);
+      const active = tabs.find((tab) => tab.id === s.activeTabId);
+      const tab = active && !isBlank(active) ? active : tabs.find((other) => !isBlank(other));
+      return tab ? [tab.id, tab.doc.fileName, tab.doc.markdown] : [null, '', ''];
+    })
+  );
   const timeFormat = dateTimeFormat({ dateStyle: 'medium', timeStyle: 'short' });
-  const hasCurrent = doc.markdown.length > 0 || isDirty(doc);
 
   return (
     <main className="start">
@@ -26,15 +37,15 @@ export function StartScreen() {
       </header>
 
       <div className="start-actions">
-        {hasCurrent ? (
+        {resumeId ? (
           <button
             type="button"
             className="start-card start-card-primary"
-            onClick={() => setScreen('editor')}
+            onClick={() => void switchTab(resumeId)}
           >
             <strong>{t('start.continue')}</strong>
-            <span>{doc.fileName}</span>
-            <span className="muted">{documentTitle(doc.markdown)}</span>
+            <span>{resumeName}</span>
+            <span className="muted">{documentTitle(resumeMarkdown)}</span>
           </button>
         ) : null}
         <button type="button" className="start-card" onClick={() => void newDocument()}>

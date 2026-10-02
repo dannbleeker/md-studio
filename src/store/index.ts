@@ -1,9 +1,12 @@
 import { create } from 'zustand';
 import { createDocument, documentTitle, type MdDocument } from '@/domain/document';
 import { closeTab, moveTab, openTab, type Tab } from '@/domain/tabs';
+import { t } from '@/i18n';
 import type { RecentEntry } from '@/services/storage';
 import * as storage from '@/services/storage';
+import { flushEditors } from './flush';
 import { type Settings, sanitizeSettings, type ViewMode } from './settings';
+import { showToast } from './ui';
 import { captureView, type TabView } from './viewState';
 
 /**
@@ -55,10 +58,16 @@ type State = {
     handle: FileSystemFileHandle | null,
     handleId?: string | null
   ) => void;
+  /**
+   * Records a finished save. `written` names the tab the save started in and
+   * the exact text written: a save is async (picker, permission, write), and
+   * by the time it finishes the user may have typed more or switched tabs.
+   */
   markSaved: (
     fileName: string,
     handle: FileSystemFileHandle | null,
-    handleId?: string | null
+    handleId?: string | null,
+    written?: { tabId: string; markdown: string }
   ) => void;
   activateTab: (id: string) => void;
   /** Closes a tab without asking; closing the last one returns to the start screen. */
@@ -66,6 +75,8 @@ type State = {
   moveTab: (id: string, toIndex: number) => void;
   forgetRecent: (entry: RecentEntry) => void;
   clearRecents: () => void;
+  /** Replaces the active document with newer text found on disk (no unsaved changes). */
+  reloadFromDisk: (markdown: string) => void;
   /** Re-attaches the open document's file after a reload. */
   restoreFileHandle: (handle: FileSystemFileHandle) => void;
   setScreen: (screen: Screen) => void;
@@ -162,6 +173,7 @@ export const useStore = create<State>()((set, get) => ({
   },
 
   loadDocument: (doc, handle, handleId = null) => {
+    flushEditors();
     const id = handle ? handleId : null;
     const tab: OpenTab = { id: newTabId(), doc, handleId: id, fileHandle: handle };
     set((s) => {
@@ -171,16 +183,34 @@ export const useStore = create<State>()((set, get) => ({
     if (doc.markdown || handle) rememberRecent(doc, id);
   },
 
-  markSaved: (fileName, handle, handleId = null) => {
-    set((s) => ({
-      doc: { ...s.doc, fileName, savedMarkdown: s.doc.markdown },
-      fileHandle: handle ?? s.fileHandle,
-      handleId: handle ? handleId : s.handleId,
-    }));
-    rememberRecent(get().doc, get().handleId);
+  markSaved: (fileName, handle, handleId = null, written) => {
+    const s = get();
+    const tabId = written?.tabId ?? s.activeTabId;
+    const savedMarkdown = written?.markdown ?? s.doc.markdown;
+    if (tabId === s.activeTabId) {
+      set({
+        doc: { ...s.doc, fileName, savedMarkdown },
+        fileHandle: handle ?? s.fileHandle,
+        handleId: handle ? handleId : s.handleId,
+      });
+      rememberRecent({ ...get().doc, markdown: savedMarkdown }, get().handleId);
+      return;
+    }
+    // The user switched tabs while the save ran: update that tab's entry.
+    const tab = s.tabs.find((t) => t.id === tabId);
+    if (!tab) return;
+    const saved: OpenTab = {
+      ...tab,
+      doc: { ...tab.doc, fileName, savedMarkdown },
+      fileHandle: handle ?? tab.fileHandle,
+      handleId: handle ? handleId : tab.handleId,
+    };
+    set({ tabs: s.tabs.map((t) => (t.id === tabId ? saved : t)) });
+    rememberRecent({ ...saved.doc, markdown: savedMarkdown }, saved.handleId);
   },
 
   activateTab: (id) => {
+    flushEditors();
     const s = get();
     if (id === s.activeTabId) {
       set({ screen: 'editor' });
@@ -192,6 +222,8 @@ export const useStore = create<State>()((set, get) => ({
   },
 
   closeTab: (id) => {
+    flushEditors();
+    closedTabIds.add(id);
     const s = get();
     const result = closeTab({ tabs: leaveActive(s), activeId: s.activeTabId }, id);
     const tabs = result.tabs as OpenTab[];
@@ -213,6 +245,15 @@ export const useStore = create<State>()((set, get) => ({
   },
 
   moveTab: (id, toIndex) => set((s) => ({ tabs: moveTab(s.tabs, id, toIndex) })),
+
+  reloadFromDisk: (markdown) =>
+    set((s) => ({
+      doc: { ...s.doc, markdown, savedMarkdown: markdown, updatedAt: Date.now() },
+      source: 'load',
+      loadId: s.loadId + 1,
+      // Stay where the reader was; the panes clamp if the text got shorter.
+      restoreView: captureView(undefined) ?? null,
+    })),
 
   restoreFileHandle: (fileHandle) => set({ fileHandle }),
 
@@ -246,10 +287,29 @@ export function resetStoreForTest(): void {
   useStore.setState(initialState());
 }
 
-const persistable = (s: State) => ({
-  activeId: s.activeTabId,
-  tabs: syncedTabs(s).map(({ id, doc, handleId }) => ({ id, doc, handleId })),
-});
+/** Tabs closed in this window, so merging never brings them back. */
+const closedTabIds = new Set<string>();
+let warnedStorageFull = false;
+
+/**
+ * Writes the open tabs. Another window of the app shares the same storage,
+ * so tabs it saved that this window doesn't know (and didn't close) are
+ * kept instead of overwritten. Warns once if the tabs no longer fit.
+ */
+function persist(): void {
+  const s = useStore.getState();
+  const mine = syncedTabs(s).map(({ id, doc, handleId }) => ({ id, doc, handleId }));
+  const ids = new Set(mine.map((tab) => tab.id));
+  const others = (storage.loadTabs()?.tabs ?? []).filter(
+    (tab) => !ids.has(tab.id) && !closedTabIds.has(tab.id)
+  );
+  const ok = storage.saveTabs({ activeId: s.activeTabId, tabs: [...mine, ...others] });
+  if (!ok && !warnedStorageFull) {
+    warnedStorageFull = true;
+    showToast(t('toast.storageFull'), undefined, 12000);
+  }
+  if (ok) warnedStorageFull = false;
+}
 
 // Debounced so a burst of keystrokes costs one localStorage write.
 let persistTimer: ReturnType<typeof setTimeout> | undefined;
@@ -262,14 +322,15 @@ useStore.subscribe((state, prev) => {
   )
     return;
   clearTimeout(persistTimer);
-  persistTimer = setTimeout(() => storage.saveTabs(persistable(useStore.getState())), 300);
+  persistTimer = setTimeout(persist, 300);
 });
 
 // Flush on tab close / app switch so the last keystrokes are not lost.
 if (typeof window !== 'undefined') {
   const flush = () => {
+    flushEditors();
     clearTimeout(persistTimer);
-    storage.saveTabs(persistable(useStore.getState()));
+    persist();
   };
   window.addEventListener('pagehide', flush);
   document.addEventListener('visibilitychange', () => {

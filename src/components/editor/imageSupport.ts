@@ -36,7 +36,11 @@ export function textPaneImageHandlers(): {
     },
     drop(event, view) {
       const files = imageFiles(event.dataTransfer);
-      if (files.length === 0) return false;
+      if (files.length === 0) {
+        // Any other dropped file is the window's to open (useFileDrop):
+        // claiming it stops CodeMirror from also pasting the file's text.
+        return (event.dataTransfer?.files.length ?? 0) > 0;
+      }
       event.preventDefault();
       const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
       if (pos !== null) view.dispatch({ selection: { anchor: pos } });

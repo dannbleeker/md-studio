@@ -76,6 +76,7 @@ export async function markdownToPdf({
   creator = '',
   keywords = [],
   cover = null,
+  images = new Map(),
 }) {
   const pdf = await PDFDocument.create();
   const F = {
@@ -131,9 +132,15 @@ export async function markdownToPdf({
       if (t.type === 'strong') out.push(...inlineRuns(t.tokens, { ...style, b: true }));
       else if (t.type === 'em') out.push(...inlineRuns(t.tokens, { ...style, i: true }));
       else if (t.type === 'codespan') out.push({ text: t.text, code: true, ...style });
+      else if (t.type === 'del') out.push(...inlineRuns(t.tokens, { ...style, s: true }));
       else if (t.type === 'link') out.push(...inlineRuns(t.tokens, { ...style, link: true }));
       else if (t.type === 'br') out.push({ text: '\n', ...style });
-      else if (t.type === 'text' && t.tokens) out.push(...inlineRuns(t.tokens, style));
+      else if (t.type === 'image') {
+        const img = images.get(t.href);
+        // pdf-lib embeds PNG and JPEG; anything else keeps its alt text.
+        if (img && (img.type === 'png' || img.type === 'jpg')) out.push({ image: img, ...style });
+        else out.push({ text: t.text ? `[${t.text}]` : '', i: true, ...style });
+      } else if (t.type === 'text' && t.tokens) out.push(...inlineRuns(t.tokens, style));
       else out.push({ text: t.text ?? t.raw ?? '', ...style });
     }
     return out;
@@ -155,6 +162,10 @@ export async function markdownToPdf({
     // tokenize runs into words (style-carrying) + explicit breaks
     const words = [];
     for (const r of runs) {
+      if (r.image) {
+        words.push({ img: r.image });
+        continue;
+      }
       if (r.text === '\n') {
         words.push({ br: true });
         continue;
@@ -191,7 +202,18 @@ export async function markdownToPdf({
         const f = fontFor(w.run);
         const col = w.run.code ? CODE_INK : w.run.link ? ACCENT : color;
         safeDraw(S.page, w.text, { x: cx, y: PAGE.h - top - size, font: f, size, color: col });
-        cx += safeWidth(f, w.text, size) + spaceW;
+        const ww = safeWidth(f, w.text, size);
+        if (w.run.s) {
+          // Strikethrough: a rule through the word at x-height.
+          const yMid = PAGE.h - top - size + size * 0.3;
+          S.page.drawLine({
+            start: { x: cx, y: yMid },
+            end: { x: cx + ww, y: yMid },
+            thickness: Math.max(0.6, size / 18),
+            color: col,
+          });
+        }
+        cx += ww + spaceW;
       }
       S.y += lineHeight;
       line = [];
@@ -199,6 +221,11 @@ export async function markdownToPdf({
     };
 
     for (const w of words) {
+      if (w.img) {
+        if (line.length > 0) drawLine();
+        drawImage(w.img, x, width);
+        continue;
+      }
       if (w.br) {
         drawLine();
         continue;
@@ -210,6 +237,35 @@ export async function markdownToPdf({
       lineW += ww + spaceW;
     }
     if (line.length > 0) drawLine();
+  }
+
+  // Images sit on their own lines, fitted to the column and to two thirds of
+  // a page; one embedding per image however often it appears.
+  const embedded = new Map();
+  async function embedImages() {
+    for (const img of images.values()) {
+      if (embedded.has(img)) continue;
+      try {
+        embedded.set(
+          img,
+          img.type === 'png' ? await pdf.embedPng(img.bytes) : await pdf.embedJpg(img.bytes)
+        );
+      } catch {
+        // Unreadable image data: it is skipped rather than failing the export.
+      }
+    }
+  }
+  function drawImage(img, x, width) {
+    const ref = embedded.get(img);
+    if (!ref) return;
+    const maxH = (PAGE.h - M.top - M.bottom) * 0.66;
+    const scale = Math.min(1, width / img.width, maxH / img.height);
+    const w = img.width * scale;
+    const h = img.height * scale;
+    space(h + 6);
+    S.page.drawImage(ref, { x, y: PAGE.h - S.y - h - 3, width: w, height: h });
+    S.fresh = false;
+    S.y += h + 6;
   }
 
   const gap = (h) => {
@@ -247,25 +303,42 @@ export async function markdownToPdf({
     gap(3);
   }
 
-  function list(token) {
+  // Lists nest: an item's own text, then its sub-lists and any further
+  // paragraphs (loose lists), each indented one step deeper.
+  function list(token, depth = 0) {
+    const indent = depth * 18;
     let i = token.start || 1;
     for (const item of token.items) {
-      const marker = token.ordered ? `${i}.` : '•';
+      const marker = item.task ? (item.checked ? '[x]' : '[ ]') : token.ordered ? `${i}.` : '•';
       i++;
-      const inline = item.tokens?.find((t) => t.type === 'text')?.tokens ?? item.tokens ?? [];
+      // marked puts a task item's box first, as its own token.
+      const blocks = (item.tokens ?? []).filter((t) => t.type !== 'checkbox');
+      const [first, ...rest] = blocks;
+      const inline =
+        first && (first.type === 'text' || first.type === 'paragraph')
+          ? (first.tokens ?? [{ type: 'text', text: first.text }])
+          : [];
+      const textX = M.left + 22 + indent + (item.task ? 6 : 0);
       space(15.5);
       const top = S.y;
       safeDraw(S.page, marker, {
-        x: M.left + 4,
+        x: M.left + 4 + indent,
         y: PAGE.h - top - 10.5,
         font: F.regular,
         size: 10.5,
         color: MUTED,
       });
-      flow(inlineRuns(inline), { x: M.left + 22, width: CONTENT_W - 22 });
+      flow(inlineRuns(inline), { x: textX, width: CONTENT_W - (textX - M.left) });
+      for (const block of inline.length ? rest : blocks) {
+        if (block.type === 'list') list(block, depth + 1);
+        else if (block.type === 'paragraph' || block.type === 'text') {
+          gap(3);
+          flow(inlineRuns(block.tokens), { x: textX, width: CONTENT_W - (textX - M.left) });
+        } else if (block.type === 'code') codeBlock(block);
+      }
       gap(1.5);
     }
-    gap(4);
+    if (depth === 0) gap(4);
   }
 
   function codeBlock(token) {
@@ -481,6 +554,7 @@ export async function markdownToPdf({
   // --- content ----------------------------------------------------------------
   if (!cover) addPage();
   const dest = [];
+  await embedImages();
   for (const source of sources) renderTokens(marked.lexer(source), dest);
 
   // --- table of contents (clickable) ------------------------------------------

@@ -144,6 +144,10 @@ export const en = {
   'confirm.discard.body': '“{name}” has changes that are not saved to disk.',
   'confirm.discard.ok': 'Discard',
   'confirm.cancel': 'Cancel',
+  'confirm.overwrite.title': 'Overwrite the newer file?',
+  'confirm.overwrite.body':
+    '“{name}” changed on disk after you opened it, in another app or on another device. Saving replaces those changes with this version.',
+  'confirm.overwrite.ok': 'Overwrite',
   'confirm.clearRecents.title': 'Clear the recent list?',
   'confirm.clearRecents.body':
     'The files themselves are not touched; they just stop being listed here.',
@@ -163,6 +167,10 @@ export const en = {
     'Opened the saved copy of {name}. Allow file access to work on the file itself.',
   'toast.openFailed': 'Could not open that file.',
   'toast.saveFailed': 'Could not save the file.',
+  'toast.storageFull':
+    'Your open documents no longer fit in the browser’s storage, so recent changes won’t survive closing the app. Save them to disk.',
+  'toast.reloadedFromDisk': 'Reloaded {name}: it changed on disk.',
+  'toast.changedOnDisk': '{name} changed on disk. Saving will ask before replacing it.',
   'toast.updateReady': 'A new version of MD Studio is ready.',
   'toast.reload': 'Reload',
   'toast.offlineReady': 'MD Studio is ready to work offline.',

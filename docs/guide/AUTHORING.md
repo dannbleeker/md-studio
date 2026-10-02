@@ -40,8 +40,8 @@ links, e.g. `[Chapter 5](05-managing-files-locally.md)`.
   after a substantial edit.
 - **Say only what the app does.** If a behaviour can't be confirmed in the
   code or the running app, leave it out or say plainly that it may differ.
-  Known gaps (for example, exports that don't support footnotes yet) are
-  stated as gaps, and the chapter is updated when the gap closes.
+  Known gaps are stated as gaps, and the chapter is updated when the gap
+  closes.
 
 ## Builds
 

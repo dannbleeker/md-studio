@@ -45,15 +45,15 @@ The HTML export is a single, self-contained `.html` file styled like MD Studio's
 
 HTML is the export that travels best. It keeps everything Markdown expresses as structure: headings, nested lists, task lists, tables, block quotes, code, links. It is also the easiest to paste from (see below), and when printed from a browser, the page drops its background and prints black on white.
 
-Some things behave differently from the editor, on purpose. An image embedded in the document is replaced by its alt text. Images linked by a relative path, like `images/chart.png`, stay as links, so they appear when the `.html` file sits next to the `images` folder. Images on the web keep working while the reader is online.
+Images come along in three ways. A picture pasted into the document (PNG, JPEG, GIF or WebP) is embedded in the page itself. Images linked by a relative path, like `images/chart.png`, stay as links, so they appear when the `.html` file sits next to the `images` folder. Images on the web keep working while the reader is online.
 
 Raw HTML in your Markdown is shown as text rather than run, and a link that could run a script loses its address but keeps its text. Ordinary web, email and relative links stay clickable. The reason is simple: a page exported from a document someone sent you should never run code from that document.
 
 ## PDF
 
-The PDF export produces an A4 document, set in clean standard fonts, with headings, lists, tables, quotes and code blocks laid out on the page. Keep lists flat if the PDF matters: nested items under a list item do not come through. It is the format for "please send me something I can read on a plane", for formal attachments, and for anything that must look the same everywhere.
+The PDF export produces an A4 document, set in clean standard fonts, with headings, lists, tables, quotes and code blocks laid out on the page. Nested lists keep their indentation, and task list items show `[x]` or `[ ]`. It is the format for "please send me something I can read on a plane", for formal attachments, and for anything that must look the same everywhere.
 
-Know its main limit in advance. To stay small and fast, the PDF uses the standard fonts every PDF reader has built in. Those cover Latin text, including Danish **æ**, **ø** and **å**, accented letters and ordinary punctuation. They do not cover emoji, Greek, Cyrillic, Chinese, Arabic and other scripts, and those characters are left out of the PDF rather than breaking the export. Images do not come along either; a PDF shows an image's alt text where the picture would be.
+Know its main limit in advance. To stay small and fast, the PDF uses the standard fonts every PDF reader has built in. Those cover Latin text, including Danish **æ**, **ø** and **å**, accented letters and ordinary punctuation. They do not cover emoji, Greek, Cyrillic, Chinese, Arabic and other scripts, and those characters are left out of the PDF rather than breaking the export. Images come along when MD Studio can read them: pictures pasted into the document, and pictures in the document's `images` folder when the document is saved on disk in Edge or Chrome. PNG and JPEG are embedded at full width; other formats, and images on the web, show their alt text instead.
 
 If your document contains any of that, use printing instead (next section): the browser's own PDF printer renders every character and every image the visual pane can show.
 
@@ -63,7 +63,7 @@ The Word export is for when the next person will keep working on the document in
 
 The result uses real Word structure. Your `#` headings become Word's built-in Heading 1, Heading 2 and so on, so the navigation pane, a generated table of contents and the document's styles all work. Bulleted and numbered lists, nested ones included, become Word lists, and tables become Word tables with a header row. Links stay clickable. Code blocks are set in a monospace font, block quotes are indented, and task list items keep their state as a ☐ or ☑ in front of the text.
 
-Images become a short placeholder with their alt text, so add them in Word if the final document needs them. Once the `.docx` leaves MD Studio, it is a Word document. Edits made there will not flow back into your Markdown, so decide which copy is the master before the review starts.
+Images are embedded the same way as in the PDF (PNG, JPEG and GIF), and anything MD Studio can't read becomes a short placeholder with its alt text. Once the `.docx` leaves MD Studio, it is a Word document. Edits made there will not flow back into your Markdown, so decide which copy is the master before the review starts.
 
 ## Plain text
 
@@ -98,22 +98,22 @@ No conversion is perfect. The table shows what to expect from each route, so you
 
 | In your document | `.md` | HTML | PDF | Word | Plain text |
 | --- | --- | --- | --- | --- | --- |
-| Headings, lists, quotes | Yes | Yes | Yes (top-level list items only) | Yes | As text structure |
+| Headings, lists, quotes | Yes | Yes | Yes | Yes | As text structure |
 | Tables | Yes | Yes | Yes | Yes | Tab-separated rows |
 | Links | Yes | Clickable | Shown as text | Clickable | Address in brackets |
-| Task lists | Yes | Checkboxes | Text only | ☐ and ☑ | `[ ]` and `[x]` |
-| Strikethrough | Yes | Yes | Plain text | Yes | Plain text |
-| Embedded images | Yes, inside the file | Alt text | Alt text | Alt text | Alt text |
-| Images in an `images` folder | If you send the folder | If the folder sits next to it | Alt text | Alt text | Alt text |
-| Footnotes | Yes | As literal `[^1]` text | As literal text | As literal text | As literal text |
+| Task lists | Yes | Checkboxes | `[ ]` and `[x]` | ☐ and ☑ | `[ ]` and `[x]` |
+| Strikethrough | Yes | Yes | Yes | Yes | Plain text |
+| Pasted images | Yes, inside the file | Yes | PNG, JPEG | PNG, JPEG, GIF | Alt text |
+| Images in an `images` folder | If you send the folder | If the folder sits next to it | PNG, JPEG, when saved on disk | PNG, JPEG, GIF, when saved on disk | Alt text |
+| Footnotes | Yes | Numbered notes at the end | Numbered notes at the end | Numbered notes at the end | Numbered notes at the end |
 | Raw HTML | Yes | Shown as text | Mostly left out | Shown as code | Kept as text |
 | Emoji, non-Latin scripts | Yes | Yes | Left out | Yes | Yes |
 
 Headings, tables and simple lists come through every format, which is a good reason to carry meaning in structure rather than in visual tricks.
 
-Images are the weak point. Only the `.md` file with its folder, and printing, carry pictures reliably. If the pictures matter, send the Markdown with its folder, print to PDF, or add them in Word afterwards. And remember that a relative link such as `images/chart.png` means "next to this file": move the file without its folder and the link points at nothing.
+Images are the format that needs the most care. Images on the web are never fetched for a PDF or Word export, so link to a copy in the `images` folder if the picture has to travel. And remember that a relative link such as `images/chart.png` means "next to this file": move the file without its folder and the link points at nothing.
 
-Footnotes are the surprise. They render in the visual pane, but they are not part of CommonMark, and none of the exports understand them, so a footnote comes out as the literal `[^1]` marker and definition line you typed. Raw HTML is handled differently by each format, as the table shows. [Appendix B](appendix-b-markdown-syntax-reference.md) marks which syntax is CommonMark and which is GitHub Flavored Markdown. If a document has to export cleanly, stay within those two.
+Footnotes are not part of CommonMark, so the exports turn them into something every format understands: each marker becomes a number in brackets, and the notes follow as a numbered list after a rule at the end. Raw HTML is handled differently by each format, as the table shows. [Appendix B](appendix-b-markdown-syntax-reference.md) marks which syntax is CommonMark and which is GitHub Flavored Markdown. If a document has to export cleanly, stay within those two.
 
 ## Pasting into email, chat and wikis
 
