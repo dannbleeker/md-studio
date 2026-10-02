@@ -1,4 +1,4 @@
-# MD Studio — quick reference
+# MD Studio quick reference
 
 ## Getting started
 
@@ -35,7 +35,7 @@ scroll. Turn it off in the toolbar or in Settings.
 ## Formatting
 
 In the visual view, the toolbar above the document formats without
-keyboard shortcuts: text style (paragraph or heading 1–4), bold, italic,
+keyboard shortcuts: text style (paragraph or heading 1 to 4), bold, italic,
 strikethrough, inline code, link, bulleted and numbered lists, quote,
 code block, table and horizontal rule. Buttons show as pressed when the
 selection already has that formatting. A link asks for its address;
@@ -45,13 +45,14 @@ clearing the address removes the link.
 
 Paste an image (Ctrl+V) or drop an image file into either pane.
 
-- **Edge and Chrome, document saved on disk:** the first time, MD Studio
-  asks you to pick the folder the document is in. Images are then saved in
-  an `images` folder next to the document and linked from it, so the
-  Markdown stays small and the images travel with the folder (and with
-  git). Choose *Cancel* to embed the image instead.
-- **Everywhere else** (or before the document is saved): the image is
-  shrunk to at most 1600 px and embedded in the document itself.
+In Edge and Chrome, once the document is saved on disk, MD Studio asks you
+the first time to pick the folder the document is in. Images then go into
+an `images` folder next to the document and are linked from it. The
+Markdown stays small, and the images travel with the folder (and with
+git). Choose *Cancel* to embed the image instead.
+
+In other browsers, or before the document is saved, the image is shrunk to
+at most 1600 px and embedded in the document itself.
 
 ## Finding and navigating
 
@@ -99,7 +100,7 @@ The Export dialog remembers the format and theme you used last.
 ## Saving
 
 - **Save** (Ctrl+S) writes back to the file you opened in Edge or Chrome,
-  also after closing and reopening the app (the browser may ask once to
+  even after closing and reopening the app (the browser may ask once to
   allow access again). The first save of a new document asks where to put
   it.
 - **Save as…** (Ctrl+Shift+S) always asks.
@@ -114,7 +115,7 @@ file that Save writes to.
 
 | Format | What you get |
 | --- | --- |
-| Web page (HTML) | A standalone page styled like the visual view, in a light, dark or follow-the-reader's-system theme |
+| Web page (HTML) | A standalone page styled like the visual view, light, dark, or matching the reader's system theme |
 | PDF | An A4 document for sharing and printing |
 | Word document (DOCX) | Editable in Word, with real headings, lists, tables and links |
 | Plain text | Formatting marks removed, structure kept |
@@ -148,8 +149,8 @@ app.
 | Ctrl+B / Ctrl+I | Bold / italic (visual pane) |
 | Ctrl+Z / Ctrl+Y | Undo / redo (in the focused pane) |
 
-On macOS use Cmd in place of Ctrl. In a normal browser tab, Ctrl+1–3 switch
-browser tabs instead; use the toolbar or the command palette there.
-Ctrl+W and Ctrl+Tab always belong to the browser, which is why closing
-and switching MD Studio tabs uses Alt. The
-shortcuts work in the installed app.
+On macOS use Cmd in place of Ctrl. Ctrl+1, Ctrl+2 and Ctrl+3 work in the
+installed app; in a normal browser tab they switch browser tabs instead, so
+use the toolbar or the command palette there. Ctrl+W and Ctrl+Tab always
+belong to the browser, which is why closing and switching MD Studio tabs
+uses Alt.
