@@ -1,5 +1,7 @@
 import { t } from '@/i18n';
 import { LOCALES, type LocalePreference, SUPPORTED_LOCALES } from '@/i18n/locales';
+import { openUserGuide } from '@/services/documentActions';
+import { BOOK_EPUB, BOOK_PDF } from '@/services/links';
 import { useStore } from '@/store';
 import { FONT_SIZES, type ThemePreference, type ViewMode } from '@/store/settings';
 import { Dialog } from '../ui/Dialog';
@@ -110,6 +112,26 @@ export function SettingsDialog() {
           />
           {t('settings.linkedScroll')}
         </label>
+
+        <nav className="settings-help" aria-label={t('settings.help')}>
+          <h3>{t('settings.help')}</h3>
+          <button
+            type="button"
+            className="link-button"
+            onClick={() => {
+              close();
+              void openUserGuide();
+            }}
+          >
+            {t('start.guide')}
+          </button>
+          <a href={BOOK_PDF} target="_blank" rel="noopener">
+            {t('start.bookPdf')}
+          </a>
+          <a href={BOOK_EPUB} download>
+            {t('start.bookEpub')}
+          </a>
+        </nav>
 
         <div className="dialog-actions">
           <button type="button" className="btn btn-primary" onClick={close}>

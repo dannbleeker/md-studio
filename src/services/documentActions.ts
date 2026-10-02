@@ -198,13 +198,25 @@ export async function clearRecents(): Promise<void> {
   void forgetUnusedHandles();
 }
 
+/** Shows a document bundled with the app, in its open tab if there is one. */
+function openBundled(markdown: string, fileName: string): void {
+  if (showOpenTab({ handleId: null, fileName, markdown })) return;
+  useStore.getState().loadDocument(createDocument(markdown, fileName), null);
+}
+
 /**
  * Opens the bundled sample document as a new, unsaved tab. Loaded on
  * demand so it never weighs on start-up.
  */
 export async function openWelcome(): Promise<void> {
   const { default: markdown } = await import('@/i18n/welcome.en.md?raw');
-  useStore.getState().loadDocument(createDocument(markdown, t('welcome.fileName')), null);
+  openBundled(markdown, t('welcome.fileName'));
+}
+
+/** Opens the user guide (USER_GUIDE.md, bundled on demand) as a document. */
+export async function openUserGuide(): Promise<void> {
+  const { default: markdown } = await import('../../USER_GUIDE.md?raw');
+  openBundled(markdown, t('guide.fileName'));
 }
 
 /** The file's current text, or null when it can't be read (moved, deleted, no permission). */

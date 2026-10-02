@@ -47,3 +47,41 @@ test('text size, wrapping and line numbers follow the settings', async ({ page }
   await page.reload();
   await expect(page.getByTestId('text-editor').locator('.cm-gutters')).toBeHidden();
 });
+
+test('the user guide and the book are reachable from the start screen, settings and palette', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const links = page.getByRole('navigation', { name: 'About MD Studio' });
+  await expect(links.getByRole('link', { name: 'Read the book (PDF)' })).toHaveAttribute(
+    'href',
+    '/Writing-in-Plain-Text.pdf'
+  );
+  await links.getByRole('button', { name: 'User guide' }).click();
+  await expect(visualPane(page).locator('h1')).toHaveText('MD Studio quick reference');
+  await page.getByRole('button', { name: 'New', exact: true }).click();
+
+  await page.keyboard.press('ControlOrMeta+,');
+  const help = page.getByRole('dialog', { name: 'Settings' }).getByRole('navigation');
+  await expect(help.getByRole('link', { name: 'Download the book (EPUB)' })).toHaveAttribute(
+    'href',
+    '/Writing-in-Plain-Text.epub'
+  );
+  await help.getByRole('button', { name: 'User guide' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  // Already open: the guide's tab is shown again, not a second copy.
+  await expect(page.getByRole('tab')).toHaveCount(2);
+  await expect(page.getByRole('tab', { name: /User-Guide/ })).toHaveAttribute(
+    'aria-selected',
+    'true'
+  );
+
+  await page.keyboard.press('ControlOrMeta+K');
+  await page.keyboard.type('user guide');
+  await expect(page.getByRole('option', { name: /Open the user guide/ })).toBeVisible();
+
+  for (const file of ['/Writing-in-Plain-Text.pdf', '/Writing-in-Plain-Text.epub']) {
+    const response = await page.request.get(file);
+    expect(response.ok()).toBe(true);
+  }
+});

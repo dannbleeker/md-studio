@@ -4,12 +4,21 @@ import {
   cycleTab,
   newDocument,
   openDocument,
+  openUserGuide,
   openWelcome,
   saveDocument,
 } from '@/services/documentActions';
 import { exportDocument } from '@/services/export';
-import { BOOK_PDF, DASHBOARD } from '@/services/links';
+import { BOOK_EPUB, BOOK_PDF, DASHBOARD } from '@/services/links';
 import { useStore } from '@/store';
+
+/** Same as clicking an `<a download>`: saves the file instead of navigating. */
+function downloadLink(href: string): void {
+  const a = document.createElement('a');
+  a.href = href;
+  a.download = '';
+  a.click();
+}
 
 export type Command = {
   id: string;
@@ -102,7 +111,9 @@ export const COMMANDS: readonly Command[] = [
   },
   { id: 'home', label: 'cmd.home', run: () => state().setScreen('start') },
   { id: 'welcome', label: 'cmd.welcome', run: () => void openWelcome() },
+  { id: 'guide', label: 'cmd.guide', run: () => void openUserGuide() },
   { id: 'book', label: 'cmd.book', run: () => window.open(BOOK_PDF, '_blank', 'noopener') },
+  { id: 'bookEpub', label: 'cmd.bookEpub', run: () => downloadLink(BOOK_EPUB) },
   {
     id: 'dashboard',
     label: 'cmd.dashboard',

@@ -391,6 +391,31 @@ body {
 .start-links a {
   color: var(--accent);
 }
+/* An action that sits among links and should look like one. */
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.settings-help {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 1.25rem;
+  margin-top: 1rem;
+}
+.settings-help h3 {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.95rem;
+}
+.settings-help a {
+  color: var(--accent);
+}
 
 /* Dialogs */
 .dialog {

@@ -16,8 +16,9 @@
   Markdown as a new, unsaved document.
 - The **×** next to a recent file removes it from the list, and **Clear
   list** empties it. The files themselves are not touched.
-- The links under the start screen open the book *Writing in Plain Text*
-  (PDF or EPUB) and the project dashboard.
+- The links under the start screen open this guide, the book *Writing in
+  Plain Text* (PDF or EPUB) and the project dashboard. The guide opens as a
+  document in its own tab, so it works offline and you can search it.
 
 ## Views
 
@@ -77,6 +78,9 @@ scroll:
 
 - **Text size** (small, medium, large) for both panes.
 - **Wrap long lines** and **Show line numbers** for the Markdown pane.
+- **Help and reading** at the bottom opens this guide and the book from
+  anywhere in the app. The command palette has them too: *Open the user
+  guide*, *Open the book* and *Download the book (EPUB)*.
 
 The Export dialog remembers the format and theme you used last.
 
