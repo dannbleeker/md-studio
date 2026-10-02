@@ -4,18 +4,18 @@
   "code": [
     {
       "category": "App code",
-      "files": 63,
-      "lines": 5145
+      "files": 64,
+      "lines": 5362
     },
     {
       "category": "Unit tests",
       "files": 33,
-      "lines": 1730
+      "lines": 1812
     },
     {
       "category": "E2E tests",
-      "files": 9,
-      "lines": 965
+      "files": 10,
+      "lines": 1014
     },
     {
       "category": "Scripts",
@@ -25,7 +25,7 @@
     {
       "category": "Styles",
       "files": 4,
-      "lines": 1007
+      "lines": 1048
     },
     {
       "category": "Book",
@@ -35,19 +35,19 @@
   ],
   "tests": {
     "files": 31,
-    "total": 155,
-    "passed": 155,
+    "total": 160,
+    "passed": 160,
     "failed": 0,
-    "e2eSpecs": 8
+    "e2eSpecs": 9
   },
   "coverage": {
-    "lines": 49.78,
-    "statements": 48.17,
-    "functions": 46.51,
-    "branches": 46.28
+    "lines": 51.36,
+    "statements": 49.56,
+    "functions": 47.9,
+    "branches": 46.82
   },
   "bundle": {
-    "eagerGzipBytes": 441615,
+    "eagerGzipBytes": 442860,
     "eager": [
       "codemirror",
       "index",
@@ -56,23 +56,24 @@
       "rolldown-runtime"
     ],
     "chunks": {
-      "FindBar": 1570,
-      "FormatToolbar": 1006,
-      "OutlinePanel": 1008,
-      "codemirror": 215642,
+      "FindBar": 1569,
+      "FormatToolbar": 1002,
+      "OutlinePanel": 757,
+      "codemirror": 215588,
       "docx": 111326,
       "html": 1327,
-      "images": 1304,
-      "index": 19439,
+      "images": 1298,
+      "index": 20740,
       "markdownPdf": 177919,
       "marked.esm": 13334,
-      "milkdown": 138384,
+      "milkdown": 138382,
       "plainText": 780,
       "react": 67523,
       "rolldown-runtime": 627,
+      "welcome.en": 989,
       "workbox-window.prod.es5": 2199
     },
-    "lazyLanguageGzipBytes": 394918
+    "lazyLanguageGzipBytes": 394913
   },
   "book": {
     "chapters": 11,
@@ -80,7 +81,7 @@
     "words": 902
   },
   "git": {
-    "commits": 50,
+    "commits": 58,
     "firstCommit": "2026-10-02",
     "lastCommit": "2026-10-02",
     "activeDays": 1
