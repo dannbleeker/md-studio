@@ -1,0 +1,4 @@
+# Single-package workspace, matching the sibling studios. Build-script
+# approvals live in package.json#pnpm.onlyBuiltDependencies.
+packages:
+  - '.'

@@ -1,0 +1,15 @@
+# Normalize all text files to LF in the repo and on checkout, so Biome's LF
+# formatting and `pnpm verify` behave identically on Windows, macOS, Linux,
+# and CI.
+* text=auto eol=lf
+
+# Never line-ending-munge binary assets.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.woff  binary
+*.woff2 binary
+*.pdf  binary
+*.epub binary

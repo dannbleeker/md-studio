@@ -1,0 +1,147 @@
+.split {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.split[data-view="text"],
+.split[data-view="visual"] {
+  grid-template-columns: 1fr;
+}
+.pane {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pane-text {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+.split[data-view="text"] .pane-text {
+  border-right: 0;
+}
+.pane-host {
+  flex: 1;
+  min-height: 0;
+}
+.pane-host .cm-editor {
+  height: 100%;
+  background: var(--surface);
+  color: var(--text);
+}
+.pane-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  position: relative;
+  background: var(--bg);
+}
+
+/* Visual (Milkdown/ProseMirror) document */
+.visual-doc {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 1.5rem 2rem 40vh;
+}
+.visual-doc .ProseMirror {
+  outline: none;
+  font-size: 1rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+.visual-doc .ProseMirror > :first-child {
+  margin-top: 0;
+}
+.visual-doc h1,
+.visual-doc h2,
+.visual-doc h3,
+.visual-doc h4,
+.visual-doc h5,
+.visual-doc h6 {
+  line-height: 1.25;
+  margin: 1.6em 0 0.5em;
+}
+.visual-doc h1 {
+  font-size: 1.9rem;
+}
+.visual-doc h2 {
+  font-size: 1.45rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.2em;
+}
+.visual-doc h3 {
+  font-size: 1.2rem;
+}
+.visual-doc a {
+  color: var(--accent);
+}
+.visual-doc code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--surface-2);
+  border-radius: 4px;
+  padding: 0.1em 0.3em;
+}
+.visual-doc pre {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.8rem 1rem;
+  overflow-x: auto;
+}
+.visual-doc pre code {
+  background: none;
+  padding: 0;
+}
+.visual-doc blockquote {
+  margin: 1em 0;
+  padding-left: 1rem;
+  border-left: 3px solid var(--accent);
+  color: var(--text-muted);
+}
+.visual-doc hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 2em 0;
+}
+.visual-doc img {
+  max-width: 100%;
+}
+.visual-doc table {
+  border-collapse: collapse;
+  margin: 1em 0;
+}
+.visual-doc th,
+.visual-doc td {
+  border: 1px solid var(--border);
+  padding: 0.35rem 0.7rem;
+  vertical-align: top;
+}
+.visual-doc th {
+  background: var(--surface-2);
+}
+/* Milkdown wraps each cell's content in a paragraph. */
+.visual-doc th > p,
+.visual-doc td > p {
+  margin: 0;
+}
+.visual-doc li > p {
+  margin: 0.15em 0;
+}
+.visual-doc li[data-item-type="task"] {
+  list-style: none;
+  position: relative;
+}
+.visual-doc li[data-item-type="task"]::before {
+  content: "☐";
+  position: absolute;
+  left: -1.4em;
+}
+.visual-doc li[data-item-type="task"][data-checked="true"]::before {
+  content: "☑";
+}
+.visual-doc .ProseMirror-selectednode {
+  outline: 2px solid var(--accent);
+}
