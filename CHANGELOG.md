@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Export**: save a copy as a themed web page (HTML, light/dark/auto),
+  PDF, Word document (DOCX) or plain text, from the toolbar's Export
+  dialog or the command palette. Replaces the unstyled "Export as HTML".
+  Raw HTML in the source is shown as text and script-capable links are
+  dropped in HTML exports. Converters load on demand.
+- The book builder and PDF export share one renderer
+  (`src/services/export/markdownPdf.mjs`); the book output is unchanged.
 - Text pane: syntax colours follow the theme. CodeMirror's default style
   hard-coded light colours, leaving keywords and fence info strings
   near-invisible in dark mode. All token colours meet WCAG AA (4.5:1)

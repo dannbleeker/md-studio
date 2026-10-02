@@ -1,5 +1,6 @@
 import type { MessageKey } from '@/i18n/en';
-import { exportHtml, newDocument, openDocument, saveDocument } from '@/services/documentActions';
+import { newDocument, openDocument, saveDocument } from '@/services/documentActions';
+import { exportDocument } from '@/services/export';
 import { useStore } from '@/store';
 
 export type Command = {
@@ -44,7 +45,27 @@ export const COMMANDS: readonly Command[] = [
     label: 'cmd.toggleLinkedScroll',
     run: () => state().updateSettings({ linkedScroll: !state().settings.linkedScroll }),
   },
-  { id: 'export-html', label: 'cmd.exportHtml', run: exportHtml },
+  { id: 'export', label: 'cmd.export', run: () => state().setExportOpen(true) },
+  {
+    id: 'export-html',
+    label: 'cmd.exportHtml',
+    run: () => void exportDocument('html', { htmlTheme: 'auto' }),
+  },
+  {
+    id: 'export-pdf',
+    label: 'cmd.exportPdf',
+    run: () => void exportDocument('pdf', { htmlTheme: 'auto' }),
+  },
+  {
+    id: 'export-docx',
+    label: 'cmd.exportDocx',
+    run: () => void exportDocument('docx', { htmlTheme: 'auto' }),
+  },
+  {
+    id: 'export-txt',
+    label: 'cmd.exportTxt',
+    run: () => void exportDocument('txt', { htmlTheme: 'auto' }),
+  },
   { id: 'print', label: 'cmd.print', shortcut: 'Ctrl+P', run: () => window.print() },
   {
     id: 'settings',

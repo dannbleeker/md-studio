@@ -28,11 +28,8 @@
 - [ ] Visual-pane toolbar or slash menu for formatting without shortcuts.
 - [ ] Image handling: paste/drop images and choose where they are stored.
 - [ ] Find and replace across both panes; outline/table-of-contents panel.
-- [ ] **Export**: a "Save as" for other file formats, presented as an
-      **Export** command (toolbar, palette, File menu). Today there is
-      Export as HTML (unstyled) and Print. Candidates: PDF, DOCX, standalone
-      HTML with a theme choice, plain text. Unlike Save, Export never changes
-      which file the document is linked to.
+- [x] **Export**: HTML (light/dark/auto theme), PDF, DOCX and plain text,
+      from the toolbar and the command palette. Never changes the linked file.
 - [ ] Translate the UI: the catalogue is in `src/i18n/en.ts`.
 - [ ] **Large-document performance** (found by the perf trace): on a
       ~3,000-line document, typing p95 is ~290 ms and text → visual sync

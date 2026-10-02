@@ -38,10 +38,13 @@ export default defineConfig({
         // CodeMirror's language-data lazy-loads one chunk per fenced-code
         // language. They are small, but there are ~100; leave them out of the
         // install-critical precache and cache them on first use instead.
-        globIgnores: ['assets/lang-*.js'],
+        // The Word and PDF exporters (~110 KB and ~175 KB gzip) only load
+        // when someone exports in those formats; keep them out of the
+        // install too and cache them on first use like the grammars.
+        globIgnores: ['assets/lang-*.js', 'assets/docx-*.js', 'assets/markdownPdf-*.js'],
         runtimeCaching: [
           {
-            urlPattern: /\/assets\/lang-.*\.js$/,
+            urlPattern: /\/assets\/(?:lang|docx|markdownPdf)-.*\.js$/,
             handler: 'CacheFirst',
             options: {
               cacheName: 'md-studio-lang-v1',

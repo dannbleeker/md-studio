@@ -94,11 +94,46 @@ export async function saveFile(
   return { kind: 'downloaded', name: suggestedName, handle: null };
 }
 
-export function downloadText(content: string, fileName: string, type: string): void {
-  const url = URL.createObjectURL(new Blob([content], { type: `${type};charset=utf-8` }));
+export function downloadBlob(blob: Blob, fileName: string): void {
+  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = fileName;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function downloadText(content: string, fileName: string, type: string): void {
+  downloadBlob(new Blob([content], { type: `${type};charset=utf-8` }), fileName);
+}
+
+/**
+ * Writes a separate file (an export): asks where on Chromium, downloads
+ * elsewhere. Never touches the document's own file handle. Resolves to
+ * null when the user cancels.
+ */
+export async function saveBlobAs(
+  blob: Blob,
+  suggestedName: string,
+  type: { description: string; mime: string; extension: string }
+): Promise<SaveResult | null> {
+  if (window.showSaveFilePicker) {
+    let target: FileSystemFileHandle;
+    try {
+      target = await window.showSaveFilePicker({
+        suggestedName,
+        id: 'md-studio-export',
+        types: [{ description: type.description, accept: { [type.mime]: [type.extension] } }],
+      });
+    } catch (err) {
+      if (isAbort(err)) return null;
+      throw err;
+    }
+    const writable = await target.createWritable();
+    await writable.write(blob);
+    await writable.close();
+    return { kind: 'written', name: target.name, handle: target };
+  }
+  downloadBlob(blob, suggestedName);
+  return { kind: 'downloaded', name: suggestedName, handle: null };
 }
