@@ -1,44 +1,15 @@
 import { parserCtx, serializerCtx } from '@milkdown/kit/core';
 import type { Ctx } from '@milkdown/kit/ctx';
 import { preserveUnchangedBlocks, splitBlocks } from '@/domain/preserveBlocks';
+import { hasReferenceDefinition, splitDefinitions } from '@/domain/referenceDefinitions';
 
 /**
  * Canonical form of a block = Milkdown's own parse + serialize, cached by
  * source text: between two edits almost every block is unchanged, so each
  * sync only parses the blocks around the edit.
  */
-const REFERENCE_DEFINITION = /^ {0,3}\[[^\]]+\]:/m;
-
 const normCache = new Map<string, string>();
 const MAX_CACHE = 4000;
-
-/** A block made only of link reference definitions (`[id]: url`). */
-const DEFINITION_LINE = /^ {0,3}\[[^\]]+\]:\s*\S/;
-const isDefinitionBlock = (block: string) =>
-  block.split('\n').every((line) => DEFINITION_LINE.test(line) || /^\s+\S/.test(line));
-
-/**
- * The serializer writes reference links inline and drops their
- * definitions. Splits the definition blocks out of the old source, so the
- * rest can be compared block by block (with the definitions in scope) and
- * the definitions put back afterwards.
- */
-function splitDefinitions(md: string): { body: string; definitions: string } {
-  const blocks = splitBlocks(md);
-  const defs = blocks.filter((b) => isDefinitionBlock(md.slice(b.start, b.end)));
-  if (defs.length === 0) return { body: md, definitions: '' };
-  let body = '';
-  let at = 0;
-  for (const b of defs) {
-    body += md.slice(at, b.start);
-    at = b.end;
-  }
-  body += md.slice(at);
-  return {
-    body: `${body.replace(/\n{3,}/g, '\n\n').trim()}\n`,
-    definitions: defs.map((b) => md.slice(b.start, b.end)).join('\n\n'),
-  };
-}
 
 /**
  * Applies `preserveUnchangedBlocks` with Milkdown's parser/serializer, so a
@@ -55,7 +26,7 @@ export function keepSourceStyle(ctx: Ctx, oldMd: string, newMd: string): string 
       const doc = parse(source);
       return doc ? serialize(doc).trim() : source.trim();
     };
-    const { body, definitions } = REFERENCE_DEFINITION.test(oldMd)
+    const { body, definitions } = hasReferenceDefinition(oldMd)
       ? splitDefinitions(oldMd)
       : { body: oldMd, definitions: '' };
     // Each block is judged with the definitions in scope, so `[foo]` and
@@ -82,7 +53,7 @@ export function keepSourceStyle(ctx: Ctx, oldMd: string, newMd: string): string 
     // own output, hence already canonical). Otherwise context is local:
     // comparing the rewritten region with a neighbour on each side is
     // enough, and costs a few ms instead of a full re-parse.
-    if (REFERENCE_DEFINITION.test(oldMd) || REFERENCE_DEFINITION.test(newMd)) {
+    if (hasReferenceDefinition(oldMd) || hasReferenceDefinition(newMd)) {
       return canonical(merged) === newMd.trim() ? merged : newMd;
     }
     const region = merged.slice(check.text.start, check.text.end);
