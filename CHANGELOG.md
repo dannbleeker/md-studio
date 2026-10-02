@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Refactor (no behaviour change).** Reference-definition rules live in
+  `domain/referenceDefinitions.ts` with their own tests, instead of two
+  copies of one regex in the sync code. The panes lose their duplicated
+  report, release and heading-selector code. The store's tab and save
+  helpers share code; dialog and find-bar flags move to `store/ui.ts`, so
+  opening a dialog no longer wakes the document store's subscribers.
+  `CLAUDE.md` matches the code again.
+
 - **Deeply nested documents no longer stall or crash the editors.** Both
   parsers are quadratic on nested brackets (20,000 levels took the visual
   pane over a second and the Markdown pane half a second, on every load),

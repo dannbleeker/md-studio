@@ -3,6 +3,7 @@ import { createDocument, isDirty } from '@/domain/document';
 import { loadTabs } from '@/services/storage';
 import { resetStoreForTest, useStore } from './index';
 import { DEFAULT_SETTINGS } from './settings';
+import { useUiStore } from './ui';
 import { registerViewPart } from './viewState';
 
 describe('store', () => {
@@ -48,6 +49,19 @@ describe('store', () => {
     useStore.getState().loadDocument(createDocument('a'), null);
     expect(useStore.getState().loadId).toBe(before + 1);
     expect(useStore.getState().source).toBe('load');
+  });
+
+  it('leaves the document store alone when a dialog or the find bar opens', () => {
+    const changes = vi.fn();
+    const off = useStore.subscribe(changes);
+    const ui = useUiStore.getState();
+    ui.setSettingsOpen(true);
+    ui.setPaletteOpen(true);
+    ui.setExportOpen(true);
+    ui.setFind(true, true);
+    off();
+    expect(changes).not.toHaveBeenCalled();
+    expect(useUiStore.getState()).toMatchObject({ settingsOpen: true, findRequest: 1 });
   });
 
   it('persists edits after a debounce', () => {

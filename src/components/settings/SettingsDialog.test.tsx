@@ -2,12 +2,13 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { resetStoreForTest, useStore } from '@/store';
 import { DEFAULT_SETTINGS } from '@/store/settings';
+import { useUiStore } from '@/store/ui';
 import { SettingsDialog } from './SettingsDialog';
 
 describe('SettingsDialog', () => {
   beforeEach(() => {
     resetStoreForTest();
-    useStore.getState().setSettingsOpen(true);
+    useUiStore.getState().setSettingsOpen(true);
   });
 
   it('updates theme, default view and linked scroll', () => {
@@ -24,6 +25,6 @@ describe('SettingsDialog', () => {
       language: 'system',
     });
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
-    expect(useStore.getState().settingsOpen).toBe(false);
+    expect(useUiStore.getState().settingsOpen).toBe(false);
   });
 });

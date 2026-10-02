@@ -7,6 +7,7 @@ import {
   saveDocument,
 } from '@/services/documentActions';
 import { useStore } from '@/store';
+import { useUiStore } from '@/store/ui';
 
 /** App-wide keyboard shortcuts. Editor-local keys (bold, undo…) stay with each editor. */
 export function useShortcuts(): void {
@@ -30,10 +31,11 @@ export function useShortcuts(): void {
       else if (e.altKey && !mod && altKey === 'w' && s.screen === 'editor') void closeTab();
       else if (e.altKey && !mod && key === 'pagedown') cycleTab(1);
       else if (e.altKey && !mod && key === 'pageup') cycleTab(-1);
-      else if ((mod && key === 'k') || (mod && e.shiftKey && key === 'p')) s.setPaletteOpen(true);
-      else if (mod && key === ',') s.setSettingsOpen(true);
-      else if (mod && !e.shiftKey && key === 'f') s.setFind(true, false);
-      else if (mod && !e.shiftKey && key === 'h') s.setFind(true, true);
+      else if ((mod && key === 'k') || (mod && e.shiftKey && key === 'p'))
+        useUiStore.getState().setPaletteOpen(true);
+      else if (mod && key === ',') useUiStore.getState().setSettingsOpen(true);
+      else if (mod && !e.shiftKey && key === 'f') useUiStore.getState().setFind(true, false);
+      else if (mod && !e.shiftKey && key === 'h') useUiStore.getState().setFind(true, true);
       else if (mod && e.shiftKey && key === 'o')
         s.updateSettings({ showOutline: !s.settings.showOutline });
       else if (mod && !e.shiftKey && key === '1') s.setViewMode('split');

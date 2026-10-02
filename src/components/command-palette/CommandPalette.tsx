@@ -3,13 +3,14 @@ import { fuzzyFilter } from '@/domain/fuzzy';
 import { findHeadings } from '@/domain/headings';
 import { t } from '@/i18n';
 import { useStore } from '@/store';
+import { useUiStore } from '@/store/ui';
 import { jumpToHeading } from '../editor/jumpToHeading';
 import { Dialog } from '../ui/Dialog';
 import { COMMANDS } from './commands';
 
 export function CommandPalette() {
-  const open = useStore((s) => s.paletteOpen);
-  const setOpen = useStore((s) => s.setPaletteOpen);
+  const open = useUiStore((s) => s.paletteOpen);
+  const setOpen = useUiStore((s) => s.setPaletteOpen);
   return (
     <Dialog
       open={open}

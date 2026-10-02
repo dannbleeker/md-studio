@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetStoreForTest, useStore } from '@/store';
+import { useUiStore } from '@/store/ui';
 import { ExportDialog } from './ExportDialog';
 
 const exportDocument = vi.fn();
@@ -12,7 +13,7 @@ describe('ExportDialog', () => {
   beforeEach(() => {
     resetStoreForTest();
     exportDocument.mockReset();
-    useStore.getState().setExportOpen(true);
+    useUiStore.getState().setExportOpen(true);
   });
 
   it('offers the four formats, PDF selected', () => {
@@ -30,7 +31,7 @@ describe('ExportDialog', () => {
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'dark' } });
     fireEvent.click(screen.getByRole('button', { name: 'Export' }));
     expect(exportDocument).toHaveBeenCalledWith('html', { htmlTheme: 'dark' });
-    expect(useStore.getState().exportOpen).toBe(false);
+    expect(useUiStore.getState().exportOpen).toBe(false);
   });
 
   it('remembers the last format and theme for next time', () => {
@@ -43,7 +44,7 @@ describe('ExportDialog', () => {
       exportHtmlTheme: 'light',
     });
     unmount();
-    useStore.getState().setExportOpen(true);
+    useUiStore.getState().setExportOpen(true);
     render(<ExportDialog />);
     expect(screen.getByRole('radio', { name: /Web page/ })).toBeChecked();
     expect(screen.getByRole('combobox')).toHaveValue('light');

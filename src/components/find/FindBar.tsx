@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { t } from '@/i18n';
 import { useStore } from '@/store';
+import { useUiStore } from '@/store/ui';
 import { engineFor, type FindOptions, findTarget, type MatchInfo } from './findEngine';
 
 const EMPTY: MatchInfo = { total: 0, current: 0, valid: true };
@@ -11,10 +12,10 @@ const EMPTY: MatchInfo = { total: 0, current: 0, valid: true };
  * current one is selected and scrolled to.
  */
 export function FindBar() {
-  const withReplace = useStore((s) => s.findWithReplace);
+  const withReplace = useUiStore((s) => s.findWithReplace);
   const viewMode = useStore((s) => s.viewMode);
-  const setFind = useStore((s) => s.setFind);
-  const request = useStore((s) => s.findRequest);
+  const setFind = useUiStore((s) => s.setFind);
+  const request = useUiStore((s) => s.findRequest);
   const input = useRef<HTMLInputElement>(null);
   const [options, setOptions] = useState<FindOptions>({
     search: '',

@@ -135,6 +135,11 @@
       text/HTML export details). By design: HTML export's `lang="en"`
       (the app's language is not the document's; revisit if documents get
       a language setting).
-- [ ] **Refactor**: tidy the code once features settle: remove duplication
-      between the panes, revisit store shape and component boundaries, and
-      keep `CLAUDE.md` in step with the result.
+- [x] **Refactor**: behaviour-preserving tidy-up in three parts:
+      reference-definition rules moved into `src/domain`; duplication
+      inside the panes removed (one report path, one heading selector,
+      one "edit from the store" spec); store and document actions tidied,
+      dialog flags moved to `store/ui.ts`; `CLAUDE.md` brought up to date.
+  - [ ] Optional: extract VisualPane's sync state machine into a plain,
+        unit-tested module, once unit tests pin its timing behaviour
+        (2.5 s reconcile, reconcile on focus, catch-up when shown).

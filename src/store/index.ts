@@ -6,7 +6,7 @@ import type { RecentEntry } from '@/services/storage';
 import * as storage from '@/services/storage';
 import { flushEditors } from './flush';
 import { type Settings, sanitizeSettings, type ViewMode } from './settings';
-import { showToast } from './ui';
+import { resetDialogsForTest, showToast } from './ui';
 import { captureView, type TabView } from './viewState';
 
 /**
@@ -45,13 +45,6 @@ type State = {
   viewMode: ViewMode;
   settings: Settings;
   recents: RecentEntry[];
-  settingsOpen: boolean;
-  paletteOpen: boolean;
-  exportOpen: boolean;
-  findOpen: boolean;
-  findWithReplace: boolean;
-  /** Bumped by every Ctrl+F / Ctrl+H, so an open find bar refocuses and retargets. */
-  findRequest: number;
 
   setMarkdown: (markdown: string, source: Exclude<ChangeSource, 'load'>) => void;
   /** Opens a document in a new tab (or in place of a blank one) and shows it. */
@@ -86,10 +79,6 @@ type State = {
   setScreen: (screen: Screen) => void;
   setViewMode: (mode: ViewMode) => void;
   updateSettings: (patch: Partial<Settings>) => void;
-  setSettingsOpen: (open: boolean) => void;
-  setPaletteOpen: (open: boolean) => void;
-  setExportOpen: (open: boolean) => void;
-  setFind: (open: boolean, withReplace?: boolean) => void;
 };
 
 let tabCounter = 0;
@@ -115,16 +104,8 @@ export function syncedTabs(s: LiveTab): OpenTab[] {
 
 /** The tabs with the active one's live state and current view written back. */
 function leaveActive(s: LiveTab): OpenTab[] {
-  return s.tabs.map((tab) =>
-    tab.id === s.activeTabId
-      ? {
-          ...tab,
-          doc: s.doc,
-          fileHandle: s.fileHandle,
-          handleId: s.handleId,
-          ...withView(captureView(tab.view)),
-        }
-      : tab
+  return syncedTabs(s).map((tab) =>
+    tab.id === s.activeTabId ? { ...tab, ...withView(captureView(tab.view)) } : tab
   );
 }
 
@@ -161,12 +142,6 @@ function initialState() {
     viewMode: settings.defaultViewMode,
     settings,
     recents: storage.loadRecents(),
-    settingsOpen: false,
-    paletteOpen: false,
-    exportOpen: false,
-    findOpen: false,
-    findWithReplace: false,
-    findRequest: 0,
   };
 }
 
@@ -193,24 +168,20 @@ export const useStore = create<State>()((set, get) => ({
     const s = get();
     const tabId = written?.tabId ?? s.activeTabId;
     const savedMarkdown = written?.markdown ?? s.doc.markdown;
+    const savedFields = (entry: Pick<OpenTab, 'doc' | 'fileHandle' | 'handleId'>) => ({
+      doc: { ...entry.doc, fileName, savedMarkdown },
+      fileHandle: handle ?? entry.fileHandle,
+      handleId: handle ? handleId : entry.handleId,
+    });
     if (tabId === s.activeTabId) {
-      set({
-        doc: { ...s.doc, fileName, savedMarkdown },
-        fileHandle: handle ?? s.fileHandle,
-        handleId: handle ? handleId : s.handleId,
-      });
+      set(savedFields(s));
       rememberRecent({ ...get().doc, markdown: savedMarkdown }, get().handleId);
       return;
     }
     // The user switched tabs while the save ran: update that tab's entry.
     const tab = s.tabs.find((t) => t.id === tabId);
     if (!tab) return;
-    const saved: OpenTab = {
-      ...tab,
-      doc: { ...tab.doc, fileName, savedMarkdown },
-      fileHandle: handle ?? tab.fileHandle,
-      handleId: handle ? handleId : tab.handleId,
-    };
+    const saved: OpenTab = { ...tab, ...savedFields(tab) };
     set({ tabs: s.tabs.map((t) => (t.id === tabId ? saved : t)) });
     rememberRecent({ ...saved.doc, markdown: savedMarkdown }, saved.handleId);
   },
@@ -281,15 +252,6 @@ export const useStore = create<State>()((set, get) => ({
     storage.saveSettings(settings);
     set({ settings });
   },
-  setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
-  setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
-  setExportOpen: (exportOpen) => set({ exportOpen }),
-  setFind: (findOpen, withReplace) =>
-    set((s) => ({
-      findOpen,
-      findWithReplace: withReplace ?? s.findWithReplace,
-      findRequest: findOpen ? s.findRequest + 1 : s.findRequest,
-    })),
 }));
 
 function rememberRecent(doc: MdDocument, handleId: string | null) {
@@ -306,6 +268,7 @@ function rememberRecent(doc: MdDocument, handleId: string | null) {
 /** Test helper: rebuilds state from (possibly freshly seeded) storage. */
 export function resetStoreForTest(): void {
   useStore.setState(initialState());
+  resetDialogsForTest();
 }
 
 /** Tabs closed in this window, so merging never brings them back. */
