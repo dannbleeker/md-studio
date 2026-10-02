@@ -15,7 +15,13 @@
       "!**/coverage",
       "!**/playwright-report",
       "!**/test-results",
-      "!**/dev-dist"
+      "!**/dev-dist",
+      "!**/reports/mutation/*.html",
+      "!**/reports/mutation/mutation.json",
+      "!**/perf-trace-output",
+      "!**/.tmp",
+      "!public/stats.json",
+      "!public/stats-history.json"
     ]
   },
   "formatter": {

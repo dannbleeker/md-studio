@@ -1,0 +1,61 @@
+name: Perf trace
+
+# Editor responsiveness on a ~3,000-line document, against the production
+# build: typing latency, text → visual sync and visual → text sync
+# (e2e/perf-trace.spec.ts). Runs the spec three times and gates on the BEST
+# p95 per scenario (scripts/check-perf-regression.mjs vs perf-baseline.json):
+# runner noise only ever adds time, so best-of-N filters it out.
+# Weekly, plus on demand. Never part of the per-push gate.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1' # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  perf-trace:
+    name: Measure editor responsiveness
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build
+        run: pnpm build
+
+      - name: Measure (3 iterations)
+        env:
+          PERF_TRACE: '1'
+        run: |
+          for i in 1 2 3; do
+            echo "=== perf-trace iteration $i / 3 ==="
+            PERF_ITERATION=$i pnpm exec playwright test e2e/perf-trace.spec.ts
+          done
+
+      - name: Check for regression vs perf-baseline.json
+        run: node scripts/check-perf-regression.mjs
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: perf-trace
+          path: perf-trace-output/*.json
+          retention-days: 30

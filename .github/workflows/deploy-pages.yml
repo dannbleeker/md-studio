@@ -9,6 +9,14 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # The Rebuild-book and Stats workflows commit generated files (EPUB/PDF,
+  # stats.json) back to main with GITHUB_TOKEN, and GitHub raises no `push`
+  # event for those commits. Re-deploy when they finish so the live site
+  # serves the refreshed files.
+  workflow_run:
+    workflows: ['Rebuild book artifacts', 'Stats']
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
@@ -24,10 +32,16 @@ concurrency:
 jobs:
   build:
     name: Build dist
+    # On a workflow_run trigger, only deploy if that workflow succeeded.
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
+        # Always build main's tip: a workflow_run hands over the commit that
+        # triggered it, which predates the bot's generated-files commit.
         uses: actions/checkout@v6
+        with:
+          ref: main
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v6

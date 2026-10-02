@@ -10,6 +10,11 @@ export default mergeConfig(
       globals: false,
       include: ['src/**/*.test.{ts,tsx}', 'test/**/*.test.{ts,tsx}'],
       setupFiles: ['./test/setup.ts'],
+      coverage: {
+        provider: 'v8',
+        include: ['src/**/*.{ts,tsx}'],
+        exclude: ['src/**/*.test.{ts,tsx}', 'src/**/*.d.ts', 'src/main.tsx'],
+      },
     },
   })
 );

@@ -3,6 +3,14 @@
 Read at session start so project shape doesn't need re-deriving. Per-change
 detail lives in `CHANGELOG.md`; open work in `NEXT_STEPS.md`.
 
+## Response style
+
+Always use the `anthropic-skills:caveman` skill (level **full**) for chat
+replies in this repo, from the first reply of every session: invoke it at
+session start if it isn't already active. Code, commit messages, PR text and
+docs stay in normal prose, as the skill itself specifies. Turn off only when
+the user says "stop caveman" or "normal mode".
+
 ## What this project is
 
 A local-first Markdown editor PWA. A raw Markdown pane (CodeMirror 6) and a
@@ -78,3 +86,23 @@ docs/guide/    the practitioner book (CC BY-NC 4.0)
 
 `pnpm dev` · `pnpm test` · `pnpm test:e2e` · `pnpm lint:fix` · `pnpm verify`.
 For Playwright with a preinstalled Chromium, set `PLAYWRIGHT_CHROMIUM_PATH`.
+
+- `pnpm book`: rebuild `public/Writing-in-Plain-Text.{epub,pdf}` from
+  `docs/guide/` (chapter order in `scripts/lib/bookChapters.mjs`).
+- `pnpm mutation`: Stryker over `src/domain` (~20 s); writes
+  `reports/mutation/` and the committed `score.json`.
+- `PERF_TRACE=1 pnpm exec playwright test e2e/perf-trace.spec.ts`: editor
+  latency on a large document; `node scripts/check-perf-regression.mjs`
+  compares with `perf-baseline.json`.
+- `REFRESH_VISUAL_SNAPSHOTS=1 pnpm exec playwright test e2e/visual.spec.ts
+  --update-snapshots`: only meaningful on the CI runner; use the
+  "Update visual snapshots" workflow instead.
+
+## Workflows
+
+`ci.yml` runs `pnpm verify` on every push and PR. `deploy-pages.yml` deploys
+`main` (and re-runs after the bot commits book or stats files). Scheduled or
+manual: `stats.yml` (every push to main + weekly), `rebuild-book-pdf.yml`
+(when `docs/guide/` changes), `mutation.yml` (weekly), `perf-trace.yml`
+(weekly), `update-visual-snapshots.yml` (manual, opens a PR). The bot
+workflows commit generated files to `main` with `[skip ci]`.
