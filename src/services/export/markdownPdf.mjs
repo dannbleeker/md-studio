@@ -193,25 +193,35 @@ export async function markdownToPdf({
     } = opts;
     const spaceW = F.regular.widthOfTextAtSize(' ', size);
 
-    // tokenize runs into words (style-carrying) + explicit breaks
+    // tokenize runs into words (style-carrying) + explicit breaks. A word
+    // is `glued` to the one before when the source has no space between
+    // them: a style change mid-word ("Mid**word**") or punctuation after a
+    // styled run ("**hello**,") must not gain a gap.
     const words = [];
+    let spaceBefore = true;
     for (const r of runs) {
       if (r.image) {
         words.push({ img: r.image });
+        spaceBefore = true;
         continue;
       }
       if (r.text === '\n') {
         words.push({ br: true });
+        spaceBefore = true;
         continue;
       }
-      for (const p of pdfText(r.text).split(/\s+/)) {
-        if (p === '') continue;
+      const text = pdfText(r.text);
+      const parts = text.split(/\s+/);
+      parts.forEach((p, i) => {
+        if (p === '') return;
+        const glued = i === 0 && !spaceBefore;
         // A word wider than the line (a long URL) is split so it can't run
         // off the page.
-        for (const piece of splitToWidth(p, fontFor(r), size, width)) {
-          words.push({ text: piece, run: r });
-        }
-      }
+        splitToWidth(p, fontFor(r), size, width).forEach((piece, j) => {
+          words.push({ text: piece, run: r, glued: glued || j > 0 });
+        });
+      });
+      if (text !== '') spaceBefore = /\s$/.test(text);
     }
 
     let line = [];
@@ -237,7 +247,8 @@ export async function markdownToPdf({
           color: leftBar,
         });
       let cx = x;
-      for (const w of line) {
+      line.forEach((w, i) => {
+        if (i > 0 && !w.glued) cx += spaceW;
         const f = fontFor(w.run);
         const col = w.run.code ? CODE_INK : w.run.link ? ACCENT : color;
         safeDraw(S.page, w.text, { x: cx, y: PAGE.h - top - size, font: f, size, color: col });
@@ -252,8 +263,8 @@ export async function markdownToPdf({
             color: col,
           });
         }
-        cx += ww + spaceW;
-      }
+        cx += ww;
+      });
       S.y += lineHeight;
       line = [];
       lineW = 0;
@@ -271,9 +282,10 @@ export async function markdownToPdf({
       }
       const f = fontFor(w.run);
       const ww = safeWidth(f, w.text, size);
-      if (line.length > 0 && lineW + ww > width) drawLine();
+      const gap = line.length > 0 && !w.glued ? spaceW : 0;
+      if (line.length > 0 && lineW + gap + ww > width) drawLine();
+      lineW += (line.length > 0 && !w.glued ? spaceW : 0) + ww;
       line.push(w);
-      lineW += ww + spaceW;
     }
     if (line.length > 0) drawLine();
   }
@@ -485,9 +497,13 @@ export async function markdownToPdf({
           borderColor: RULE,
           borderWidth: 0.75,
         });
+        // The column's alignment from the delimiter row (`:-:`, `--:`).
+        const align = token.align?.[ci];
         lines.forEach((text, li) => {
+          const free = colW - 2 * pad - safeWidth(font, text, size);
+          const offset = align === 'right' ? free : align === 'center' ? free / 2 : 0;
           safeDraw(S.page, text, {
-            x: x + pad,
+            x: x + pad + Math.max(0, offset),
             y: PAGE.h - top - pad - size - li * lh,
             font,
             size,

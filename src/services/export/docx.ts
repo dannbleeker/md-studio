@@ -226,14 +226,24 @@ function blocks(tokens: Token[], level = 0, quote = false): (Paragraph | Table)[
         break;
       case 'table': {
         const table = t as Tokens.Table;
+        // The column's alignment from the delimiter row (`:-:`, `--:`).
+        const alignment = (i: number) =>
+          table.align[i] === 'center'
+            ? { alignment: AlignmentType.CENTER }
+            : table.align[i] === 'right'
+              ? { alignment: AlignmentType.END }
+              : {};
         const row = (cells: Tokens.TableCell[], header: boolean) =>
           new TableRow({
             tableHeader: header,
             children: cells.map(
-              (c) =>
+              (c, i) =>
                 new TableCell({
                   children: [
-                    new Paragraph({ children: inline(c.tokens, header ? { bold: true } : {}) }),
+                    new Paragraph({
+                      children: inline(c.tokens, header ? { bold: true } : {}),
+                      ...alignment(i),
+                    }),
                   ],
                   ...(header
                     ? { shading: { type: ShadingType.CLEAR, fill: CODE_FILL, color: 'auto' } }

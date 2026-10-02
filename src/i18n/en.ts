@@ -91,7 +91,7 @@ export const en = {
   'export.html': 'Web page (HTML)',
   'export.html.hint': 'Standalone page styled like the visual view.',
   'export.pdf': 'PDF',
-  'export.pdf.hint': 'A4 document for sharing and printing.',
+  'export.pdf.hint': 'A4 document for sharing and printing. Latin scripts only.',
   'export.docx': 'Word document (DOCX)',
   'export.docx.hint': 'Editable in Word, with real headings, lists and tables.',
   'export.txt': 'Plain text',
@@ -173,6 +173,8 @@ export const en = {
   'toast.opened': 'Opened {name}',
   'toast.exported': 'Exported {name}',
   'toast.exportFailed': 'Could not export the document.',
+  'toast.pdfMissingCharacters':
+    'Some characters (such as Greek, Chinese, Arabic or emoji) can’t be shown in a PDF and were left out. Word and HTML exports keep them.',
   'toast.recentUnavailable':
     'Couldn’t open {name}: it is gone or access was refused, and it is too large to keep a copy of.',
   'toast.recentMissing': 'Couldn’t find {name} on disk any more, so opened the saved copy.',
