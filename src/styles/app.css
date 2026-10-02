@@ -442,6 +442,13 @@ body {
   justify-content: flex-end;
   gap: 0.5rem;
   margin-top: 1.25rem;
+  /* A dialog taller than the window scrolls; its buttons stay in view at
+     the bottom edge (the negative offsets cover the body's padding). */
+  position: sticky;
+  bottom: -1.25rem;
+  margin-bottom: -1.25rem;
+  padding: 0.75rem 0 1.25rem;
+  background: var(--surface);
 }
 .settings fieldset {
   border: 0;

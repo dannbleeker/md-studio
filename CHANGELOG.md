@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- A dialog taller than the window (Settings on a short laptop screen)
+  scrolls with its buttons pinned at the bottom, so Done stays in reach.
+- A test runs every command that shows a shortcut in the palette both
+  ways, from the palette and from the key, and checks they do the same,
+  so a hint can't drift from the real shortcut.
+
 - **Refactor (no behaviour change).** Reference-definition rules live in
   `domain/referenceDefinitions.ts` with their own tests, instead of two
   copies of one regex in the sync code. The panes lose their duplicated

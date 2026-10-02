@@ -46,3 +46,13 @@ test('confirm dialogs focus Cancel, and the danger button is readable in dark mo
   expect((hi + 0.05) / (lo + 0.05)).toBeGreaterThanOrEqual(4.5);
   await dialog.getByRole('button', { name: 'Cancel' }).click();
 });
+
+test('a dialog taller than the window keeps its buttons in view', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 560 });
+  await newDocument(page);
+  await page.keyboard.press('ControlOrMeta+,');
+  const done = page.getByRole('dialog', { name: 'Settings' }).getByRole('button', { name: 'Done' });
+  await expect(done).toBeInViewport({ ratio: 1 });
+  await done.click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});
