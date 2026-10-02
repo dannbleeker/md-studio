@@ -1,11 +1,11 @@
 [
   {
     "date": "2026-10-02",
-    "appLines": 3141,
-    "testLines": 937,
+    "appLines": 3715,
+    "testLines": 939,
     "tests": 86,
-    "coverageLines": 53.06,
-    "eagerGzipBytes": 740142,
+    "coverageLines": 45.19,
+    "eagerGzipBytes": 746102,
     "bookWords": 902
   }
 ]
