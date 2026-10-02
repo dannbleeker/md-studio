@@ -4,6 +4,7 @@ import { t } from '@/i18n';
 import { newDocument, openDocument, saveDocument } from '@/services/documentActions';
 import { useStore } from '@/store';
 import type { ViewMode } from '@/store/settings';
+import { useUiStore } from '@/store/ui';
 
 const VIEWS: ViewMode[] = ['split', 'text', 'visual'];
 
@@ -13,8 +14,8 @@ export function Toolbar() {
   const viewMode = useStore((s) => s.viewMode);
   const linkedScroll = useStore((s) => s.settings.linkedScroll);
   const showOutline = useStore((s) => s.settings.showOutline);
-  const { setViewMode, updateSettings, setScreen, setSettingsOpen, setPaletteOpen, setExportOpen } =
-    useStore.getState();
+  const { setViewMode, updateSettings, setScreen } = useStore.getState();
+  const { setSettingsOpen, setPaletteOpen, setExportOpen } = useUiStore.getState();
   const isMobile = useIsMobile();
 
   return (

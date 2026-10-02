@@ -3,14 +3,15 @@ import type { ExportFormat, HtmlTheme } from '@/domain/exportFormats';
 import { t } from '@/i18n';
 import { exportDocument } from '@/services/export';
 import { useStore } from '@/store';
+import { useUiStore } from '@/store/ui';
 import { Dialog } from '../ui/Dialog';
 
 const FORMATS: ExportFormat[] = ['html', 'pdf', 'docx', 'txt'];
 const THEMES: HtmlTheme[] = ['auto', 'light', 'dark'];
 
 export function ExportDialog() {
-  const open = useStore((s) => s.exportOpen);
-  const setOpen = useStore((s) => s.setExportOpen);
+  const open = useUiStore((s) => s.exportOpen);
+  const setOpen = useUiStore((s) => s.setExportOpen);
   return (
     <Dialog open={open} title={t('export.title')} onClose={() => setOpen(false)}>
       <ExportForm onDone={() => setOpen(false)} />

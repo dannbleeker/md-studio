@@ -90,30 +90,23 @@ export async function newDocument(): Promise<void> {
   useStore.getState().loadDocument(createDocument(), null);
 }
 
-export async function openDocument(): Promise<void> {
+/** Opens what `read` returns (nothing when the user cancelled); a failure becomes a toast. */
+async function openOrToast(read: () => Promise<OpenedFile | null>): Promise<void> {
   try {
-    const file = await openFile();
+    const file = await read();
     if (file) await load(file);
   } catch {
     showToast(t('toast.openFailed'));
   }
 }
 
-export async function openHandle(handle: FileSystemFileHandle): Promise<void> {
-  try {
-    await load(await readHandle(handle));
-  } catch {
-    showToast(t('toast.openFailed'));
-  }
-}
+export const openDocument = (): Promise<void> => openOrToast(openFile);
 
-export async function openDroppedFile(file: File): Promise<void> {
-  try {
-    await load({ name: file.name, markdown: await file.text(), handle: null });
-  } catch {
-    showToast(t('toast.openFailed'));
-  }
-}
+export const openHandle = (handle: FileSystemFileHandle): Promise<void> =>
+  openOrToast(() => readHandle(handle));
+
+export const openDroppedFile = (file: File): Promise<void> =>
+  openOrToast(async () => ({ name: file.name, markdown: await file.text(), handle: null }));
 
 /**
  * Reopens a recent file from disk when its handle is still usable, so the
@@ -139,9 +132,7 @@ export async function openRecent(entry: RecentEntry): Promise<void> {
     }
   }
   // Falling back to the snapshot: if that very snapshot is already open, show it.
-  const snapshot = { handleId: null, fileName: entry.fileName, markdown: entry.markdown };
-  if (showOpenTab(snapshot)) return;
-  useStore.getState().loadDocument(createDocument(entry.markdown, entry.fileName), null);
+  openSnapshot(entry.markdown, entry.fileName);
 }
 
 export async function saveDocument(saveAs = false): Promise<void> {
@@ -219,8 +210,11 @@ export async function clearRecents(): Promise<void> {
   void forgetUnusedHandles();
 }
 
-/** Shows a document bundled with the app, in its open tab if there is one. */
-function openBundled(markdown: string, fileName: string): void {
+/**
+ * Shows text not linked to a file (a recent file's snapshot, a document
+ * bundled with the app), in its open tab if there is one.
+ */
+function openSnapshot(markdown: string, fileName: string): void {
   if (showOpenTab({ handleId: null, fileName, markdown })) return;
   useStore.getState().loadDocument(createDocument(markdown, fileName), null);
 }
@@ -231,13 +225,13 @@ function openBundled(markdown: string, fileName: string): void {
  */
 export async function openWelcome(): Promise<void> {
   const { default: markdown } = await import('@/i18n/welcome.en.md?raw');
-  openBundled(markdown, t('welcome.fileName'));
+  openSnapshot(markdown, t('welcome.fileName'));
 }
 
 /** Opens the user guide (USER_GUIDE.md, bundled on demand) as a document. */
 export async function openUserGuide(): Promise<void> {
   const { default: markdown } = await import('../../USER_GUIDE.md?raw');
-  openBundled(markdown, t('guide.fileName'));
+  openSnapshot(markdown, t('guide.fileName'));
 }
 
 /** The file's current text, or null when it can't be read (moved, deleted, no permission). */

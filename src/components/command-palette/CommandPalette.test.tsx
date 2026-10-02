@@ -2,12 +2,13 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createDocument } from '@/domain/document';
 import { resetStoreForTest, useStore } from '@/store';
+import { useUiStore } from '@/store/ui';
 import { CommandPalette } from './CommandPalette';
 
 describe('CommandPalette', () => {
   beforeEach(() => {
     resetStoreForTest();
-    useStore.getState().setPaletteOpen(true);
+    useUiStore.getState().setPaletteOpen(true);
   });
 
   it('filters commands and runs the active one on Enter', () => {
@@ -17,7 +18,7 @@ describe('CommandPalette', () => {
     expect(screen.getAllByRole('option')[0]).toHaveTextContent('View: visual only');
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(useStore.getState().viewMode).toBe('visual');
-    expect(useStore.getState().paletteOpen).toBe(false);
+    expect(useUiStore.getState().paletteOpen).toBe(false);
   });
 
   it('moves the selection with arrow keys', () => {
@@ -40,7 +41,7 @@ describe('CommandPalette', () => {
 
   it('lists the document’s headings after a #', () => {
     useStore.getState().loadDocument(createDocument('# Intro\n\n## Usage\n\n## Licence\n'), null);
-    useStore.getState().setPaletteOpen(true);
+    useUiStore.getState().setPaletteOpen(true);
     render(<CommandPalette />);
     const input = screen.getByRole('combobox', { name: 'Commands' });
     fireEvent.change(input, { target: { value: '#' } });
@@ -52,18 +53,18 @@ describe('CommandPalette', () => {
     fireEvent.change(input, { target: { value: '#lic' } });
     expect(screen.getAllByRole('option')).toHaveLength(1);
     fireEvent.keyDown(input, { key: 'Enter' });
-    expect(useStore.getState().paletteOpen).toBe(false);
+    expect(useUiStore.getState().paletteOpen).toBe(false);
   });
 
   it('“Go to heading…” switches the palette to headings', () => {
     useStore.getState().loadDocument(createDocument('plain text only'), null);
-    useStore.getState().setPaletteOpen(true);
+    useUiStore.getState().setPaletteOpen(true);
     render(<CommandPalette />);
     const input = screen.getByRole('combobox', { name: 'Commands' });
     fireEvent.change(input, { target: { value: 'go to heading' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(input).toHaveValue('#');
-    expect(useStore.getState().paletteOpen).toBe(true);
+    expect(useUiStore.getState().paletteOpen).toBe(true);
     expect(screen.getByText('This document has no headings.')).toBeInTheDocument();
   });
 });

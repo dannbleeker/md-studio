@@ -15,6 +15,7 @@ import { useLocale } from './hooks/useLocale';
 import { useShortcuts } from './hooks/useShortcuts';
 import { useTheme } from './hooks/useTheme';
 import { useStore } from './store';
+import { useUiStore } from './store/ui';
 
 // Loaded on first use: neither is needed to start editing, and keeping them
 // out of the start-up chunk keeps first paint fast.
@@ -28,7 +29,7 @@ const OutlinePanel = lazy(() =>
 export function App() {
   const screen = useStore((s) => s.screen);
   const showOutline = useStore((s) => s.settings.showOutline);
-  const findOpen = useStore((s) => s.findOpen);
+  const findOpen = useUiStore((s) => s.findOpen);
   const manyTabs = useStore((s) => s.tabs.length > 1);
   const fontSize = useStore((s) => s.settings.fontSize);
   const lineNumbers = useStore((s) => s.settings.lineNumbers);

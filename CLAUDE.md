@@ -33,16 +33,28 @@ React 19 · Vite 8 · TypeScript strict (`exactOptionalPropertyTypes`,
 
 ```
 src/
-  domain/      pure logic, no React: document model, heading detection,
-               scroll anchor mapping, minimal text diff, fuzzy match
-  store/       Zustand: index.ts (document + UI state, persistence
-               subscription), settings.ts, ui.ts (toasts, confirm)
+  domain/      pure logic, no React, each with a co-located test: document
+               model, tabs, headings + fences, scroll anchor mapping,
+               changed region + minimal text diff, block-preserving merge,
+               reference definitions, nesting guard, fuzzy match, export
+               formats, footnotes, image paths and info
+  store/       Zustand: index.ts (document, tabs, settings, recents,
+               persistence subscription), settings.ts, ui.ts (dialogs and
+               find bar flags, toasts, confirm/prompt, format state),
+               flush.ts (report pending visual edits), viewState.ts
+               (per-tab cursor and scroll)
   services/    side effects: storage.ts (localStorage), fileSystem.ts
-               (File System Access + fallbacks), documentActions.ts
-  components/  editor/ (TextPane, VisualPane, SplitView) · start/ ·
-               settings/ · command-palette/ · toolbar/ · toast/ · ui/
-  hooks/       useTheme, useIsMobile, useShortcuts, useFileDrop
-  pwa/         service-worker registration, launchQueue (Windows file open)
+               (File System Access + fallbacks), handleStore.ts (file
+               handles in IndexedDB), documentActions.ts (user commands),
+               images.ts, links.ts, perfMarks.ts, export/ (HTML, Word, PDF,
+               plain text; markdownPdf.mjs is shared with the book scripts)
+  components/  editor/ (TextPane, VisualPane, SplitView, sync helpers) ·
+               start/ · tabs/ · find/ · outline/ · export/ · settings/ ·
+               command-palette/ · toolbar/ · toast/ · ui/ (Dialog,
+               LazyBoundary)
+  hooks/       useTheme, useLocale, useIsMobile, useShortcuts, useFileDrop
+  pwa/         service-worker registration, launchQueue (Windows file
+               open), staleBuild (reload offer when a chunk is gone)
   i18n/        en.ts message catalogue (reference), locales.ts registry +
                resolveLocale, index.ts t() / setLocale / dateTimeFormat
   styles/      tokens.css (slate theme), app.css, editor.css; mobile.css
@@ -56,26 +68,35 @@ docs/guide/    the practitioner book (CC BY-NC 4.0)
 - `store.doc.markdown` is the single source of truth. Each change records its
   `source` (`'text' | 'visual' | 'load'`).
 - **Text → visual:** CodeMirror's update listener calls
-  `setMarkdown(md, 'text')`. VisualPane debounces 150 ms, then
+  `setMarkdown(md, 'text')`. VisualPane debounces 150 ms, then (in
+  `catchUp`)
   `applyIncremental` (editor/applyMarkdown.ts) re-parses only the changed
   blocks plus one neighbour each side and swaps just those top-level nodes,
   all with `addToHistory: false`. Anything it can't prove equal to a full
-  parse (loose lists, footnotes, reference definitions, a changed run that
-  appears more than once) falls back to `applyFull`, which itself replaces
+  parse (loose lists, footnotes, reference definitions per
+  `domain/referenceDefinitions.ts`, a changed run that appears more than
+  once) falls back to `applyFull`, which itself replaces
   only the top-level blocks that differ (compared ignoring heading ids).
   A full parse also runs 2.5 s after the last incremental update, or as
   soon as the visual pane is focused, so the panes can't drift. Hidden in text-only view,
   the visual pane skips updates and catches up when shown.
   Milkdown's listener skips such transactions, so nothing echoes back and the
   user's source formatting is never rewritten by a text-side edit.
+- **Documents too deep to parse:** `domain/nesting.ts` flags nesting far
+  beyond real documents (brackets, quotes, emphasis runs). Such a document
+  is never parsed: the visual pane goes inert with a notice, and TextPane
+  drops its language compartment (off in the same transaction, back on in
+  a later one). A parse that still throws rebuilds the visual pane empty
+  and inert the same way.
 - **Visual → text:** Milkdown's `markdownUpdated` (debounced 200 ms) calls
   `setMarkdown(md, 'visual')`, but only for user edits (an `unreported`
   flag set by a ProseMirror plugin). `store/flush.ts` lets anything that
   reads or replaces the document (save, tab switch, close, page hide,
   focusing the text pane) report a pending visual edit first, so it is
   never lost or written into another tab. TextPane applies a minimal single-range diff
-  (`domain/textDiff.ts`) tagged with a `fromStore` annotation, so the cursor
-  and scroll position survive.
+  (`domain/textDiff.ts`) tagged `FROM_STORE` (not echoed, not in this
+  pane's undo history), so the cursor and scroll position survive and
+  Ctrl+Z in each pane undoes only that pane's own edits.
 - **Source style is kept:** Milkdown re-serializes the whole document on
   every visual edit; `keepSourceStyle` (editor/) merges that with the old
   source via `domain/preserveBlocks.ts`, keeping the original text of every

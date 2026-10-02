@@ -41,19 +41,60 @@ const NO_FORMAT: FormatState = {
   block: 0,
 };
 
-type UiState = {
+/**
+ * Which dialogs and bars are open. Kept out of the document store: opening
+ * one has nothing to persist and nothing for the editors to react to.
+ */
+type Dialogs = {
+  settingsOpen: boolean;
+  paletteOpen: boolean;
+  exportOpen: boolean;
+  findOpen: boolean;
+  findWithReplace: boolean;
+  /** Bumped by every Ctrl+F / Ctrl+H, so an open find bar refocuses and retargets. */
+  findRequest: number;
+};
+
+const CLOSED: Dialogs = {
+  settingsOpen: false,
+  paletteOpen: false,
+  exportOpen: false,
+  findOpen: false,
+  findWithReplace: false,
+  findRequest: 0,
+};
+
+type UiState = Dialogs & {
   toasts: Toast[];
   confirm: ConfirmRequest | null;
   prompt: PromptRequest | null;
   format: FormatState;
+  setSettingsOpen: (open: boolean) => void;
+  setPaletteOpen: (open: boolean) => void;
+  setExportOpen: (open: boolean) => void;
+  setFind: (open: boolean, withReplace?: boolean) => void;
 };
 
-export const useUiStore = create<UiState>()(() => ({
+export const useUiStore = create<UiState>()((set) => ({
+  ...CLOSED,
   toasts: [],
   confirm: null,
   prompt: null,
   format: NO_FORMAT,
+  setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
+  setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
+  setExportOpen: (exportOpen) => set({ exportOpen }),
+  setFind: (findOpen, withReplace) =>
+    set((s) => ({
+      findOpen,
+      findWithReplace: withReplace ?? s.findWithReplace,
+      findRequest: findOpen ? s.findRequest + 1 : s.findRequest,
+    })),
 }));
+
+export function resetDialogsForTest(): void {
+  useUiStore.setState(CLOSED);
+}
 
 let nextToastId = 1;
 

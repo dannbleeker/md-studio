@@ -4,16 +4,17 @@ import { openUserGuide } from '@/services/documentActions';
 import { BOOK_EPUB, BOOK_PDF, GUIDE_PDF } from '@/services/links';
 import { useStore } from '@/store';
 import { FONT_SIZES, type ThemePreference, type ViewMode } from '@/store/settings';
+import { useUiStore } from '@/store/ui';
 import { Dialog } from '../ui/Dialog';
 
 const THEMES: ThemePreference[] = ['system', 'light', 'dark'];
 const VIEWS: ViewMode[] = ['split', 'text', 'visual'];
 
 export function SettingsDialog() {
-  const open = useStore((s) => s.settingsOpen);
+  const open = useUiStore((s) => s.settingsOpen);
   const settings = useStore((s) => s.settings);
   const update = useStore((s) => s.updateSettings);
-  const setOpen = useStore((s) => s.setSettingsOpen);
+  const setOpen = useUiStore((s) => s.setSettingsOpen);
   const close = () => setOpen(false);
 
   return (

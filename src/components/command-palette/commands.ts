@@ -11,6 +11,7 @@ import {
 import { exportDocument } from '@/services/export';
 import { BOOK_EPUB, BOOK_PDF, DASHBOARD, GUIDE_PDF } from '@/services/links';
 import { useStore } from '@/store';
+import { useUiStore } from '@/store/ui';
 
 /** Same as clicking an `<a download>`: saves the file instead of navigating. */
 function downloadLink(href: string): void {
@@ -30,6 +31,7 @@ export type Command = {
 };
 
 const state = () => useStore.getState();
+const ui = () => useUiStore.getState();
 
 export const COMMANDS: readonly Command[] = [
   { id: 'new', label: 'cmd.new', shortcut: 'Alt+N', run: () => void newDocument() },
@@ -67,12 +69,12 @@ export const COMMANDS: readonly Command[] = [
     label: 'cmd.toggleLinkedScroll',
     run: () => state().updateSettings({ linkedScroll: !state().settings.linkedScroll }),
   },
-  { id: 'find', label: 'cmd.find', shortcut: 'Ctrl+F', run: () => state().setFind(true, false) },
+  { id: 'find', label: 'cmd.find', shortcut: 'Ctrl+F', run: () => ui().setFind(true, false) },
   {
     id: 'replace',
     label: 'cmd.replace',
     shortcut: 'Ctrl+H',
-    run: () => state().setFind(true, true),
+    run: () => ui().setFind(true, true),
   },
   { id: 'goto-heading', label: 'cmd.gotoHeading', shortcut: '#', query: '#', run: () => {} },
   {
@@ -81,7 +83,7 @@ export const COMMANDS: readonly Command[] = [
     shortcut: 'Ctrl+Shift+O',
     run: () => state().updateSettings({ showOutline: !state().settings.showOutline }),
   },
-  { id: 'export', label: 'cmd.export', run: () => state().setExportOpen(true) },
+  { id: 'export', label: 'cmd.export', run: () => ui().setExportOpen(true) },
   {
     id: 'export-html',
     label: 'cmd.exportHtml',
@@ -107,7 +109,7 @@ export const COMMANDS: readonly Command[] = [
     id: 'settings',
     label: 'cmd.settings',
     shortcut: 'Ctrl+,',
-    run: () => state().setSettingsOpen(true),
+    run: () => ui().setSettingsOpen(true),
   },
   { id: 'home', label: 'cmd.home', run: () => state().setScreen('start') },
   { id: 'welcome', label: 'cmd.welcome', run: () => void openWelcome() },
