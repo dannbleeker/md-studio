@@ -88,6 +88,22 @@ describe('storage', () => {
     expect(loadTabs()?.tabs[0]?.doc.format).toEqual({ lineEnding: '\r\n', bom: true });
   });
 
+  it('drops recent entries the start screen could not show', () => {
+    const good = recent('good.md');
+    localStorage.setItem(
+      'md-studio:recents:v1',
+      JSON.stringify([
+        { ...recent('a.md'), openedAt: 'garbage' },
+        { ...recent('b.md'), openedAt: 1e400 },
+        { ...recent('c.md'), openedAt: 9e15 },
+        { ...recent('d.md'), fileName: 7 },
+        null,
+        good,
+      ])
+    );
+    expect(loadRecents()).toEqual([good]);
+  });
+
   it('keeps a linked file and a same-named file without a link apart in recents', () => {
     pushRecent({ ...recent('README.md'), handleId: 'hX' });
     pushRecent(recent('README.md'));

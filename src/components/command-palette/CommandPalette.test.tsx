@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocument } from '@/domain/document';
 import { resetStoreForTest, useStore } from '@/store';
 import { useUiStore } from '@/store/ui';
@@ -8,17 +8,29 @@ import { CommandPalette } from './CommandPalette';
 describe('CommandPalette', () => {
   beforeEach(() => {
     resetStoreForTest();
+    useStore.getState().setScreen('editor');
     useUiStore.getState().setPaletteOpen(true);
   });
 
-  it('filters commands and runs the active one on Enter', () => {
+  it('filters commands and runs the active one on Enter', async () => {
     render(<CommandPalette />);
     const input = screen.getByRole('combobox', { name: 'Commands' });
     fireEvent.change(input, { target: { value: 'visual only' } });
     expect(screen.getAllByRole('option')[0]).toHaveTextContent('View: visual only');
     fireEvent.keyDown(input, { key: 'Enter' });
-    expect(useStore.getState().viewMode).toBe('visual');
     expect(useUiStore.getState().paletteOpen).toBe(false);
+    // Runs once the palette has closed and handed focus back.
+    await vi.waitFor(() => expect(useStore.getState().viewMode).toBe('visual'));
+  });
+
+  it('offers no command for a document the start screen hides', () => {
+    useStore.getState().setScreen('start');
+    render(<CommandPalette />);
+    const input = screen.getByRole('combobox', { name: 'Commands' });
+    fireEvent.change(input, { target: { value: 'close tab' } });
+    expect(screen.queryByRole('option', { name: /Close tab/ })).toBeNull();
+    fireEvent.change(input, { target: { value: '#' } });
+    expect(screen.getByText('Open a document to jump to its headings.')).toBeInTheDocument();
   });
 
   it('moves the selection with arrow keys', () => {

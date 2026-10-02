@@ -57,6 +57,7 @@ export const en = {
   'guide.fileName': 'User-Guide.md',
   'settings.language.system': 'Match browser',
   'palette.placeholder': 'Type a command, or # to jump to a heading',
+  'palette.headingsNeedDocument': 'Open a document to jump to its headings.',
   'palette.empty': 'No matching commands',
   'cmd.new': 'New document',
   'cmd.open': 'Open file…',

@@ -136,9 +136,33 @@ export function saveSettings(settings: object): void {
   write(SETTINGS_KEY, settings);
 }
 
+/**
+ * The recent list, without entries the start screen can't show: one bad
+ * value (an `openedAt` that isn't a time) would otherwise break the page
+ * on every load.
+ */
 export function loadRecents(): RecentEntry[] {
-  const list = read<RecentEntry[]>(RECENTS_KEY);
-  return Array.isArray(list) ? list.filter((r) => typeof r?.markdown === 'string') : [];
+  const list = read<unknown[]>(RECENTS_KEY);
+  if (!Array.isArray(list)) return [];
+  return list.flatMap((raw): RecentEntry[] => {
+    const r = raw as Partial<RecentEntry> | null;
+    if (
+      typeof r?.markdown !== 'string' ||
+      typeof r.fileName !== 'string' ||
+      typeof r.openedAt !== 'number' ||
+      !Number.isFinite(new Date(r.openedAt).getTime())
+    )
+      return [];
+    return [
+      {
+        fileName: r.fileName,
+        title: typeof r.title === 'string' ? r.title : '',
+        markdown: r.markdown,
+        openedAt: r.openedAt,
+        ...(typeof r.handleId === 'string' ? { handleId: r.handleId } : {}),
+      },
+    ];
+  });
 }
 
 /**

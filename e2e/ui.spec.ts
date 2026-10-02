@@ -56,3 +56,31 @@ test('a dialog taller than the window keeps its buttons in view', async ({ page 
   await done.click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
+
+test('printing shows only the document, none of the app around it', async ({ page }) => {
+  await newDocument(page);
+  await setText(page, '# Heading\n\nText');
+  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await page.getByRole('tab').first().click();
+  await page.keyboard.press('ControlOrMeta+Shift+O');
+  await page.keyboard.press('ControlOrMeta+F');
+  await page.emulateMedia({ media: 'print' });
+  for (const selector of ['.toolbar', '.tab-bar', '.format-toolbar', '.outline', '.findbar']) {
+    await expect(page.locator(selector).first(), selector).toBeHidden();
+  }
+  await expect(page.getByTestId('visual-editor').locator('h1')).toBeVisible();
+});
+
+test('a dialog opened from the palette hands focus back to what opened the palette', async ({
+  page,
+}) => {
+  await newDocument(page);
+  const commands = page.getByRole('button', { name: 'Commands' });
+  await commands.click();
+  await page.keyboard.type('export…');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog', { name: /Export/ })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(commands).toBeFocused();
+});
