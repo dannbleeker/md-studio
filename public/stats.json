@@ -1,0 +1,72 @@
+{
+  "generatedAt": "2026-10-02",
+  "version": "0.1.0",
+  "code": [
+    {
+      "category": "App code",
+      "files": 33,
+      "lines": 1813
+    },
+    {
+      "category": "Unit tests",
+      "files": 14,
+      "lines": 438
+    },
+    {
+      "category": "E2E tests",
+      "files": 5,
+      "lines": 488
+    },
+    {
+      "category": "Scripts",
+      "files": 8,
+      "lines": 1350
+    },
+    {
+      "category": "Styles",
+      "files": 4,
+      "lines": 631
+    },
+    {
+      "category": "Book",
+      "files": 13,
+      "lines": 178
+    }
+  ],
+  "tests": {
+    "files": 12,
+    "total": 46,
+    "passed": 46,
+    "failed": 0,
+    "e2eSpecs": 4
+  },
+  "coverage": {
+    "lines": 40.86,
+    "statements": 40.5,
+    "functions": 38.81,
+    "branches": 42.32
+  },
+  "bundle": {
+    "eagerGzipBytes": 431376,
+    "chunks": {
+      "codemirror": 215304,
+      "index": 9947,
+      "milkdown": 135975,
+      "react": 67523,
+      "rolldown-runtime": 428,
+      "workbox-window.prod.es5": 2199
+    },
+    "lazyLanguageGzipBytes": 394939
+  },
+  "book": {
+    "chapters": 11,
+    "written": 0,
+    "words": 902
+  },
+  "git": {
+    "commits": 6,
+    "firstCommit": "2026-10-02",
+    "lastCommit": "2026-10-02",
+    "activeDays": 1
+  }
+}
