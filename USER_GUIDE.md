@@ -18,7 +18,8 @@
   list** empties it. The files themselves are not touched.
 - The links under the start screen open this guide, the book *Writing in
   Plain Text* (PDF or EPUB) and the project dashboard. The guide opens as a
-  document in its own tab, so it works offline and you can search it.
+  document in its own tab, so you can search it. Both the guide and the
+  book are downloaded with the app and open offline.
 
 ## Views
 

@@ -47,8 +47,9 @@ to:
   the visual pane, as any Markdown preview does).
 - **Files** are opened only when you pick or drop them, and written only
   through a handle you granted, after the browser's permission prompt.
-- **Service worker** precaches the app's own build output and caches its
-  lazy chunks on first use. It caches nothing from other origins.
+- **Service worker** precaches the app's own build output (the user guide
+  and the book included, so they open offline) and caches its lazy chunks
+  on first use. It caches nothing from other origins.
 - **Dependencies** are checked with `pnpm audit`. Dependency install scripts
   run only for packages listed in `package.json#pnpm.onlyBuiltDependencies`.
 
@@ -62,6 +63,7 @@ to:
   push access. A workflow that commits adds the token in its commit step
   only.
 - Third-party actions are pinned to a commit SHA; first-party
-  `actions/*` are pinned to a major version.
+  `actions/*` are pinned to a major version. Dependabot
+  (`.github/dependabot.yml`) proposes updates weekly, SHAs included.
 - No workflow runs on `pull_request_target` or interpolates event text
   into a shell command.

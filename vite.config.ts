@@ -64,7 +64,9 @@ export default defineConfig({
     VitePWA({
       registerType: 'prompt',
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2,webmanifest}'],
+        // The book (PDF ~550 KB, EPUB ~60 KB) is precached with the app so
+        // it opens offline like the user guide, which is a precached chunk.
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2,webmanifest,pdf,epub}'],
         navigateFallback: '/index.html',
         // Opening the book (/Writing-in-Plain-Text.pdf), a stats file or the
         // dashboard (/dashboard.html) is a navigation too; without this the
