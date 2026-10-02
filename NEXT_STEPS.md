@@ -37,12 +37,14 @@
       skips updates while hidden. On ~3,000 lines, text → visual p95 went
       560 → 168 ms and per-update work ~260 → 12 ms. `perf-baseline.json`
       re-baselined.
-- [ ] Link the book (EPUB/PDF in `public/`) from the app, e.g. an About
-      dialog or the start screen.
+- [x] Link the book (EPUB/PDF in `public/`) from the app: start screen
+      links and command palette entries.
 - [x] Strengthen domain tests where mutants survive: `fuzzy.ts` 41% -> 91%
       (overall `src/domain` 84% of 579 mutants).
-- [ ] A stats dashboard page reading `public/stats.json`, as in the
-      sibling studios.
+- [x] A stats dashboard page (`/dashboard.html`) reading
+      `public/stats.json` and `stats-history.json`, plus live workflow runs
+      and commits from the GitHub API. No chart library: trends are inline
+      SVG.
 
 ## Repo and CI
 

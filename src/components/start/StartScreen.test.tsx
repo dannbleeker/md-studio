@@ -33,4 +33,20 @@ describe('StartScreen', () => {
     expect(useStore.getState().doc).toMatchObject({ fileName: 'old.md', markdown: '# Old' });
     expect(useStore.getState().screen).toBe('editor');
   });
+
+  it('links the book and the project dashboard', () => {
+    render(<StartScreen />);
+    expect(screen.getByRole('link', { name: 'Read the book (PDF)' })).toHaveAttribute(
+      'href',
+      '/Writing-in-Plain-Text.pdf'
+    );
+    expect(screen.getByRole('link', { name: 'Download the book (EPUB)' })).toHaveAttribute(
+      'href',
+      '/Writing-in-Plain-Text.epub'
+    );
+    expect(screen.getByRole('link', { name: 'Project dashboard' })).toHaveAttribute(
+      'href',
+      '/dashboard.html'
+    );
+  });
 });

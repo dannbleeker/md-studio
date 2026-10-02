@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Book and dashboard links.** The start screen links the book (PDF and
+  EPUB) and a new project dashboard at `/dashboard.html`: code size,
+  tests, coverage, bundle size, book progress and trends from
+  `stats.json`, plus the latest workflow runs and commits from GitHub.
+  Both are also in the command palette.
+- **Stats: start-up size now counts only start-up chunks.** `stats.json`
+  counted every non-language chunk as start-up, including the lazy export
+  chunks (docx, PDF), which overstated it (~729 KB vs ~429 KB gzip). It now
+  counts what `index.html` loads and lists those chunks in `bundle.eager`.
+  The trend line drops once at this change.
 - **Paste and drop images** into either pane. In Edge/Chrome with the
   document on disk, images are saved in an `images` folder next to it
   (you pick the document's folder once) and linked by relative path; the

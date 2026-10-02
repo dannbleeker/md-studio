@@ -249,6 +249,16 @@ body {
   margin-top: 2rem;
   font-size: 0.9rem;
 }
+.start-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+}
+.start-links a {
+  color: var(--accent);
+}
 
 /* Dialogs */
 .dialog {
