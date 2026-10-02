@@ -1,15 +1,20 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef } from 'react';
 import { buildAnchors, fromAnchorPosition, toAnchorPosition } from '@/domain/scrollMap';
 import { t } from '@/i18n';
 import { perfMeasure } from '@/services/perfMarks';
 import { useStore } from '@/store';
 import { editors } from './editorRegistry';
-import { FormatToolbar } from './FormatToolbar';
 import type { ScrollAdapter } from './scrollAdapter';
 import { TextPane } from './TextPane';
 import { VisualPane } from './VisualPane';
 
 type PaneId = 'text' | 'visual';
+
+// Loaded on demand: a same-height placeholder holds its place, so nothing
+// shifts, and the start-up chunk stays small.
+const FormatToolbar = lazy(() =>
+  import('./FormatToolbar').then((m) => ({ default: m.FormatToolbar }))
+);
 
 const atBottom = (el: HTMLElement) => el.scrollTop + el.clientHeight >= el.scrollHeight - 2;
 
@@ -115,7 +120,9 @@ export function SplitView() {
         aria-label={t('pane.visual')}
         hidden={viewMode === 'text'}
       >
-        <FormatToolbar />
+        <Suspense fallback={<div className="format-toolbar" aria-hidden="true" />}>
+          <FormatToolbar />
+        </Suspense>
         <VisualPane onAdapter={setVisual} />
       </section>
     </div>

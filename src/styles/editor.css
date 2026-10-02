@@ -273,6 +273,8 @@
 /* Format toolbar above the visual pane */
 .format-toolbar {
   display: flex;
+  min-height: 2.65rem;
+  box-sizing: border-box;
   align-items: center;
   gap: 0.15rem;
   padding: 0.3rem 0.75rem;
