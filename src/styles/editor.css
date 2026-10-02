@@ -145,3 +145,127 @@
 .visual-doc .ProseMirror-selectednode {
   outline: 2px solid var(--accent);
 }
+
+/* Workspace: optional outline beside the editors, find bar above them */
+.workspace {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.workspace-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.workspace-main > .split {
+  flex: 1;
+}
+
+.outline {
+  width: 15rem;
+  flex-shrink: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  padding: 0.75rem 0.5rem;
+}
+.outline-title {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin: 0 0.5rem 0.5rem;
+}
+.outline ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.outline-item {
+  font: inherit;
+  font-size: 0.9rem;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.outline-item:hover {
+  background: var(--surface-2);
+}
+.outline-item[aria-current="location"] {
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+.outline-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.outline-empty {
+  margin: 0 0.5rem;
+  font-size: 0.9rem;
+}
+
+.findbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.findbar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.findbar-input {
+  font: inherit;
+  flex: 0 1 22rem;
+  min-width: 8rem;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.25rem 0.5rem;
+}
+.findbar-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+.findbar-status {
+  min-width: 6rem;
+  font-size: 0.85rem;
+}
+.findbar-toggle {
+  font: inherit;
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  min-width: 2rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-muted);
+  padding: 0.15rem 0.35rem;
+  cursor: pointer;
+}
+.findbar-toggle[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+/* Find matches in the visual pane (prosemirror-search decorations) */
+.visual-doc .ProseMirror-search-match {
+  background: var(--find-match);
+}
+.visual-doc .ProseMirror-active-search-match {
+  background: var(--find-active);
+}

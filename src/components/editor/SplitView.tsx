@@ -3,6 +3,7 @@ import { buildAnchors, fromAnchorPosition, toAnchorPosition } from '@/domain/scr
 import { t } from '@/i18n';
 import { perfMeasure } from '@/services/perfMarks';
 import { useStore } from '@/store';
+import { editors } from './editorRegistry';
 import type { ScrollAdapter } from './scrollAdapter';
 import { TextPane } from './TextPane';
 import { VisualPane } from './VisualPane';
@@ -68,7 +69,7 @@ export function SplitView() {
       };
       let frame = 0;
       const onScroll = () => {
-        if (leader.current !== id) return;
+        if (leader.current !== id || performance.now() < editors.linkedScrollPausedUntil) return;
         cancelAnimationFrame(frame);
         frame = requestAnimationFrame(() => syncScroll(self, other));
       };

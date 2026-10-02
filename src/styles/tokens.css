@@ -32,6 +32,8 @@
   --syn-link: #3d5170;
   --syn-url: #556275;
   --syn-code: #9a3d3d;
+  --find-match: #fde68a;
+  --find-active: #f59e0b;
 
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, "Cascadia Code", Consolas, "SFMono-Regular", monospace;
@@ -66,6 +68,8 @@
     --syn-link: #93a8c6;
     --syn-url: #a3afc0;
     --syn-code: #e6a0a0;
+    --find-match: #5c4a12;
+    --find-active: #a16207;
   }
 }
 
@@ -95,4 +99,6 @@
   --syn-link: #93a8c6;
   --syn-url: #a3afc0;
   --syn-code: #e6a0a0;
+  --find-match: #5c4a12;
+  --find-active: #a16207;
 }

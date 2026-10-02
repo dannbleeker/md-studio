@@ -24,6 +24,7 @@ mece-studio.
   can be associated with it.
 - **Nothing is lost on reload.** The open document is kept in local storage.
 - **Export** to HTML, PDF, Word (DOCX) or plain text.
+- Find & replace in either pane, and an outline of the document's headings.
 - Command palette (Ctrl+K), light/dark/system theme, print.
 - Works offline once loaded, and updates itself when a new version is
   deployed.

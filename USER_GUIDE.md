@@ -26,6 +26,18 @@ a moment later.
 **Linked scroll** (split view) keeps both panes on the same section as you
 scroll. Turn it off in the toolbar or in Settings.
 
+## Finding and navigating
+
+- **Find** (Ctrl+F) and **Find and replace** (Ctrl+H) open a bar above the
+  editors. It searches the pane you are working in: the Markdown source,
+  or the formatted document in visual view. Options: match case (Aa),
+  whole word (W) and regular expressions (.*). Enter goes to the next
+  match, Shift+Enter to the previous one, Escape closes the bar. A
+  replacement in either pane appears in the other.
+- **Outline** (toolbar, or Ctrl+Shift+O) lists the document's headings.
+  Click one to bring that section to the top of both panes; the section
+  you are reading is highlighted.
+
 ## Saving
 
 - **Save** (Ctrl+S) writes back to the file you opened in Edge or Chrome,
@@ -70,6 +82,8 @@ app.
 | Ctrl+O | Open file |
 | Alt+N | New document |
 | Ctrl+1 / Ctrl+2 / Ctrl+3 | Split / Text / Visual view |
+| Ctrl+F / Ctrl+H | Find / Find and replace |
+| Ctrl+Shift+O | Show or hide the outline |
 | Ctrl+, | Settings |
 | Ctrl+B / Ctrl+I | Bold / italic (visual pane) |
 | Ctrl+Z / Ctrl+Y | Undo / redo (in the focused pane) |

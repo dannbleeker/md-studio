@@ -45,6 +45,19 @@ export const COMMANDS: readonly Command[] = [
     label: 'cmd.toggleLinkedScroll',
     run: () => state().updateSettings({ linkedScroll: !state().settings.linkedScroll }),
   },
+  { id: 'find', label: 'cmd.find', shortcut: 'Ctrl+F', run: () => state().setFind(true, false) },
+  {
+    id: 'replace',
+    label: 'cmd.replace',
+    shortcut: 'Ctrl+H',
+    run: () => state().setFind(true, true),
+  },
+  {
+    id: 'outline',
+    label: 'cmd.toggleOutline',
+    shortcut: 'Ctrl+Shift+O',
+    run: () => state().updateSettings({ showOutline: !state().settings.showOutline }),
+  },
   { id: 'export', label: 'cmd.export', run: () => state().setExportOpen(true) },
   {
     id: 'export-html',

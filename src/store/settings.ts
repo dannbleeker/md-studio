@@ -5,12 +5,14 @@ export type Settings = {
   theme: ThemePreference;
   linkedScroll: boolean;
   defaultViewMode: ViewMode;
+  showOutline: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
   linkedScroll: true,
   defaultViewMode: 'split',
+  showOutline: false,
 };
 
 const VIEW_MODES: readonly ViewMode[] = ['split', 'text', 'visual'];
@@ -27,5 +29,7 @@ export function sanitizeSettings(raw: Record<string, unknown>): Settings {
     defaultViewMode: VIEW_MODES.includes(raw.defaultViewMode as ViewMode)
       ? (raw.defaultViewMode as ViewMode)
       : DEFAULT_SETTINGS.defaultViewMode,
+    showOutline:
+      typeof raw.showOutline === 'boolean' ? raw.showOutline : DEFAULT_SETTINGS.showOutline,
   };
 }
