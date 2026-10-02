@@ -122,9 +122,8 @@
       document script in the app. Fixed: dashboard link scheme, crash
       on deeply nested documents, CSP for app, dashboard and HTML
       export, no-referrer images, workflow tokens and action pins.
-  - [ ] Open decision: block web images until the user allows them
-        (per document or in Settings)? Today a document's web images
-        load when it opens, as in other Markdown previews.
+  - [x] Web images are blocked until **Load web images** is turned on
+        in Settings.
   - [ ] Nested-bracket documents (`[[[[…]]]]`, 50k deep) take tens of
         seconds to parse on every load; a nesting guard before parsing
         would cap it.

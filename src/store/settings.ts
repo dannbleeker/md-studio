@@ -16,6 +16,11 @@ export type Settings = {
   /** Text pane only; the visual pane always wraps. */
   lineWrapping: boolean;
   lineNumbers: boolean;
+  /**
+   * Show images from other servers in the visual pane. Off by default: a
+   * web image tells its server when (and from where) the document is read.
+   */
+  webImages: boolean;
   /** The Export dialog's last choices, offered again next time. */
   exportFormat: ExportFormat;
   exportHtmlTheme: HtmlTheme;
@@ -30,6 +35,7 @@ export const DEFAULT_SETTINGS: Settings = {
   fontSize: 'medium',
   lineWrapping: true,
   lineNumbers: true,
+  webImages: false,
   exportFormat: 'pdf',
   exportHtmlTheme: 'auto',
 };
@@ -56,6 +62,7 @@ export function sanitizeSettings(raw: Record<string, unknown>): Settings {
     fontSize: oneOf(FONT_SIZES, raw.fontSize, d.fontSize),
     lineWrapping: bool(raw.lineWrapping, d.lineWrapping),
     lineNumbers: bool(raw.lineNumbers, d.lineNumbers),
+    webImages: bool(raw.webImages, d.webImages),
     exportFormat: oneOf(EXPORT_FORMATS, raw.exportFormat, d.exportFormat),
     exportHtmlTheme: oneOf(HTML_THEMES, raw.exportHtmlTheme, d.exportHtmlTheme),
   };

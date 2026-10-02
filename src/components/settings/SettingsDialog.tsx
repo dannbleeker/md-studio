@@ -107,6 +107,15 @@ export function SettingsDialog() {
         <label className="checkbox">
           <input
             type="checkbox"
+            checked={settings.webImages}
+            onChange={(e) => update({ webImages: e.target.checked })}
+          />
+          {t('settings.webImages')}
+        </label>
+
+        <label className="checkbox">
+          <input
+            type="checkbox"
             checked={settings.linkedScroll}
             onChange={(e) => update({ linkedScroll: e.target.checked })}
           />

@@ -104,3 +104,34 @@ test('a document too deeply nested to parse leaves the visual pane inert, not br
   await expect(pane).toHaveJSProperty('inert', false);
   expect(errors).toEqual([]);
 });
+
+test('web images load only once the setting allows them', async ({ page }) => {
+  const requests: string[] = [];
+  await page.route('**://images.example.com/**', (route) => {
+    requests.push(route.request().url());
+    return route.fulfill({
+      contentType: 'image/svg+xml',
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"/>',
+    });
+  });
+  await newDocument(page);
+  await setText(
+    page,
+    'Text\n\n![a chart](https://images.example.com/chart.svg)\n\n![](//images.example.com/b.svg)\n'
+  );
+  const imgs = visualPane(page).locator('img:not(.ProseMirror-separator)');
+  await expect(imgs).toHaveCount(2);
+  await expect(imgs.first()).toHaveClass(/image-blocked/);
+  await expect(imgs.first()).toHaveAttribute('alt', 'a chart');
+  await expect(imgs.nth(1)).toHaveAttribute('alt', 'Web image');
+  await expect(imgs.first()).not.toHaveAttribute('src', /./);
+  await page.waitForTimeout(300);
+  expect(requests).toEqual([]);
+
+  await page.keyboard.press('ControlOrMeta+,');
+  await page.getByRole('checkbox', { name: /Load web images/ }).check();
+  await page.getByRole('button', { name: 'Done' }).click();
+  await expect(imgs.first()).not.toHaveClass(/image-blocked/);
+  await expect(imgs.first()).toHaveAttribute('src', 'https://images.example.com/chart.svg');
+  await expect.poll(() => requests.length).toBe(2);
+});

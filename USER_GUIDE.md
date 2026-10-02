@@ -80,6 +80,10 @@ scroll:
 
 - **Text size** (small, medium, large) for both panes.
 - **Wrap long lines** and **Show line numbers** for the Markdown pane.
+- **Load web images** is off by default. A web image (`https://…`) tells
+  its server that, and when, the document was opened, so until you turn
+  this on the visual pane shows its description in a dashed frame instead.
+  Pasted images and images next to the file always show.
 - **Help and reading** at the bottom opens this guide and the book from
   anywhere in the app. The command palette has them too: *Open the user
   guide*, *Open the user guide (PDF)*, *Open the book* and *Download the

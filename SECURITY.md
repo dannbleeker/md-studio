@@ -47,9 +47,9 @@ to:
 - **No network requests of its own.** Exports read pasted images and images
   next to the file; they never fetch web images. The only network traffic
   is the app's own files, and web images that a document links to (shown in
-  the visual pane, as any Markdown preview does). Those requests carry no
-  referrer, but the image's server still sees your IP address and when the
-  document was opened, as with any Markdown preview or email client.
+  the visual pane) once you allow them: **Load web images** in Settings is
+  off by default, because a web image tells its server your IP address and
+  when the document was opened. Allowed images load without a referrer.
 - **Hostile documents** that overflow the Markdown parser (thousands of
   nested quotes or emphasis markers) can't take the editor down: the visual
   pane goes inert and says so, the Markdown pane keeps working, and the

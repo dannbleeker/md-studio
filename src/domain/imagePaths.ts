@@ -49,6 +49,15 @@ export function relativeImagePath(
     .join('/');
 }
 
+/**
+ * True for an image on another server (`https://…`, `//host/…`): loading
+ * it tells that server the document was opened. Pasted (`data:`) and local
+ * images are not web images.
+ */
+export function isWebImage(src: string): boolean {
+  return /^(?:[a-z][a-z0-9+.-]*:)?\/\//i.test(src.trim());
+}
+
 /** True for a relative link target (no scheme, not absolute, not a fragment). */
 export function isRelativeUrl(src: string): boolean {
   return src !== '' && !/^(?:[a-z][a-z0-9+.-]*:|\/|#)/i.test(src);

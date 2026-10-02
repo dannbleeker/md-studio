@@ -11,7 +11,9 @@
   - A document nested too deeply for the parser (thousands of `>` or `*`)
     no longer breaks the visual pane, even after a reload: the pane goes
     inert with a notice and comes back once the document parses.
-  - Web images in a document load without a referrer.
+  - Web images are no longer loaded when a document opens: they show as
+    their alt text until **Load web images** is turned on in Settings,
+    and then load without a referrer.
   - CI: read-only token for CI, no stored credentials during install and
     build, third-party actions pinned to a commit SHA, Dependabot for
     Actions. `qs` lifted past three advisories (dev-only, via Stryker).

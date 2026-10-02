@@ -21,7 +21,7 @@ test('offline, the app, the user guide and the book are served by the service wo
   // The reload restores the session in the editor; open the guide from the palette.
   await page.keyboard.press('ControlOrMeta+K');
   await page.keyboard.type('open the user guide');
-  await page.keyboard.press('Enter');
+  await page.getByRole('option', { name: 'Open the user guide', exact: true }).click();
   await expect(visualPane(page).locator('h1')).toHaveText('MD Studio quick reference');
 
   const book = await page.evaluate(async () => {

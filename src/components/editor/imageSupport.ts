@@ -5,7 +5,9 @@ import type { Node } from '@milkdown/kit/prose/model';
 import { Plugin, TextSelection } from '@milkdown/kit/prose/state';
 import type { NodeViewConstructor } from '@milkdown/kit/prose/view';
 import { callCommand } from '@milkdown/kit/utils';
-import { isRelativeUrl } from '@/domain/imagePaths';
+import { isRelativeUrl, isWebImage } from '@/domain/imagePaths';
+import { t } from '@/i18n';
+import { useStore } from '@/store';
 
 /** The image service loads on first use: most sessions never paste one. */
 const images = () => import('@/services/images');
@@ -81,18 +83,31 @@ export function visualPaneImagePlugin(getEditor: () => Editor | null): Plugin {
 /**
  * Renders images in the visual pane. Relative links (images saved next to
  * the document) can't load from the app's origin, so they're read from the
- * document's folder and shown via an object URL. The node's own `src` is
- * never touched, so the Markdown keeps the relative link.
+ * document's folder and shown via an object URL. Web images load only when
+ * the Load web images setting is on; until then the image shows its alt
+ * text. The node's own `src` is never touched, so the Markdown keeps the
+ * link either way.
  */
 export const imageNodeView: NodeViewConstructor = (initial: Node) => {
   const img = document.createElement('img');
+  let node = initial;
   let current = '';
-  const render = (node: Node) => {
+  let blocked = false;
+  const render = () => {
     const src = String(node.attrs.src ?? '');
-    img.alt = String(node.attrs.alt ?? '');
-    img.title = String(node.attrs.title ?? '');
-    if (src === current) return;
+    const alt = String(node.attrs.alt ?? '');
+    const title = String(node.attrs.title ?? '');
+    const block = isWebImage(src) && !useStore.getState().settings.webImages;
+    img.alt = block && !alt ? t('image.blocked') : alt;
+    img.title = block ? [title, t('image.blockedHint')].filter(Boolean).join('\n') : title;
+    img.classList.toggle('image-blocked', block);
+    if (src === current && block === blocked) return;
     current = src;
+    blocked = block;
+    if (block) {
+      img.removeAttribute('src');
+      return;
+    }
     if (!isRelativeUrl(src)) {
       img.src = src;
       return;
@@ -104,14 +119,20 @@ export const imageNodeView: NodeViewConstructor = (initial: Node) => {
         if (url && current === src) img.src = url;
       });
   };
-  render(initial);
+  render();
+  // Turning the setting on (or off) applies to images already on screen.
+  const unsubscribe = useStore.subscribe((state, prev) => {
+    if (state.settings.webImages !== prev.settings.webImages) render();
+  });
   return {
     dom: img,
-    update(node) {
-      if (node.type !== initial.type) return false;
-      render(node);
+    update(next) {
+      if (next.type !== initial.type) return false;
+      node = next;
+      render();
       return true;
     },
     ignoreMutation: () => true,
+    destroy: unsubscribe,
   };
 };
