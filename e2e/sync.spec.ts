@@ -150,3 +150,73 @@ test('a visual edit leaves the source style of untouched blocks alone', async ({
       'Title\n=====\n\n* star bullet\n* another\n\n__strong__ and *em*\n\nLast paragraph here. Edited\n'
     );
 });
+
+test('incremental visual updates match a full re-parse', async ({ page }) => {
+  await page.addInitScript(() => {
+    (window as { __MD_STUDIO_PERF__?: boolean }).__MD_STUDIO_PERF__ = true;
+  });
+  await newDocument(page);
+  const blocks = Array.from(
+    { length: 40 },
+    (_, i) =>
+      [
+        `## Part ${i}`,
+        `Text with **bold** and [a link](https://example.com/${i}).`,
+        '- tight\n- list',
+        '1. loose\n\n2. list',
+        '> quote',
+        '| a | b |\n| - | - |\n| 1 | 2 |',
+        '```js\nlet x = 1;\n\nlet y = 2;\n```',
+      ][i % 7]
+  );
+  await setText(page, blocks.join('\n\n'));
+  await expect(visualPane(page).locator('h2')).toHaveCount(6);
+
+  // Edit in several places: inside a paragraph, a list, a code block, and
+  // add a new heading — each followed by a pause so the visual pane syncs.
+  const edits: Array<[string, string]> = [
+    ['Text with **bold** and [a link](https://example.com/8).', 'Text with **BOLD** edit.'],
+    ['- tight\n- list', '- tight\n- list\n- more'],
+    ['let y = 2;', 'let y = 3;'],
+    ['> quote', '> quote\n\n## Inserted'],
+  ];
+  for (const [from, to] of edits) {
+    await page.evaluate(
+      ([a, b]) => {
+        const el = document.querySelector<HTMLElement>('[data-testid="text-editor"] .cm-content')!;
+        // What EditorView.findFromDOM does: CodeMirror tags its content node.
+        // biome-ignore lint/suspicious/noExplicitAny: internal CodeMirror field.
+        const view = (el as any).cmTile?.root?.view;
+        const text: string = view.state.doc.toString();
+        const at = text.indexOf(a!);
+        view.dispatch({ changes: { from: at, to: at + a!.length, insert: b } });
+      },
+      [from, to]
+    );
+    await page.waitForTimeout(400);
+  }
+  const incremental = await visualPane(page).innerHTML();
+  // The edits above took the incremental path (not the full-parse fallback).
+  const incrementalSyncs = await page.evaluate(
+    () => performance.getEntriesByName('visual-sync:incremental').length
+  );
+  expect(incrementalSyncs).toBeGreaterThanOrEqual(3);
+
+  // A reload restores the same Markdown and renders it with one full parse.
+  await page.waitForTimeout(400);
+  await page.reload();
+  await expect(visualPane(page).locator('h2')).toHaveCount(7);
+  expect(await visualPane(page).innerHTML()).toBe(incremental);
+});
+
+test('the hidden visual pane catches up when shown again', async ({ page }) => {
+  await newDocument(page);
+  await setText(page, '# Before\n');
+  await expect(visualPane(page).locator('h1')).toHaveText('Before');
+  await page.getByRole('button', { name: 'Text', exact: true }).click();
+  await setText(page, '# After\n\nwritten while hidden\n');
+  await page.waitForTimeout(400);
+  await page.getByRole('button', { name: 'Split', exact: true }).click();
+  await expect(visualPane(page).locator('h1')).toHaveText('After');
+  await expect(visualPane(page).locator('p')).toHaveText('written while hidden');
+});

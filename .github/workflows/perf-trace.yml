@@ -1,8 +1,8 @@
 name: Perf trace
 
 # Editor responsiveness on a ~3,000-line document, against the production
-# build: typing latency, text → visual sync and visual → text sync
-# (e2e/perf-trace.spec.ts). Runs the spec three times and gates on the BEST
+# build: typing latency, text → visual sync, visual → text sync, and the
+# CPU cost of each visual-pane update (e2e/perf-trace.spec.ts). Runs the spec three times and gates on the BEST
 # p95 per scenario (scripts/check-perf-regression.mjs vs perf-baseline.json):
 # runner noise only ever adds time, so best-of-N filters it out.
 # Weekly, plus on demand. Never part of the per-push gate.

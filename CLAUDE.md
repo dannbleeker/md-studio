@@ -55,8 +55,14 @@ docs/guide/    the practitioner book (CC BY-NC 4.0)
 - `store.doc.markdown` is the single source of truth. Each change records its
   `source` (`'text' | 'visual' | 'load'`).
 - **Text → visual:** CodeMirror's update listener calls
-  `setMarkdown(md, 'text')`. VisualPane debounces 150 ms, re-parses, and
-  applies only the changed top-level range with `addToHistory: false`.
+  `setMarkdown(md, 'text')`. VisualPane debounces 150 ms, then
+  `applyIncremental` (editor/applyMarkdown.ts) re-parses only the changed
+  blocks plus one neighbour each side and swaps just those top-level nodes,
+  all with `addToHistory: false`. Anything it can't prove equal to a full
+  parse (loose lists, footnotes, reference links) falls back to
+  `applyFull`; a full parse also runs once 2.5 s after the last
+  incremental update so the panes can't drift. Hidden in text-only view,
+  the visual pane skips updates and catches up when shown.
   Milkdown's listener skips such transactions, so nothing echoes back and the
   user's source formatting is never rewritten by a text-side edit.
 - **Visual → text:** Milkdown's `markdownUpdated` (debounced 200 ms) calls
@@ -97,7 +103,9 @@ For Playwright with a preinstalled Chromium, set `PLAYWRIGHT_CHROMIUM_PATH`.
   `reports/mutation/` and the committed `score.json`.
 - `PERF_TRACE=1 pnpm exec playwright test e2e/perf-trace.spec.ts`: editor
   latency on a large document; `node scripts/check-perf-regression.mjs`
-  compares with `perf-baseline.json`.
+  compares with `perf-baseline.json`. Sync code records user-timing
+  measures (`services/perfMarks.ts`) only when `window.__MD_STUDIO_PERF__`
+  is set.
 - `REFRESH_VISUAL_SNAPSHOTS=1 pnpm exec playwright test e2e/visual.spec.ts
   --update-snapshots`: only meaningful on the CI runner; use the
   "Update visual snapshots" workflow instead.

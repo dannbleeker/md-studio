@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Faster on large documents**: the visual pane now re-parses only the
+  blocks that changed instead of the whole document after each typing
+  pause, so typing no longer stutters on long files. On a 3,000-line
+  document, an edit reaches the visual pane in ~170 ms instead of ~560 ms
+  (the work per update fell from ~260 ms to ~12 ms). A full parse remains
+  as a fallback and runs once while idle to rule out drift; the hidden
+  visual pane in text-only view no longer updates at all until shown.
 - **Visual edits keep your Markdown style**: editing in the visual pane
   now rewrites only the blocks you changed. Elsewhere, `*` bullets,
   `__bold__`, setext headings, spacing and so on stay exactly as written

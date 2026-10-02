@@ -1,11 +1,23 @@
 {
   "_comment": "Editor-responsiveness baseline for the Perf trace workflow (.github/workflows/perf-trace.yml). scripts/check-perf-regression.mjs takes the BEST p95 across the workflow's iterations for each scenario and fails if it is more than the threshold percent above `p95_ms` here. Update these numbers in the same commit as a deliberate perf change; this diff is what reviewers see.",
   "_note_provenance": "Seeded 2026-10-02 from three local runs (best-of-3 p95) on a ~3,000-line document, not from a CI runner. Re-baseline from the first CI run's log if the runner differs much.",
-  "_note_known_cost": "These are slow on purpose-built large documents: every sync re-parses the whole document, and that parse also runs between keystrokes. Tracked in NEXT_STEPS.md (incremental re-parse). Expect a deliberate re-baseline downwards when that lands.",
+  "_note_known_cost": "Re-baselined after the incremental visual sync (text-to-visual 560 -> 175 ms; it is now the 150 ms batching delay plus ~15 ms of work). The visual pane re-parses only the changed blocks; a full parse (~250 ms on this document) runs only as a fallback or once while idle. Typing latency is dominated by the browser's rendering in the headless runner (app JavaScript is ~8 ms per keystroke), hence its wide threshold.",
   "regressionThresholdPct": 40,
   "scenarios": {
-    "typing": { "p95_ms": 290 },
-    "text-to-visual": { "p95_ms": 560 },
-    "visual-to-text": { "p95_ms": 345 }
+    "typing": {
+      "p95_ms": 290,
+      "thresholdPct": 75
+    },
+    "text-to-visual": {
+      "p95_ms": 175
+    },
+    "visual-sync": {
+      "p95_ms": 13,
+      "thresholdPct": 100,
+      "_note": "CPU time per visual-pane update; doubles if updates fall back to full parses, which is the regression this guards."
+    },
+    "visual-to-text": {
+      "p95_ms": 345
+    }
   }
 }
