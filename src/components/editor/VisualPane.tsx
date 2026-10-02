@@ -17,6 +17,7 @@ import { Plugin } from '@milkdown/kit/prose/state';
 import { getMarkdown } from '@milkdown/kit/utils';
 import { search } from 'prosemirror-search';
 import { useEffect, useRef } from 'react';
+import { tooDeeplyNested } from '@/domain/nesting';
 import { t } from '@/i18n';
 import { perfMeasure } from '@/services/perfMarks';
 import { useStore } from '@/store';
@@ -70,6 +71,8 @@ export function VisualPane({ onAdapter }: Props) {
     // overflow leaves Milkdown's parser broken for later documents too. The
     // pane is rebuilt empty and kept inert until the Markdown parses again:
     // an edit to a stale tree would be serialized over the Markdown.
+    // Documents known to be too deep (domain/nesting.ts) aren't even tried:
+    // deep brackets don't overflow, but take seconds to parse.
     let failed = false;
     const setFailed = (value: boolean) => {
       if (value && !failed) showToast(t('toast.visualFailed'));
@@ -82,8 +85,8 @@ export function VisualPane({ onAdapter }: Props) {
       if (!editor) return;
       clearTimeout(reconcileTimer);
       reconcileDue = false;
-      if (failed) {
-        if (markdown !== appliedMd) void mount(markdown);
+      if (failed || tooDeeplyNested([markdown])) {
+        if (markdown !== appliedMd || !failed) void mount(markdown);
         return;
       }
       try {
@@ -104,7 +107,7 @@ export function VisualPane({ onAdapter }: Props) {
         return;
       }
       staleWhileHidden = false;
-      if (failed) {
+      if (failed || tooDeeplyNested([doc.markdown])) {
         applyAll(doc.markdown);
         return;
       }
@@ -192,7 +195,10 @@ export function VisualPane({ onAdapter }: Props) {
       clearTimeout(reconcileTimer);
       reconcileDue = false;
       appliedMd = markdown;
-      return create(markdown)
+      const created = tooDeeplyNested([markdown])
+        ? Promise.reject(new Error('nested too deeply'))
+        : create(markdown);
+      return created
         .then((created) => {
           setFailed(false);
           return created;

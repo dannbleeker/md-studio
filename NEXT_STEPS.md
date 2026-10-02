@@ -124,9 +124,10 @@
       export, no-referrer images, workflow tokens and action pins.
   - [x] Web images are blocked until **Load web images** is turned on
         in Settings.
-  - [ ] Nested-bracket documents (`[[[[…]]]]`, 50k deep) take tens of
-        seconds to parse on every load; a nesting guard before parsing
-        would cap it.
+  - [x] Nested-bracket documents (`[[[[…]]]]`, 50k deep) took tens of
+        seconds to parse on every load, and 10k nested `![` crashed the
+        Markdown pane's parser. A nesting guard (`domain/nesting.ts`) now
+        keeps such documents away from both parsers.
 - [x] **Bug hunt, part 4**: the unconfirmed suspects from parts 1–3
       checked; all confirmed ones fixed (stale chunks after a deploy,
       Save As onto an open file, `.txt` names, start screen after closing

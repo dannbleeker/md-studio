@@ -135,3 +135,26 @@ test('web images load only once the setting allows them', async ({ page }) => {
   await expect(imgs.first()).toHaveAttribute('src', 'https://images.example.com/chart.svg');
   await expect.poll(() => requests.length).toBe(2);
 });
+
+test('deeply nested brackets neither stall nor crash the editors', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await newDocument(page);
+  // Quadratic in both parsers, and 10,000 nested `![` overflow the
+  // Markdown pane's: both now leave such a document unparsed.
+  const bomb = `${'!['.repeat(20_000)}x${']'.repeat(20_000)}`;
+  const started = Date.now();
+  await setText(page, bomb);
+  await expect(page.getByText(/nested too deeply for the visual pane/)).toBeVisible();
+  expect(Date.now() - started).toBeLessThan(5000);
+  await page.keyboard.type(' still typing');
+  await expect.poll(() => textContent(page)).toContain('still typing');
+
+  await setText(page, '# Fine again');
+  await expect(visualPane(page).locator('h1')).toHaveText('Fine again');
+  // Highlighting is back: the heading line is styled again.
+  await expect(
+    page.getByTestId('text-editor').locator('.cm-line').first().locator('span')
+  ).not.toHaveCount(0);
+  expect(errors).toEqual([]);
+});
