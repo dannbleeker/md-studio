@@ -4,6 +4,7 @@ import { t } from '@/i18n';
 import { perfMeasure } from '@/services/perfMarks';
 import { useStore } from '@/store';
 import { editors } from './editorRegistry';
+import { FormatToolbar } from './FormatToolbar';
 import type { ScrollAdapter } from './scrollAdapter';
 import { TextPane } from './TextPane';
 import { VisualPane } from './VisualPane';
@@ -114,6 +115,7 @@ export function SplitView() {
         aria-label={t('pane.visual')}
         hidden={viewMode === 'text'}
       >
+        <FormatToolbar />
         <VisualPane onAdapter={setVisual} />
       </section>
     </div>

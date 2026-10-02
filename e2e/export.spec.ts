@@ -38,7 +38,7 @@ test('export leaves the document and its save state alone', async ({ page }) => 
   await setText(page, '# Keep me');
   await expect(page.getByRole('img', { name: 'Unsaved changes' })).toBeVisible();
   await page.keyboard.press('ControlOrMeta+K');
-  await page.getByRole('combobox').fill('export as plain');
+  await page.getByRole('combobox', { name: 'Commands' }).fill('export as plain');
   const download = page.waitForEvent('download');
   await page.keyboard.press('Enter');
   expect((await download).suggestedFilename()).toBe('Untitled.txt');

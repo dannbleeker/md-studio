@@ -269,3 +269,59 @@
 .visual-doc .ProseMirror-active-search-match {
   background: var(--find-active);
 }
+
+/* Format toolbar above the visual pane */
+.format-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.3rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.format-btn {
+  font: inherit;
+  min-width: 2rem;
+  height: 2rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.format-btn:hover {
+  background: var(--surface-2);
+}
+.format-btn[aria-pressed="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.format-btn:focus-visible,
+.format-block:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.format-btn code {
+  font-size: 0.8rem;
+  background: none;
+}
+.format-block {
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.2rem 0.35rem;
+  flex-shrink: 0;
+}
+.format-sep {
+  width: 1px;
+  height: 1.25rem;
+  background: var(--border);
+  margin: 0 0.3rem;
+  flex-shrink: 0;
+}

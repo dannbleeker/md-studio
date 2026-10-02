@@ -78,7 +78,10 @@ test('the outline lists headings and jumps both panes to a section', async ({ pa
   const nearTop = async (heading: ReturnType<typeof page.locator>, pane: string) => {
     const [h, p] = await Promise.all([
       heading.evaluate((el) => el.getBoundingClientRect().top),
-      page.locator(`[data-pane="${pane}"]`).evaluate((el) => el.getBoundingClientRect().top),
+      // The scrolling area: the visual pane also has the format toolbar above it.
+      page
+        .locator(pane === 'visual' ? '[data-pane="visual"] .pane-scroll' : '[data-pane="text"]')
+        .evaluate((el) => el.getBoundingClientRect().top),
     ]);
     return h - p;
   };

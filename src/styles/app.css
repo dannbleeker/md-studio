@@ -408,3 +408,17 @@ kbd {
   border-radius: var(--radius);
   padding: 0.25rem 0.5rem;
 }
+
+.prompt-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.prompt-field input {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.6rem;
+}

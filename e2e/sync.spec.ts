@@ -68,7 +68,7 @@ test('view modes hide and show panes', async ({ page }) => {
 test('command palette runs commands', async ({ page }) => {
   await newDocument(page);
   await page.keyboard.press('ControlOrMeta+K');
-  const input = page.getByRole('combobox');
+  const input = page.getByRole('combobox', { name: 'Commands' });
   await expect(input).toBeFocused();
   await input.fill('text only');
   await page.keyboard.press('Enter');
