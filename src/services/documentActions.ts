@@ -78,17 +78,31 @@ export async function closeTab(id = useStore.getState().activeTabId): Promise<vo
 }
 
 /**
+ * A handle still being read back from IndexedDB (just after a tab switch
+ * or a reload). Save waits for it: without the handle it would ask where
+ * to save instead of writing to the file.
+ */
+let pendingRestore: Promise<void> | null = null;
+
+/**
  * After a reload the open document's handle is still in IndexedDB; put it
  * back so Save writes to the file instead of asking where. Permission is
  * requested at the first Save (it needs a user gesture).
  */
-export async function restoreDocumentHandle(): Promise<void> {
+export function restoreDocumentHandle(): Promise<void> {
   const { handleId, fileHandle } = useStore.getState();
-  if (!handleId || fileHandle) return;
-  const handle = await getHandle(handleId);
-  if (handle && useStore.getState().handleId === handleId) {
-    useStore.getState().restoreFileHandle(handle);
-  }
+  if (!handleId || fileHandle) return Promise.resolve();
+  const restoring = getHandle(handleId).then((handle) => {
+    if (handle && useStore.getState().handleId === handleId) {
+      useStore.getState().restoreFileHandle(handle);
+    }
+  });
+  pendingRestore = restoring;
+  const settled = () => {
+    if (pendingRestore === restoring) pendingRestore = null;
+  };
+  restoring.then(settled, settled);
+  return restoring;
 }
 
 export async function newDocument(): Promise<void> {
@@ -156,6 +170,7 @@ export async function openRecent(entry: RecentEntry): Promise<void> {
 }
 
 export async function saveDocument(saveAs = false): Promise<void> {
+  if (pendingRestore) await pendingRestore.catch(() => {});
   // Land the visual pane's pending edits, then pin what this save writes
   // and which tab it belongs to.
   flushEditors();

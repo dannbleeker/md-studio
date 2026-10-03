@@ -367,6 +367,37 @@ describe('Windows files', () => {
   });
 });
 
+describe('saving right after a tab switch', () => {
+  beforeEach(() => handles.clear());
+
+  it('waits for the tab’s file to be re-attached and saves in place', async () => {
+    const h = fakeHandle('a.md', 'a');
+    handles.set('h1', h);
+    const doc = (markdown: string, fileName: string) => ({ markdown, fileName, updatedAt: 1 });
+    localStorage.setItem(
+      'md-studio:tabs:v1',
+      JSON.stringify({
+        activeId: 't2',
+        tabs: [
+          { id: 't1', doc: doc('a', 'a.md'), handleId: 'h1' },
+          { id: 't2', doc: doc('b', 'b.md'), handleId: null },
+        ],
+      })
+    );
+    resetStoreForTest();
+    const picker = vi.fn();
+    Object.assign(window, { showSaveFilePicker: picker });
+    // Ctrl+S while the switch still reads the handle from IndexedDB.
+    const switching = switchTab('t1');
+    useStore.getState().setMarkdown('a edited', 'text');
+    await saveDocument();
+    await switching;
+    delete (window as { showSaveFilePicker?: unknown }).showSaveFilePicker;
+    expect(picker).not.toHaveBeenCalled();
+    expect(h.content).toBe('a edited');
+  });
+});
+
 describe('files not in UTF-8', () => {
   beforeEach(() => {
     handles.clear();
