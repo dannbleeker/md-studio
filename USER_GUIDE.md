@@ -38,8 +38,9 @@ scroll. Turn it off in the toolbar or in Settings.
 
 **Front matter**, the YAML metadata block some tools put at the top of a
 file between two `---` lines, shows in the visual view as a grey box
-labelled Front matter. Edit it there as plain text; Backspace in an empty
-box removes it.
+labelled Front matter. As in Pandoc, a `...` line may close it instead,
+and a `---` followed by a blank line is a rule, not front matter. Edit it
+there as plain text; Backspace in an empty box removes it.
 
 ## Formatting
 

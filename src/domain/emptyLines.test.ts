@@ -19,8 +19,8 @@ describe('dropEmptyLineMarkers', () => {
   });
 
   it('leaves front matter as written', () => {
-    expect(dropEmptyLineMarkers('---\n\n<br />\n\n---\n\n<br />\n\nText\n')).toBe(
-      '---\n\n<br />\n\n---\n\nText\n'
+    expect(dropEmptyLineMarkers('---\na: 1\n\n<br />\n\n---\n\n<br />\n\nText\n')).toBe(
+      '---\na: 1\n\n<br />\n\n---\n\nText\n'
     );
   });
 });

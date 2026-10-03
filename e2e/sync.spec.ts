@@ -420,6 +420,100 @@ test('front matter shows as one metadata block and edits as plain text', async (
   await expect(visual.locator('pre.front-matter')).toHaveCount(1);
 });
 
+test('front matter follows Pandoc: `...` closes it, a blank line after `---` makes a rule', async ({
+  page,
+}) => {
+  const report =
+    '---\ntitle: Report\n...\n\n# Introduction\n\nKey findings.\n\n---\n\n# Appendix\n';
+  await newDocument(page);
+  await setText(page, report);
+  const visual = visualPane(page);
+  await expect(visual.locator('pre.front-matter')).toHaveText('title: Report');
+  await expect(visual.locator('h1')).toHaveText(['Introduction', 'Appendix']);
+  await expect(visual.locator('hr')).toHaveCount(1);
+  // A visual edit writes the block back with its `...` fence.
+  await visual.locator('p', { hasText: 'Key findings.' }).click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('Z');
+  await expect.poll(() => textContent(page)).toBe(report.replace('findings.', 'findings.Z'));
+
+  await setText(page, '---\n\nIntro paragraph.\n\n---\n\n# Title\n');
+  await expect(visual.locator('p')).toHaveText('Intro paragraph.');
+  await expect(visual.locator('pre.front-matter')).toHaveCount(0);
+  await expect(visual.locator('hr')).toHaveCount(2);
+});
+
+test('front matter keeps its shape under block commands, Backspace and a typed fence', async ({
+  page,
+}) => {
+  const source = '---\ntitle: Post\ndate: 2024\n---\n\nHello world\n';
+  await newDocument(page);
+  await setText(page, source);
+  const visual = visualPane(page);
+  const block = visual.locator('pre.front-matter');
+  await expect(block).toHaveText('title: Post\ndate: 2024');
+  /** The caret after "title: Post", the end of the block's first line. */
+  const caretInBlock = async () => {
+    await block.click();
+    await block.locator('code').evaluate((code) => {
+      const range = document.createRange();
+      range.setStart(code.firstChild!, 'title: Post'.length);
+      getSelection()?.removeAllRanges();
+      getSelection()?.addRange(range);
+    });
+    await page.waitForTimeout(80);
+  };
+  const toolbar = page.getByRole('toolbar', { name: 'Formatting' });
+
+  await caretInBlock();
+  await page.keyboard.press('ControlOrMeta+Shift+B');
+  for (const name of ['Quote', 'Horizontal rule', 'Insert table', 'Code block']) {
+    await toolbar.getByRole('button', { name: new RegExp(`^${name}`) }).click();
+  }
+  // Backspace at the start of the body neither selects nor removes the block.
+  await visual.locator('p', { hasText: 'Hello world' }).click();
+  await page.keyboard.press('Home');
+  await page.keyboard.press('Backspace');
+  await page.keyboard.press('Backspace');
+  await page.keyboard.type('Z');
+  await expect.poll(() => textContent(page)).toBe(source.replace('Hello', 'ZHello'));
+  await expect(visual.locator('blockquote, hr, table')).toHaveCount(0);
+  await expect(block).toHaveText('title: Post\ndate: 2024');
+
+  // A fence line can't be written inside front matter: it becomes YAML code.
+  await caretInBlock();
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('---');
+  await expect
+    .poll(() => textContent(page))
+    .toBe('```yaml\ntitle: Post\n---\ndate: 2024\n```\n\nZHello world\n');
+  await expect(block).toHaveCount(0);
+});
+
+test('typing over a selection from front matter into the body keeps the body out', async ({
+  page,
+}) => {
+  await newDocument(page);
+  await setText(page, '---\ntitle: Post\n---\n\nHello world\n');
+  const visual = visualPane(page);
+  await expect(visual.locator('pre.front-matter')).toHaveText('title: Post');
+  await visual.locator('p').click();
+  await visual.evaluate((root) => {
+    const code = root.querySelector('pre.front-matter code')!.firstChild!;
+    const para = root.querySelector('p')!.firstChild!;
+    const range = document.createRange();
+    range.setStart(code, 'title'.length);
+    range.setEnd(para, 'Hello'.length);
+    getSelection()?.removeAllRanges();
+    getSelection()?.addRange(range);
+  });
+  await page.waitForTimeout(80);
+  await page.keyboard.type('Z');
+  await expect(visual.locator('pre.front-matter')).toHaveText('titleZ');
+  await expect(visual.locator('p')).toHaveText(' world');
+  await expect.poll(() => textContent(page)).toMatch(/^---\ntitleZ\n---\n\n.*world\n$/);
+});
+
 test('a visual edit keeps headings, tables and front matter it didn’t touch exactly as written', async ({
   page,
 }) => {
