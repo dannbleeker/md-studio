@@ -174,6 +174,20 @@ describe('files changed on disk outside MD Studio', () => {
     });
   });
 
+  it('counts a visual edit not yet reported as unsaved work, not reloading over it', async () => {
+    const h = fakeHandle('a.md', 'v1');
+    openOnDisk(h);
+    let pending = true;
+    const off = registerFlush(() => {
+      if (pending) useStore.getState().setMarkdown('v1 typed', 'visual');
+      pending = false;
+    });
+    h.content = 'v2 from another app';
+    await checkDiskChanges();
+    off();
+    expect(useStore.getState().doc.markdown).toBe('v1 typed');
+  });
+
   it('keeps unsaved work and asks before Save overwrites the newer file', async () => {
     const h = fakeHandle('a.md', 'v1');
     openOnDisk(h);
