@@ -531,3 +531,18 @@ test('a format button while a full re-parse is due keeps the text edit', async (
   await rule();
   await expectRuleAndXyzInBothPanes(page);
 });
+
+test('a text edit after a list continuation paragraph lands on the right block', async ({
+  page,
+}) => {
+  await newDocument(page);
+  await setText(page, 'b\n\nc\n\n- a\n\n  b\n\nc');
+  await expect(visualPane(page).locator('li')).toHaveCount(1);
+  await page.waitForTimeout(3000);
+  await textPane(page).click();
+  await page.keyboard.press('ControlOrMeta+End');
+  await page.keyboard.type('x');
+  // Before the 2.5 s reconcile, which would hide a misplaced update.
+  await page.waitForTimeout(400);
+  expect(await visualBlocks(page)).toEqual(['P:b', 'P:c', 'UL:ab', 'P:cx']);
+});

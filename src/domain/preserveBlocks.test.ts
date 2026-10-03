@@ -96,6 +96,14 @@ describe('splitBlocks', () => {
     expect(texts('~~~\n\n```\n~~~')).toEqual(['~~~\n\n```\n~~~']);
   });
 
+  it('keeps HTML comments and raw HTML elements whole across blank lines', () => {
+    expect(texts('p\n\n<!--\n\nx\n\n-->\n\nafter')).toEqual(['p', '<!--\n\nx\n\n-->', 'after']);
+    expect(texts('<!-- one line -->\n\nafter')).toEqual(['<!-- one line -->', 'after']);
+    expect(texts('<pre>\na\n\nb\n</pre>\n\nafter')).toEqual(['<pre>\na\n\nb\n</pre>', 'after']);
+    // Not an HTML block start: a plain paragraph, split as usual.
+    expect(texts('<div>\n\nx')).toEqual(['<div>', 'x']);
+  });
+
   it('handles empty and whitespace-only input', () => {
     expect(splitBlocks('')).toEqual([]);
     expect(splitBlocks('\n  \n')).toEqual([]);

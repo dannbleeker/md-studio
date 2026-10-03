@@ -101,6 +101,28 @@ const SETEXT = /^ {0,3}(?:=+|-+)[ \t]*$/;
 const THEMATIC_BREAK = /^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$/;
 
 /**
+ * HTML blocks that run across blank lines until their end marker
+ * (CommonMark types 1-5: raw text elements, comments, processing
+ * instructions, declarations, CDATA), as [start, end] patterns.
+ */
+const HTML_BLOCKS: Array<[RegExp, RegExp]> = [
+  [/^ {0,3}<(?:script|pre|style|textarea)(?=[\s>]|$)/i, /<\/(?:script|pre|style|textarea)>/i],
+  [/^ {0,3}<!--/, /-->/],
+  [/^ {0,3}<\?/, /\?>/],
+  [/^ {0,3}<![A-Za-z]/, />/],
+  [/^ {0,3}<!\[CDATA\[/, /\]\]>/],
+];
+
+/** The end marker an HTML block opened on `line` still waits for, or null. */
+function openHtmlBlock(line: string): RegExp | null {
+  for (const [open, close] of HTML_BLOCKS) {
+    const m = open.exec(line);
+    if (m) return close.test(line.slice(m[0].length)) ? null : close;
+  }
+  return null;
+}
+
+/**
  * Cheap top-level block split for `preserveUnchangedBlocks`: runs of
  * non-blank lines, with fenced code kept whole across blank lines, and a
  * heading or thematic break ending the run it closes (`# Title` directly
@@ -116,6 +138,7 @@ export function splitBlocks(md: string): BlockRange[] {
   let start = -1;
   let end = 0;
   let fence: string | null = null;
+  let html: RegExp | null = null;
   const front = frontMatterEnd(md);
   if (front >= 0) out.push({ start: 0, end: front });
   let pos = front >= 0 ? front + 1 : 0;
@@ -128,6 +151,9 @@ export function splitBlocks(md: string): BlockRange[] {
     const blank = line.trim() === '';
     if (fence) {
       if (closesFence(line, fence)) fence = null;
+      end = lineEnd;
+    } else if (html) {
+      if (html.test(line)) html = null;
       end = lineEnd;
     } else if (blank) {
       close();
@@ -144,6 +170,7 @@ export function splitBlocks(md: string): BlockRange[] {
       end = lineEnd;
       const open = openFence(line);
       if (open) fence = open;
+      else html = openHtmlBlock(line);
     }
     pos = lineEnd + 1;
   }
