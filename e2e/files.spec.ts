@@ -49,6 +49,34 @@ test('opening a dropped file replaces the document and lists it as recent', asyn
   await expect(page.locator('.recent-item', { hasText: 'dropped.md' })).toBeVisible();
 });
 
+test('a dropped Windows-1252 file shows its letters, and downloads in its encoding', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    // biome-ignore lint/suspicious/noExplicitAny: deleting a browser global for the test.
+    delete (window as any).showSaveFilePicker;
+  });
+  await newDocument(page);
+  await page.evaluate(() => {
+    const data = new DataTransfer();
+    // "# Æble på\n" in Windows-1252: not valid UTF-8.
+    const bytes = new Uint8Array([0x23, 0x20, 0xc6, 0x62, 0x6c, 0x65, 0x20, 0x70, 0xe5, 0x0a]);
+    data.items.add(new File([bytes], 'old.md', { type: 'text/markdown' }));
+    window.dispatchEvent(new DragEvent('drop', { dataTransfer: data, cancelable: true }));
+  });
+  await expect(visualPane(page).locator('h1')).toHaveText('Æble på');
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.keyboard.press('ControlOrMeta+S');
+  const download = await downloadPromise;
+  const stream = await download.createReadStream();
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) chunks.push(chunk as Buffer);
+  expect([...Buffer.concat(chunks)]).toEqual([
+    0x23, 0x20, 0xc6, 0x62, 0x6c, 0x65, 0x20, 0x70, 0xe5, 0x0a,
+  ]);
+});
+
 test('documents open in tabs that keep their own content', async ({ page }) => {
   await newDocument(page);
   await setText(page, 'first doc');
