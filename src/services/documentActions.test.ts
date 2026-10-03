@@ -29,7 +29,14 @@ vi.mock('./handleStore', () => ({
   ensurePermission: async (h: FileSystemFileHandle & { granted?: boolean }) => h.granted !== false,
 }));
 
-type FakeHandle = FileSystemFileHandle & { content: string; granted?: boolean; missing?: boolean };
+type FakeHandle = FileSystemFileHandle & {
+  /** The file's text read as UTF-8. */
+  content: string;
+  /** The file's raw bytes, when set (they win over `content`). */
+  bytes?: Uint8Array | undefined;
+  granted?: boolean;
+  missing?: boolean;
+};
 
 function fakeHandle(name: string, content: string, opts: Partial<FakeHandle> = {}): FakeHandle {
   const h = {
@@ -39,12 +46,16 @@ function fakeHandle(name: string, content: string, opts: Partial<FakeHandle> = {
     ...opts,
     async getFile() {
       if (h.missing) throw new DOMException('gone', 'NotFoundError');
-      return new File([h.content], name);
+      return new File([(h.bytes as BlobPart | undefined) ?? h.content], name);
     },
     async createWritable() {
       return {
-        write: async (data: string) => {
-          h.content = data;
+        write: async (data: string | Uint8Array) => {
+          h.bytes = typeof data === 'string' ? undefined : data;
+          h.content =
+            typeof data === 'string'
+              ? data
+              : new TextDecoder('utf-8', { ignoreBOM: true }).decode(data);
         },
         close: async () => {},
       };
@@ -353,6 +364,69 @@ describe('Windows files', () => {
     await checkDiskChanges();
     expect(useUiStore.getState().confirm).toBeNull();
     expect(useStore.getState().doc.markdown).toBe('# Title\n\nline one!\nline two\n');
+  });
+});
+
+describe('files not in UTF-8', () => {
+  beforeEach(() => {
+    handles.clear();
+    resetStoreForTest();
+    useUiStore.setState({ toasts: [] });
+  });
+  // "Æble på\r\n" in Windows-1252.
+  const cp1252 = () => new Uint8Array([0xc6, 0x62, 0x6c, 0x65, 0x20, 0x70, 0xe5, 0x0d, 0x0a]);
+  const toasts = () => useUiStore.getState().toasts.map((t) => t.message);
+
+  it('open as Windows-1252 and are saved back in it, unchanged on disk afterwards', async () => {
+    const h = fakeHandle('old.md', '', { bytes: cp1252() });
+    await openHandle(h);
+    expect(useStore.getState().doc.markdown).toBe('Æble på\n');
+    useStore.getState().setMarkdown('Æble på\nmore\n', 'text');
+    await saveDocument();
+    expect([...(h.bytes ?? [])]).toEqual([...cp1252(), 0x6d, 0x6f, 0x72, 0x65, 0x0d, 0x0a]);
+    await checkDiskChanges();
+    expect(useUiStore.getState().confirm).toBeNull();
+    expect(useStore.getState().doc.savedMarkdown).toBe('Æble på\nmore\n');
+  });
+
+  it('save as UTF-8, with a notice, once the text has a character the encoding lacks', async () => {
+    const h = fakeHandle('old.md', '', { bytes: cp1252() });
+    await openHandle(h);
+    useStore.getState().setMarkdown('Æble ✓\n', 'text');
+    await saveDocument();
+    expect(h.content).toBe('Æble ✓\r\n');
+    expect(toasts()).toContain(
+      'old.md was saved as UTF-8: it now holds characters its encoding can’t store.'
+    );
+    expect(useStore.getState().doc.format?.encoding).toBeUndefined();
+    // The next save is plain UTF-8, without the notice again.
+    useUiStore.setState({ toasts: [] });
+    useStore.getState().setMarkdown('Æble ✓ æ\n', 'text');
+    await saveDocument();
+    expect(h.content).toBe('Æble ✓ æ\r\n');
+    expect(toasts()).toEqual(['Saved old.md']);
+  });
+
+  it('open as UTF-16 by their BOM and are saved back in UTF-16', async () => {
+    const text = '﻿# Æble\r\n';
+    const le = new Uint8Array(text.length * 2);
+    for (let i = 0; i < text.length; i++) {
+      le[i * 2] = text.charCodeAt(i) & 0xff;
+      le[i * 2 + 1] = text.charCodeAt(i) >> 8;
+    }
+    const h = fakeHandle('wide.md', '', { bytes: le });
+    await openHandle(h);
+    expect(useStore.getState().doc.markdown).toBe('# Æble\n');
+    useStore.getState().setMarkdown('# Æble!\n', 'text');
+    await saveDocument();
+    expect([...(h.bytes ?? [])].slice(0, 6)).toEqual([0xff, 0xfe, 0x23, 0x00, 0x20, 0x00]);
+    expect(h.bytes?.length).toBe('﻿# Æble!\r\n'.length * 2);
+  });
+
+  it('dropped onto the window open in their encoding too', async () => {
+    await openDroppedFile(new File([cp1252()], 'dropped.md'));
+    expect(useStore.getState().doc.markdown).toBe('Æble på\n');
+    expect(useStore.getState().doc.format?.encoding).toBe('windows-1252');
   });
 });
 

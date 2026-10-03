@@ -172,6 +172,8 @@ export const en = {
   'cmd.welcome': 'Open the sample document',
   'toast.saved': 'Saved {name}',
   'toast.downloaded': 'Downloaded {name}',
+  'toast.savedAsUtf8':
+    '{name} was saved as UTF-8: it now holds characters its encoding can’t store.',
   'toast.opened': 'Opened {name}',
   'toast.exported': 'Exported {name}',
   'toast.exportFailed': 'Could not export the document.',

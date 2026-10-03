@@ -4,7 +4,7 @@
  */
 import { createDocument, isDirty, normalizeFileName } from '@/domain/document';
 import { neighbourTab, tabForFile } from '@/domain/tabs';
-import { writeText } from '@/domain/textFormat';
+import { encodeText } from '@/domain/textFormat';
 import { t } from '@/i18n';
 import { syncedTabs, useStore } from '@/store';
 import { flushEditors } from '@/store/flush';
@@ -160,7 +160,9 @@ export async function saveDocument(saveAs = false): Promise<void> {
   // and which tab it belongs to.
   flushEditors();
   const { doc, fileHandle, handleId: startHandleId, activeTabId, markSaved } = useStore.getState();
-  const written = { tabId: activeTabId, markdown: doc.markdown };
+  // Encoded up front: the format it lands in is part of what was written.
+  const encoded = encodeText(doc.markdown, doc.format);
+  const written = { tabId: activeTabId, markdown: doc.markdown, format: encoded.format };
   try {
     // A handle restored after a reload or from Recent needs write
     // permission again; if refused, fall back to choosing a location.
@@ -178,11 +180,7 @@ export async function saveDocument(saveAs = false): Promise<void> {
       });
       if (!overwrite) return;
     }
-    const result = await saveFile(
-      writeText(doc.markdown, doc.format),
-      normalizeFileName(doc.fileName),
-      target
-    );
+    const result = await saveFile(encoded.bytes, normalizeFileName(doc.fileName), target);
     if (!result) return;
     const newHandle = result.handle && result.handle !== fileHandle ? result.handle : null;
     const handleId = newHandle ? await putHandle(newHandle) : startHandleId;
@@ -190,7 +188,10 @@ export async function saveDocument(saveAs = false): Promise<void> {
     if (newHandle && handleId) settleOtherTabsOf(handleId, written.tabId);
     if (newHandle) void forgetUnusedHandles();
     showToast(
-      t(result.kind === 'written' ? 'toast.saved' : 'toast.downloaded', { name: result.name })
+      // The file's encoding could not hold the text: say it changed rather than drop characters.
+      encoded.format.encoding !== doc.format?.encoding
+        ? t('toast.savedAsUtf8', { name: result.name })
+        : t(result.kind === 'written' ? 'toast.saved' : 'toast.downloaded', { name: result.name })
     );
   } catch {
     showToast(t('toast.saveFailed'));

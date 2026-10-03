@@ -5,7 +5,7 @@
  */
 import type { MdDocument } from '@/domain/document';
 import type { Tab, Tabs } from '@/domain/tabs';
-import type { TextFormat } from '@/domain/textFormat';
+import { TEXT_ENCODINGS, type TextFormat } from '@/domain/textFormat';
 
 const DOC_KEY = 'md-studio:document:v1';
 const SETTINGS_KEY = 'md-studio:settings:v1';
@@ -54,15 +54,18 @@ function toDocument(doc: Partial<MdDocument> | null | undefined): MdDocument | n
     fileName: typeof doc.fileName === 'string' ? doc.fileName : 'Untitled.md',
     savedMarkdown: typeof doc.savedMarkdown === 'string' ? doc.savedMarkdown : doc.markdown,
     updatedAt: typeof doc.updatedAt === 'number' ? doc.updatedAt : Date.now(),
-    ...(isTextFormat(doc.format) ? { format: doc.format } : {}),
+    ...withTextFormat(doc.format),
   };
 }
 
-const isTextFormat = (value: unknown): value is TextFormat =>
-  typeof value === 'object' &&
-  value !== null &&
-  ((value as TextFormat).lineEnding === '\n' || (value as TextFormat).lineEnding === '\r\n') &&
-  typeof (value as TextFormat).bom === 'boolean';
+/** `{ format }` when `value` is a usable format; an unknown encoding is dropped (read as UTF-8). */
+function withTextFormat(value: unknown): { format?: TextFormat } {
+  if (typeof value !== 'object' || value === null) return {};
+  const { lineEnding, bom, encoding } = value as Partial<Record<keyof TextFormat, unknown>>;
+  if ((lineEnding !== '\n' && lineEnding !== '\r\n') || typeof bom !== 'boolean') return {};
+  const known = TEXT_ENCODINGS.find((name) => name === encoding);
+  return { format: known ? { lineEnding, bom, encoding: known } : { lineEnding, bom } };
+}
 
 /**
  * The open tabs. Falls back to the single document older builds kept

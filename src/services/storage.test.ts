@@ -88,6 +88,20 @@ describe('storage', () => {
     expect(loadTabs()?.tabs[0]?.doc.format).toEqual({ lineEnding: '\r\n', bom: true });
   });
 
+  it('keeps a file’s encoding with its tab, and reads an unknown one as UTF-8', () => {
+    const format = { lineEnding: '\n', bom: false, encoding: 'windows-1252' } as const;
+    const doc = createDocument('æ\n', 'old.md', format);
+    saveTabs({ tabs: [{ id: 't', doc, handleId: null }], activeId: 't' });
+    expect(loadTabs()?.tabs[0]?.doc.format).toEqual(format);
+
+    const stored = { ...doc, format: { ...format, encoding: 'koi8-r' } };
+    localStorage.setItem(
+      'md-studio:tabs:v1',
+      JSON.stringify({ activeId: 't', tabs: [{ id: 't', doc: stored }] })
+    );
+    expect(loadTabs()?.tabs[0]?.doc.format).toEqual({ lineEnding: '\n', bom: false });
+  });
+
   it('drops recent entries the start screen could not show', () => {
     const good = recent('good.md');
     localStorage.setItem(

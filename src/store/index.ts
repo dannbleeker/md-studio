@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { createDocument, documentTitle, type MdDocument } from '@/domain/document';
+import { createDocument, documentTitle, type MdDocument, withFormat } from '@/domain/document';
 import { closeTab, isBlank, moveTab, openTab, type Tab } from '@/domain/tabs';
+import type { TextFormat } from '@/domain/textFormat';
 import { t } from '@/i18n';
 import type { RecentEntry } from '@/services/storage';
 import * as storage from '@/services/storage';
@@ -64,7 +65,8 @@ type State = {
     fileName: string,
     handle: FileSystemFileHandle | null,
     handleId?: string | null,
-    written?: { tabId: string; markdown: string }
+    /** `format`: the format the file was written in, when the save changed it. */
+    written?: { tabId: string; markdown: string; format?: TextFormat }
   ) => void;
   activateTab: (id: string) => void;
   /** Closes a tab without asking; closing the last one returns to the start screen. */
@@ -173,8 +175,13 @@ export const useStore = create<State>()((set, get) => ({
     const s = get();
     const tabId = written?.tabId ?? s.activeTabId;
     const savedMarkdown = written?.markdown ?? s.doc.markdown;
+    const format = written?.format;
     const savedFields = (entry: Pick<OpenTab, 'doc' | 'fileHandle' | 'handleId'>) => ({
-      doc: { ...entry.doc, fileName, savedMarkdown },
+      doc: {
+        ...(format ? withFormat(entry.doc, format) : entry.doc),
+        fileName,
+        savedMarkdown,
+      },
       fileHandle: handle ?? entry.fileHandle,
       handleId: handle ? handleId : entry.handleId,
     });
