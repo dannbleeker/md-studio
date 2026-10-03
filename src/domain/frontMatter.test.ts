@@ -21,7 +21,7 @@ describe('frontMatterEnd', () => {
 
   it('allows an empty block, blank lines and trailing whitespace on the fences', () => {
     expect(block('---\n---\nx')).toBe('---\n---');
-    expect(block('---\n\na\n\n---\n')).toBe('---\n\na\n\n---');
+    expect(block('---\na\n\nb\n\n---\n')).toBe('---\na\n\nb\n\n---');
     expect(block('---  \na: 1\n---\t\n')).toBe('---  \na: 1\n---\t');
     expect(block('---\na: 1\n---')).toBe('---\na: 1\n---');
   });
@@ -36,10 +36,26 @@ describe('frontMatterEnd', () => {
     expect(block(' ---\na\n---\n')).toBeNull();
     expect(block('----\na\n----\n')).toBeNull();
     expect(block('---\na: 1\n')).toBeNull();
-    expect(block('---\na\n...\n')).toBeNull();
     expect(block('---\na\n --- \n')).toBeNull();
     expect(block('---')).toBeNull();
     expect(block('# Title\n---\na\n---\n')).toBeNull();
+  });
+
+  // Pandoc's rules: `...` closes it too, and a blank line straight after the
+  // opening fence makes that fence a rule, not front matter.
+  it('closes at a `...` line as well', () => {
+    expect(block('---\na\n...\n')).toBe('---\na\n...');
+    expect(block('---\na\n... \n\n---\n')).toBe('---\na\n... ');
+    const report =
+      '---\ntitle: Report\n...\n\n# Introduction\n\nKey findings.\n\n---\n\n# Appendix\n';
+    expect(block(report)).toBe('---\ntitle: Report\n...');
+    expect(block('---\na\n....\n')).toBeNull();
+  });
+
+  it('is not front matter when a blank line follows the opening fence', () => {
+    expect(block('---\n\nIntro paragraph.\n\n---\n\n# Title\n')).toBeNull();
+    expect(block('---\n \na: 1\n---\n')).toBeNull();
+    expect(block('---\r\n\r\na: 1\r\n---\r\n')).toBeNull();
   });
 
   it('closes at the first fence, even inside what looks like code', () => {
@@ -68,6 +84,19 @@ describe('frontMatterForExport', () => {
     );
   });
 
+  it('keeps the body after a block closed by `...`, and a leading rule', () => {
+    const report =
+      '---\ntitle: Report\n...\n\n# Introduction\n\nKey findings.\n\n---\n\n# Appendix\n';
+    expect(frontMatterForExport(report, false)).toBe(
+      '# Introduction\n\nKey findings.\n\n---\n\n# Appendix\n'
+    );
+    expect(frontMatterForExport(report, true)).toBe(
+      '```yaml\ntitle: Report\n```\n\n# Introduction\n\nKey findings.\n\n---\n\n# Appendix\n'
+    );
+    const ruled = '---\n\nIntro paragraph.\n\n---\n\n# Title\n';
+    expect(frontMatterForExport(ruled, false)).toBe(ruled);
+  });
+
   it('fences YAML that contains backticks with a longer fence', () => {
     expect(frontMatterForExport('---\nnote: ```x```\n---\nBody', true)).toBe(
       '````yaml\nnote: ```x```\n````\n\nBody'
@@ -75,7 +104,7 @@ describe('frontMatterForExport', () => {
   });
 
   it('leaves out an empty block, and documents without front matter alone', () => {
-    expect(frontMatterForExport('---\n\n---\n\nBody', true)).toBe('Body');
+    expect(frontMatterForExport('---\n---\n\nBody', true)).toBe('Body');
     expect(frontMatterForExport('# Only\n---\n', false)).toBe('# Only\n---\n');
   });
 });

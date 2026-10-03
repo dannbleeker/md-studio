@@ -420,6 +420,29 @@ test('front matter shows as one metadata block and edits as plain text', async (
   await expect(visual.locator('pre.front-matter')).toHaveCount(1);
 });
 
+test('front matter follows Pandoc: `...` closes it, a blank line after `---` makes a rule', async ({
+  page,
+}) => {
+  const report =
+    '---\ntitle: Report\n...\n\n# Introduction\n\nKey findings.\n\n---\n\n# Appendix\n';
+  await newDocument(page);
+  await setText(page, report);
+  const visual = visualPane(page);
+  await expect(visual.locator('pre.front-matter')).toHaveText('title: Report');
+  await expect(visual.locator('h1')).toHaveText(['Introduction', 'Appendix']);
+  await expect(visual.locator('hr')).toHaveCount(1);
+  // A visual edit writes the block back with its `...` fence.
+  await visual.locator('p', { hasText: 'Key findings.' }).click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('Z');
+  await expect.poll(() => textContent(page)).toBe(report.replace('findings.', 'findings.Z'));
+
+  await setText(page, '---\n\nIntro paragraph.\n\n---\n\n# Title\n');
+  await expect(visual.locator('p')).toHaveText('Intro paragraph.');
+  await expect(visual.locator('pre.front-matter')).toHaveCount(0);
+  await expect(visual.locator('hr')).toHaveCount(2);
+});
+
 test('a visual edit keeps headings, tables and front matter it didn’t touch exactly as written', async ({
   page,
 }) => {

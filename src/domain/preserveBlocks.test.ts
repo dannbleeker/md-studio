@@ -127,7 +127,11 @@ describe('splitBlocks: headings and rules end the run they close', () => {
       '---\ntitle: Post\ndate: 2024\n---',
       'Body',
     ]);
-    expect(texts('---\n\nnot: split\n\n---\nBody\n')).toEqual(['---\n\nnot: split\n\n---', 'Body']);
+    expect(texts('---\na: 1\n\nnot: split\n---\nBody\n')).toEqual([
+      '---\na: 1\n\nnot: split\n---',
+      'Body',
+    ]);
+    expect(texts('---\na: 1\n...\n\n---\n')).toEqual(['---\na: 1\n...', '---']);
     // Not at the start: a rule, then a setext heading.
     expect(texts('Intro\n\n---\ntitle: Post\n---\n')).toEqual(['Intro', '---', 'title: Post\n---']);
   });
