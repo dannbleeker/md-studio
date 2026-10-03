@@ -122,12 +122,14 @@ describe('splitBlocks: headings and rules end the run they close', () => {
     ]);
   });
 
-  it('keeps front matter in step with how the serializer splits it', () => {
+  it('keeps front matter whole, as the visual pane parses it', () => {
     expect(texts('---\ntitle: Post\ndate: 2024\n---\n\nBody\n')).toEqual([
-      '---',
-      'title: Post\ndate: 2024\n---',
+      '---\ntitle: Post\ndate: 2024\n---',
       'Body',
     ]);
+    expect(texts('---\n\nnot: split\n\n---\nBody\n')).toEqual(['---\n\nnot: split\n\n---', 'Body']);
+    // Not at the start: a rule, then a setext heading.
+    expect(texts('Intro\n\n---\ntitle: Post\n---\n')).toEqual(['Intro', '---', 'title: Post\n---']);
   });
 
   it('leaves fenced code and tables whole', () => {

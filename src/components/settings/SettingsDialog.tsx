@@ -117,6 +117,15 @@ export function SettingsDialog() {
         <label className="checkbox">
           <input
             type="checkbox"
+            checked={settings.exportFrontMatter}
+            onChange={(e) => update({ exportFrontMatter: e.target.checked })}
+          />
+          {t('export.frontMatter')}
+        </label>
+
+        <label className="checkbox">
+          <input
+            type="checkbox"
             checked={settings.linkedScroll}
             onChange={(e) => update({ linkedScroll: e.target.checked })}
           />

@@ -17,4 +17,10 @@ describe('dropEmptyLineMarkers', () => {
     expect(dropEmptyLineMarkers('line<br />\nnext\n')).toBe('line<br />\nnext\n');
     expect(dropEmptyLineMarkers('```html\n\n<br />\n\n```\n')).toBe('```html\n\n<br />\n\n```\n');
   });
+
+  it('leaves front matter as written', () => {
+    expect(dropEmptyLineMarkers('---\n\n<br />\n\n---\n\n<br />\n\nText\n')).toBe(
+      '---\n\n<br />\n\n---\n\nText\n'
+    );
+  });
 });

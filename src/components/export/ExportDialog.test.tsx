@@ -30,8 +30,22 @@ describe('ExportDialog', () => {
     fireEvent.click(screen.getByRole('radio', { name: /Web page/ }));
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'dark' } });
     fireEvent.click(screen.getByRole('button', { name: 'Export' }));
-    expect(exportDocument).toHaveBeenCalledWith('html', { htmlTheme: 'dark' });
+    expect(exportDocument).toHaveBeenCalledWith('html', { htmlTheme: 'dark', frontMatter: false });
     expect(useUiStore.getState().exportOpen).toBe(false);
+  });
+
+  it('leaves front matter out unless asked, and remembers the choice', () => {
+    const { unmount } = render(<ExportDialog />);
+    const box = screen.getByRole('checkbox', { name: /front matter/ });
+    expect(box).not.toBeChecked();
+    fireEvent.click(box);
+    fireEvent.click(screen.getByRole('button', { name: 'Export' }));
+    expect(exportDocument).toHaveBeenCalledWith('pdf', { htmlTheme: 'auto', frontMatter: true });
+    expect(useStore.getState().settings.exportFrontMatter).toBe(true);
+    unmount();
+    useUiStore.getState().setExportOpen(true);
+    render(<ExportDialog />);
+    expect(screen.getByRole('checkbox', { name: /front matter/ })).toBeChecked();
   });
 
   it('remembers the last format and theme for next time', () => {

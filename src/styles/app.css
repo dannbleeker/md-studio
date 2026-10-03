@@ -550,6 +550,9 @@ kbd {
   .pane-visual {
     display: block !important;
   }
+  .visual-doc:not(.print-front-matter) pre.front-matter {
+    display: none;
+  }
   .split,
   .pane-scroll {
     display: block !important;

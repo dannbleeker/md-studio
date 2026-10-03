@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+- **Keys right after a click land where you clicked.** Clicking into the
+  visual pane and pressing a key straight away (or while the page was busy,
+  e.g. syncing a large document) could act at the old cursor position:
+  ProseMirror only adopts a click's selection on `selectionchange`, which
+  Chromium queues behind input events. The visual pane now reads the
+  selection before handling a key (`editor/clickSelection.ts`).
+
+- **Front matter.** YAML front matter (a `---` block on the first line)
+  is now treated as metadata everywhere, instead of a rule and a heading.
+  - The visual pane shows it as one labelled block, edited as plain text
+    (`remark-frontmatter`). A block moved or pasted below the top becomes
+    a YAML code block.
+  - The Markdown pane highlights it as YAML (`@codemirror/lang-yaml`'s
+    front matter wrapper, ~8 KB gzip in the editor chunk).
+  - It no longer counts as a heading in the outline, the heading palette
+    or linked scroll; `domain/frontMatter.ts` applies the parser's rules
+    to the raw-text helpers.
+  - Exports and print leave it out. A new setting, *Include front matter
+    in exports and print* (Export dialog and Settings, off by default),
+    exports it as a YAML code block instead.
+  - The document title (tabs, start screen, exports) is the front
+    matter's `title:` when it has one, and never the `---` line.
+
 - **Bug hunt, part 5** (editors and sync; files, tabs and persistence;
   UI, accessibility and exports).
   - Data loss: an idle second window no longer writes its old copy of a

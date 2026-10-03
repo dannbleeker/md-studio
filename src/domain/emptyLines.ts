@@ -1,4 +1,5 @@
 import { closesFence, openFence } from './fences';
+import { frontMatterLines } from './frontMatter';
 
 /**
  * The visual pane keeps empty paragraphs and list items (Enter twice) by
@@ -13,9 +14,11 @@ const LIST_ITEM_MARKER = /^(\s*(?:[-*+]|\d{1,9}[.)]))[ \t]+<br\s*\/?\s*>[ \t]*$/
 export function dropEmptyLineMarkers(markdown: string): string {
   if (!markdown.includes('<br')) return markdown;
   const lines = markdown.split('\n');
-  const out: string[] = [];
+  // Front matter is metadata, not paragraphs: kept as written.
+  const front = frontMatterLines(markdown);
+  const out: string[] = lines.slice(0, front);
   let fence: string | null = null;
-  for (let i = 0; i < lines.length; i++) {
+  for (let i = front; i < lines.length; i++) {
     const line = lines[i] ?? '';
     if (fence) {
       if (closesFence(line, fence)) fence = null;

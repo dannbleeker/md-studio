@@ -390,6 +390,36 @@ test('blank lines typed in the visual pane never become <br /> in the Markdown',
   expect(await textContent(page)).not.toContain('<br');
 });
 
+test('front matter shows as one metadata block and edits as plain text', async ({ page }) => {
+  const source = '---\ntitle: Post\ndate: 2024-01-01\n---\n\n# Title\n\nBody\n';
+  await newDocument(page);
+  await setText(page, source);
+  const visual = visualPane(page);
+  const block = visual.locator('pre.front-matter');
+  await expect(block).toHaveText('title: Post\ndate: 2024-01-01');
+  // Not a rule and a heading any more, and not in the outline.
+  await expect(visual.locator('hr')).toHaveCount(0);
+  await expect(visual.locator('h1, h2')).toHaveText(['Title']);
+
+  // The cursor at the end of the block (End doesn't move within a <pre> line).
+  await block.click();
+  await block.locator('code').evaluate((code) => {
+    const range = document.createRange();
+    range.selectNodeContents(code);
+    range.collapse(false);
+    getSelection()?.removeAllRanges();
+    getSelection()?.addRange(range);
+  });
+  // ProseMirror adopts the DOM selection on the async `selectionchange`.
+  await page.waitForTimeout(50);
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('tags: [a]');
+  await expect
+    .poll(() => textContent(page))
+    .toBe('---\ntitle: Post\ndate: 2024-01-01\ntags: [a]\n---\n\n# Title\n\nBody\n');
+  await expect(visual.locator('pre.front-matter')).toHaveCount(1);
+});
+
 test('a visual edit keeps headings, tables and front matter it didn’t touch exactly as written', async ({
   page,
 }) => {
@@ -403,4 +433,25 @@ test('a visual edit keeps headings, tables and front matter it didn’t touch ex
   await page.keyboard.type('Z');
   await expect.poll(() => textContent(page)).toContain('Edit meZ');
   expect(await textContent(page)).toBe(source.replace('Edit me', 'Edit meZ'));
+});
+
+test('keys pressed before the browser reports a click act where the user clicked', async ({
+  page,
+}) => {
+  await newDocument(page);
+  await setText(page, '# Title\n\nAlpha para\n\nDelta para\n');
+  const visual = visualPane(page);
+  await expect(visual.locator('p')).toHaveCount(2);
+  // The Markdown pane has focus, so the click below lets the browser place
+  // the cursor, and ProseMirror adopts it on selectionchange. Hold that
+  // event back, as a busy main thread does (Chromium runs input first).
+  await page.evaluate(() =>
+    window.addEventListener('selectionchange', (e) => e.stopImmediatePropagation(), true)
+  );
+  await visual.locator('p', { hasText: 'Alpha' }).click();
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Z');
+  await expect.poll(() => textContent(page)).toContain('Z');
+  expect(await textContent(page)).toBe('# Title\n\nAlpha para\n\nZ\n\nDelta para\n');
 });

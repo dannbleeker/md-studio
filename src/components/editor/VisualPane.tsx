@@ -26,8 +26,10 @@ import { registerFlush } from '@/store/flush';
 import { showToast } from '@/store/ui';
 import { registerViewPart } from '@/store/viewState';
 import { applyFull, applyIncremental } from './applyMarkdown';
+import { clickSelection } from './clickSelection';
 import { editors, isHidden, restoreScroll, visualHeadings } from './editorRegistry';
 import { reportFormat } from './formatState';
+import { frontMatter, remarkFrontMatter } from './frontMatter';
 import { imageNodeView, visualPaneImagePlugin } from './imageSupport';
 import { imageTitleFix } from './imageTitleFix';
 import { keepSourceStyle } from './keepSourceStyle';
@@ -88,8 +90,9 @@ export function VisualPane({ onAdapter }: Props) {
               },
             }),
             visualPaneImagePlugin(() => editor),
+            clickSelection,
           ]);
-          ctx.update(remarkPluginsCtx, (plugins) => [...plugins, imageTitleFix]);
+          ctx.update(remarkPluginsCtx, (plugins) => [...plugins, remarkFrontMatter, imageTitleFix]);
           ctx.update(nodeViewCtx, (views) => {
             const image: (typeof views)[number] = ['image', imageNodeView];
             return [...views, image];
@@ -106,6 +109,7 @@ export function VisualPane({ onAdapter }: Props) {
         })
         .use(commonmark)
         .use(gfm)
+        .use(frontMatter)
         .use(history)
         .use(clipboard)
         .use(listener)
@@ -149,8 +153,14 @@ export function VisualPane({ onAdapter }: Props) {
       measure: perfMeasure,
     });
 
+    // Printing shows this pane: front matter prints only when exports include it.
+    const printFrontMatter = (include: boolean) =>
+      rootEl.classList.toggle('print-front-matter', include);
+    printFrontMatter(useStore.getState().settings.exportFrontMatter);
+
     const unsubscribe = useStore.subscribe((state, prev) => {
       sync.onChange(read(state), read(prev));
+      printFrontMatter(state.settings.exportFrontMatter);
       if (state.loadId !== prev.loadId) {
         restoreScroll(scrollEl, state.restoreView?.visualScroll ?? 0);
       }

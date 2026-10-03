@@ -36,6 +36,11 @@ a moment later.
 **Linked scroll** (split view) keeps both panes on the same section as you
 scroll. Turn it off in the toolbar or in Settings.
 
+**Front matter**, the YAML metadata block some tools put at the top of a
+file between two `---` lines, shows in the visual view as a grey box
+labelled Front matter. Edit it there as plain text; Backspace in an empty
+box removes it.
+
 ## Formatting
 
 In the visual view, the toolbar above the document formats without
@@ -139,6 +144,10 @@ file that Save writes to.
 Pasted images and images in the document's `images` folder come along (PDF:
 PNG and JPEG; Word also GIF); images on the web are not fetched and show
 their alt text. Footnotes become numbered notes at the end.
+
+Front matter is left out of exports and print. To include it, as a code
+block at the top, tick **Include front matter in exports and print** in
+the Export dialog or in Settings.
 
 The command palette also has a direct command per format, e.g. *Export as
 PDF*. PDF uses standard fonts: Latin text (including æ, ø, å) comes through,

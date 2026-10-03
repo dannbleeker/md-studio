@@ -1,4 +1,5 @@
 import { markdown } from '@codemirror/lang-markdown';
+import { yamlFrontmatter } from '@codemirror/lang-yaml';
 import { syntaxHighlighting } from '@codemirror/language';
 import { languages } from '@codemirror/language-data';
 import { search } from '@codemirror/search';
@@ -40,7 +41,9 @@ const wrapping = new Compartment();
  * parser (domain/nesting.ts): the text stays editable, just unhighlighted.
  */
 const language = new Compartment();
-const markdownLanguage = markdown({ codeLanguages: languages });
+// Front matter is parsed as YAML, not Markdown: otherwise its closing
+// `---` underlines the line above it into a heading.
+const markdownLanguage = yamlFrontmatter({ content: markdown({ codeLanguages: languages }) });
 const plainText: Extension = [];
 const languageFor = (text: Iterable<string>) =>
   tooDeeplyNested(text) ? plainText : markdownLanguage;

@@ -23,4 +23,9 @@ describe('document', () => {
     expect(documentTitle('')).toBe('');
     expect(documentTitle('x'.repeat(100))).toHaveLength(80);
   });
+
+  it('takes the front matter’s title, and otherwise looks past it', () => {
+    expect(documentTitle('---\ntitle: From YAML\n---\n\n# Heading\n')).toBe('From YAML');
+    expect(documentTitle('---\ndate: 2024\n---\n\n# Heading\n')).toBe('Heading');
+  });
 });
