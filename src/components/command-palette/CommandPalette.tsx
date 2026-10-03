@@ -104,6 +104,8 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
           setActive(0);
         }}
         onKeyDown={(e) => {
+          // Keys while an IME composes (Enter confirms the text) belong to the IME.
+          if (e.nativeEvent.isComposing || e.keyCode === 229) return;
           if (e.key === 'ArrowDown') {
             e.preventDefault();
             setActive((i) => Math.min(i + 1, results.length - 1));

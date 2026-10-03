@@ -1,7 +1,9 @@
 import { isDirty } from '@/domain/document';
+import { forPlatform } from '@/domain/keys';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { t } from '@/i18n';
 import { newDocument, openDocument, saveDocument } from '@/services/documentActions';
+import { isMac } from '@/services/platform';
 import { useStore } from '@/store';
 import type { ViewMode } from '@/store/settings';
 import { useUiStore } from '@/store/ui';
@@ -77,7 +79,7 @@ export function Toolbar() {
           className="btn btn-ghost"
           aria-pressed={showOutline}
           onClick={() => updateSettings({ showOutline: !showOutline })}
-          title="Ctrl+Shift+O"
+          title={forPlatform('Ctrl+Shift+O', isMac())}
         >
           {t('toolbar.outline')}
         </button>
@@ -85,7 +87,7 @@ export function Toolbar() {
           type="button"
           className="btn btn-ghost"
           onClick={() => setPaletteOpen(true)}
-          title="Ctrl+K"
+          title={forPlatform('Ctrl+K', isMac())}
         >
           {t('toolbar.commands')}
         </button>
