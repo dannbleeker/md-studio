@@ -1,21 +1,21 @@
 {
-  "generatedAt": "2026-10-02",
+  "generatedAt": "2026-10-03",
   "version": "0.1.0",
   "code": [
     {
       "category": "App code",
-      "files": 79,
-      "lines": 7079
+      "files": 82,
+      "lines": 7339
     },
     {
       "category": "Unit tests",
-      "files": 47,
-      "lines": 3383
+      "files": 48,
+      "lines": 3518
     },
     {
       "category": "E2E tests",
       "files": 14,
-      "lines": 1619
+      "lines": 1775
     },
     {
       "category": "Scripts",
@@ -25,7 +25,7 @@
     {
       "category": "Styles",
       "files": 4,
-      "lines": 1107
+      "lines": 1131
     },
     {
       "category": "Book",
@@ -34,20 +34,20 @@
     }
   ],
   "tests": {
-    "files": 45,
-    "total": 295,
-    "passed": 295,
+    "files": 46,
+    "total": 311,
+    "passed": 311,
     "failed": 0,
     "e2eSpecs": 13
   },
   "coverage": {
-    "lines": 63.18,
-    "statements": 61.36,
-    "functions": 55.42,
-    "branches": 63.27
+    "lines": 62.73,
+    "statements": 61.07,
+    "functions": 54.66,
+    "branches": 63.18
   },
   "bundle": {
-    "eagerGzipBytes": 448726,
+    "eagerGzipBytes": 451440,
     "eager": [
       "codemirror",
       "index",
@@ -57,26 +57,26 @@
     ],
     "chunks": {
       "FindBar": 1841,
-      "FormatToolbar": 1017,
+      "FormatToolbar": 1018,
       "OutlinePanel": 759,
-      "USER_GUIDE": 3451,
-      "codemirror": 215588,
+      "USER_GUIDE": 3615,
+      "codemirror": 215592,
       "decode": 22186,
       "docx": 115974,
-      "exportImages": 809,
+      "exportImages": 812,
       "html": 1703,
-      "images": 1297,
-      "index": 26504,
+      "images": 1298,
+      "index": 27511,
       "markdownPdf": 178828,
       "marked.esm": 13334,
-      "milkdown": 138484,
+      "milkdown": 140187,
       "plainText": 941,
       "react": 67523,
       "rolldown-runtime": 627,
       "welcome.en": 989,
       "workbox-window.prod.es5": 2199
     },
-    "lazyLanguageGzipBytes": 394913
+    "lazyLanguageGzipBytes": 395343
   },
   "book": {
     "chapters": 11,
@@ -84,7 +84,7 @@
     "words": 23045
   },
   "git": {
-    "commits": 87,
+    "commits": 89,
     "firstCommit": "2026-10-02",
     "lastCommit": "2026-10-03",
     "activeDays": 2
