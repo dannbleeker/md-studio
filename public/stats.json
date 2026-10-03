@@ -10,7 +10,7 @@
     {
       "category": "Unit tests",
       "files": 53,
-      "lines": 4547
+      "lines": 4625
     },
     {
       "category": "E2E tests",
@@ -20,7 +20,7 @@
     {
       "category": "Scripts",
       "files": 9,
-      "lines": 882
+      "lines": 884
     },
     {
       "category": "Styles",
@@ -35,19 +35,19 @@
   ],
   "tests": {
     "files": 51,
-    "total": 380,
-    "passed": 380,
+    "total": 384,
+    "passed": 384,
     "failed": 0,
     "e2eSpecs": 13
   },
   "coverage": {
-    "lines": 69.25,
-    "statements": 67.64,
-    "functions": 61.74,
+    "lines": 69.28,
+    "statements": 67.67,
+    "functions": 61.85,
     "branches": 67.35
   },
   "bundle": {
-    "eagerGzipBytes": 455305,
+    "eagerGzipBytes": 455309,
     "eager": [
       "codemirror",
       "index",
@@ -56,8 +56,8 @@
       "rolldown-runtime"
     ],
     "chunks": {
-      "FindBar": 1884,
-      "FormatToolbar": 1036,
+      "FindBar": 1885,
+      "FormatToolbar": 1038,
       "OutlinePanel": 906,
       "USER_GUIDE": 3782,
       "codemirror": 215617,
@@ -66,8 +66,8 @@
       "exportImages": 810,
       "html": 1703,
       "images": 1342,
-      "index": 31325,
-      "markdownPdf": 178905,
+      "index": 31329,
+      "markdownPdf": 179085,
       "marked.esm": 13334,
       "milkdown": 140213,
       "plainText": 942,
@@ -84,7 +84,7 @@
     "words": 23045
   },
   "git": {
-    "commits": 92,
+    "commits": 95,
     "firstCommit": "2026-10-02",
     "lastCommit": "2026-10-03",
     "activeDays": 2
