@@ -4,7 +4,7 @@
  */
 import { createDocument, isDirty, normalizeFileName } from '@/domain/document';
 import { neighbourTab, tabForFile } from '@/domain/tabs';
-import { writeText } from '@/domain/textFormat';
+import { encodeText } from '@/domain/textFormat';
 import { t } from '@/i18n';
 import { syncedTabs, useStore } from '@/store';
 import { flushEditors } from '@/store/flush';
@@ -78,17 +78,31 @@ export async function closeTab(id = useStore.getState().activeTabId): Promise<vo
 }
 
 /**
+ * A handle still being read back from IndexedDB (just after a tab switch
+ * or a reload). Save waits for it: without the handle it would ask where
+ * to save instead of writing to the file.
+ */
+let pendingRestore: Promise<void> | null = null;
+
+/**
  * After a reload the open document's handle is still in IndexedDB; put it
  * back so Save writes to the file instead of asking where. Permission is
  * requested at the first Save (it needs a user gesture).
  */
-export async function restoreDocumentHandle(): Promise<void> {
+export function restoreDocumentHandle(): Promise<void> {
   const { handleId, fileHandle } = useStore.getState();
-  if (!handleId || fileHandle) return;
-  const handle = await getHandle(handleId);
-  if (handle && useStore.getState().handleId === handleId) {
-    useStore.getState().restoreFileHandle(handle);
-  }
+  if (!handleId || fileHandle) return Promise.resolve();
+  const restoring = getHandle(handleId).then((handle) => {
+    if (handle && useStore.getState().handleId === handleId) {
+      useStore.getState().restoreFileHandle(handle);
+    }
+  });
+  pendingRestore = restoring;
+  const settled = () => {
+    if (pendingRestore === restoring) pendingRestore = null;
+  };
+  restoring.then(settled, settled);
+  return restoring;
 }
 
 export async function newDocument(): Promise<void> {
@@ -156,11 +170,14 @@ export async function openRecent(entry: RecentEntry): Promise<void> {
 }
 
 export async function saveDocument(saveAs = false): Promise<void> {
+  if (pendingRestore) await pendingRestore.catch(() => {});
   // Land the visual pane's pending edits, then pin what this save writes
   // and which tab it belongs to.
   flushEditors();
   const { doc, fileHandle, handleId: startHandleId, activeTabId, markSaved } = useStore.getState();
-  const written = { tabId: activeTabId, markdown: doc.markdown };
+  // Encoded up front: the format it lands in is part of what was written.
+  const encoded = encodeText(doc.markdown, doc.format);
+  const written = { tabId: activeTabId, markdown: doc.markdown, format: encoded.format };
   try {
     // A handle restored after a reload or from Recent needs write
     // permission again; if refused, fall back to choosing a location.
@@ -178,11 +195,7 @@ export async function saveDocument(saveAs = false): Promise<void> {
       });
       if (!overwrite) return;
     }
-    const result = await saveFile(
-      writeText(doc.markdown, doc.format),
-      normalizeFileName(doc.fileName),
-      target
-    );
+    const result = await saveFile(encoded.bytes, normalizeFileName(doc.fileName), target);
     if (!result) return;
     const newHandle = result.handle && result.handle !== fileHandle ? result.handle : null;
     const handleId = newHandle ? await putHandle(newHandle) : startHandleId;
@@ -190,7 +203,10 @@ export async function saveDocument(saveAs = false): Promise<void> {
     if (newHandle && handleId) settleOtherTabsOf(handleId, written.tabId);
     if (newHandle) void forgetUnusedHandles();
     showToast(
-      t(result.kind === 'written' ? 'toast.saved' : 'toast.downloaded', { name: result.name })
+      // The file's encoding could not hold the text: say it changed rather than drop characters.
+      encoded.format.encoding !== doc.format?.encoding
+        ? t('toast.savedAsUtf8', { name: result.name })
+        : t(result.kind === 'written' ? 'toast.saved' : 'toast.downloaded', { name: result.name })
     );
   } catch {
     showToast(t('toast.saveFailed'));

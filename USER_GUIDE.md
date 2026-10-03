@@ -123,6 +123,10 @@ The Export dialog remembers the format and theme you used last.
 - **Save as…** (Ctrl+Shift+S) always asks.
 - In Firefox, Safari and on phones, Save downloads the file instead.
 - A dot next to the file name means there are unsaved changes.
+- A file is saved the way it was written: same line endings and the same
+  encoding (UTF-8, UTF-16, or Windows-1252 for older Windows files). If
+  you add a character that encoding can't hold, the file is saved as
+  UTF-8 instead and MD Studio tells you.
 - If the file changed on disk (another app, another device syncing the
   folder), MD Studio notices when you come back to the window: a tab
   without unsaved changes reloads, and Save asks before overwriting the

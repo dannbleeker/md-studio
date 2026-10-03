@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { createDocument, documentTitle, type MdDocument } from '@/domain/document';
+import { createDocument, documentTitle, type MdDocument, withFormat } from '@/domain/document';
 import { closeTab, isBlank, moveTab, openTab, type Tab } from '@/domain/tabs';
+import type { TextFormat } from '@/domain/textFormat';
 import { t } from '@/i18n';
 import type { RecentEntry } from '@/services/storage';
 import * as storage from '@/services/storage';
@@ -64,7 +65,8 @@ type State = {
     fileName: string,
     handle: FileSystemFileHandle | null,
     handleId?: string | null,
-    written?: { tabId: string; markdown: string }
+    /** `format`: the format the file was written in, when the save changed it. */
+    written?: { tabId: string; markdown: string; format?: TextFormat }
   ) => void;
   activateTab: (id: string) => void;
   /** Closes a tab without asking; closing the last one returns to the start screen. */
@@ -173,8 +175,13 @@ export const useStore = create<State>()((set, get) => ({
     const s = get();
     const tabId = written?.tabId ?? s.activeTabId;
     const savedMarkdown = written?.markdown ?? s.doc.markdown;
+    const format = written?.format;
     const savedFields = (entry: Pick<OpenTab, 'doc' | 'fileHandle' | 'handleId'>) => ({
-      doc: { ...entry.doc, fileName, savedMarkdown },
+      doc: {
+        ...(format ? withFormat(entry.doc, format) : entry.doc),
+        fileName,
+        savedMarkdown,
+      },
       fileHandle: handle ?? entry.fileHandle,
       handleId: handle ? handleId : entry.handleId,
     });
@@ -250,10 +257,34 @@ export const useStore = create<State>()((set, get) => ({
 
   restoreFileHandle: (fileHandle) => set({ fileHandle }),
 
-  setScreen: (screen) => set({ screen }),
+  setScreen: (screen) => {
+    if (screen !== 'start' || get().screen === 'start') {
+      set({ screen });
+      return;
+    }
+    // The editors unmount on the start screen: land their pending edits and
+    // keep their cursor and scroll, which they apply when they mount again.
+    flushEditors();
+    const s = get();
+    const view = captureView(s.restoreView ?? undefined);
+    if (!view) {
+      set({ screen });
+      return;
+    }
+    set({
+      screen,
+      restoreView: view,
+      // Also the tab's own record, for a switch to another tab from there.
+      tabs: s.tabs.map((tab) => (tab.id === s.activeTabId ? { ...tab, view } : tab)),
+    });
+  },
   setViewMode: (viewMode) => set({ viewMode }),
   updateSettings: (patch) => {
-    const settings = { ...get().settings, ...patch };
+    // Onto what is stored, not this window's copy: another window may have
+    // changed a setting since, and writing the whole object would revert it.
+    const stored = storage.loadSettings();
+    const base = Object.keys(stored).length > 0 ? sanitizeSettings(stored) : get().settings;
+    const settings = { ...base, ...patch };
     storage.saveSettings(settings);
     set({ settings });
   },
@@ -325,6 +356,71 @@ useStore.subscribe((state, prev) => {
   persistTimer = setTimeout(persist, 300);
 });
 
+/**
+ * Takes in what another window of the app stored. A tab both windows have
+ * open shows the other window's copy when it is newer, so this window
+ * neither keeps showing (and then writing over) older text nor closes it
+ * without asking about the other window's unsaved changes. Tabs are not
+ * added or removed: each window keeps its own set. Settings are applied as
+ * stored.
+ */
+function adoptOtherWindow(key: string | null): void {
+  if (key === null || key === storage.SETTINGS_KEY) {
+    const stored = storage.loadSettings();
+    if (Object.keys(stored).length > 0) useStore.setState({ settings: sanitizeSettings(stored) });
+  }
+  if (key === null || key === storage.TABS_KEY) adoptNewerTabs();
+}
+
+function adoptNewerTabs(): void {
+  const stored = new Map((storage.loadTabs()?.tabs ?? []).map((tab) => [tab.id, tab]));
+  if (stored.size === 0) return;
+  // A visual edit still in its debounce is this window's newest text.
+  flushEditors();
+  const s = useStore.getState();
+  const newer = (tab: Pick<Tab, 'id'>, doc: MdDocument) => {
+    const theirs = stored.get(tab.id);
+    return theirs && theirs.doc.updatedAt > doc.updatedAt ? theirs : null;
+  };
+  // A different handle (their Save As) can't be carried over: it is looked up again by id.
+  const linkedTo = (tab: Pick<OpenTab, 'handleId' | 'fileHandle'>, theirs: Tab) => ({
+    handleId: theirs.handleId,
+    fileHandle: theirs.handleId === tab.handleId ? tab.fileHandle : null,
+  });
+  let changed = false;
+  const tabs = s.tabs.map((tab) => {
+    const theirs = tab.id === s.activeTabId ? null : newer(tab, tab.doc);
+    if (!theirs) return tab;
+    changed = true;
+    return { ...tab, doc: theirs.doc, ...linkedTo(tab, theirs) };
+  });
+  const active = newer({ id: s.activeTabId }, s.doc);
+  if (active) {
+    useStore.setState({
+      tabs,
+      doc: active.doc,
+      ...linkedTo(s, active),
+      // Shown as a load, like a reload from disk: the editors take the text
+      // whole and keep the reader where they were.
+      source: 'load',
+      loadId: s.loadId + 1,
+      restoreView: captureView(undefined) ?? null,
+    });
+  } else if (changed) {
+    useStore.setState({ tabs });
+  }
+}
+
+const onStorage = (event: StorageEvent) => {
+  if (event.storageArea === null || event.storageArea === localStorage) adoptOtherWindow(event.key);
+};
+
+/** Starts following other windows' writes; returns the function that stops it. */
+export function followOtherWindows(): () => void {
+  window.addEventListener('storage', onStorage);
+  return () => window.removeEventListener('storage', onStorage);
+}
+
 // Flush on tab close / app switch so the last keystrokes are not lost.
 if (typeof window !== 'undefined') {
   const flush = () => {
@@ -333,6 +429,7 @@ if (typeof window !== 'undefined') {
     if (unpersisted) persist();
   };
   window.addEventListener('pagehide', flush);
+  followOtherWindows();
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') flush();
   });

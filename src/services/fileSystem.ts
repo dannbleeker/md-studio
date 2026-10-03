@@ -7,7 +7,7 @@
  * type=file> picker for open and a download for save.
  */
 
-import { readText, type TextFormat } from '@/domain/textFormat';
+import { decodeText, type TextFormat } from '@/domain/textFormat';
 
 export const MARKDOWN_TYPES: FilePickerAcceptType[] = [
   {
@@ -27,10 +27,11 @@ export type OpenedFile = {
 
 /**
  * A file's text as the editors see it, and its format. Decoded by hand:
- * `File.text()` silently drops a UTF-8 BOM, so it could not be kept.
+ * `File.text()` silently drops a UTF-8 BOM and turns any other encoding
+ * into replacement characters, so neither could be written back.
  */
 export async function readFile(file: Blob): Promise<{ markdown: string; format: TextFormat }> {
-  return readText(new TextDecoder('utf-8', { ignoreBOM: true }).decode(await file.arrayBuffer()));
+  return decodeText(new Uint8Array(await file.arrayBuffer()));
 }
 
 const isAbort = (err: unknown) => err instanceof DOMException && err.name === 'AbortError';
@@ -80,7 +81,8 @@ export type SaveResult = {
  * (Save As). Resolves to null when the user cancels.
  */
 export async function saveFile(
-  markdown: string,
+  /** The file's bytes, already in its encoding. */
+  content: Uint8Array<ArrayBuffer>,
   suggestedName: string,
   handle: FileSystemFileHandle | null
 ): Promise<SaveResult | null> {
@@ -99,11 +101,11 @@ export async function saveFile(
   }
   if (target) {
     const writable = await target.createWritable();
-    await writable.write(markdown);
+    await writable.write(content);
     await writable.close();
     return { kind: 'written', name: target.name, handle: target };
   }
-  downloadText(markdown, suggestedName, 'text/markdown');
+  downloadBlob(new Blob([content], { type: 'text/markdown' }), suggestedName);
   return { kind: 'downloaded', name: suggestedName, handle: null };
 }
 
@@ -114,10 +116,6 @@ export function downloadBlob(blob: Blob, fileName: string): void {
   a.download = fileName;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-function downloadText(content: string, fileName: string, type: string): void {
-  downloadBlob(new Blob([content], { type: `${type};charset=utf-8` }), fileName);
 }
 
 /**

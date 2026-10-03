@@ -13,7 +13,7 @@ export type MdDocument = {
   /** Markdown as last written to (or read from) disk; drives the dirty flag. */
   savedMarkdown: string;
   updatedAt: number;
-  /** The file's line endings and BOM, to write it back the same way (absent: LF, no BOM). */
+  /** The file's line endings, BOM and encoding, to write it back the same way (absent: UTF-8, LF, no BOM). */
   format?: TextFormat;
 };
 
@@ -25,9 +25,20 @@ export function createDocument(
   format?: TextFormat
 ): MdDocument {
   const doc: MdDocument = { markdown, fileName, savedMarkdown: markdown, updatedAt: Date.now() };
-  return format && format !== PLAIN_TEXT && (format.bom || format.lineEnding !== '\n')
-    ? { ...doc, format }
-    : doc;
+  return !format || isPlainText(format) ? doc : { ...doc, format };
+}
+
+/** The document saved in `format` from now on; plain text (UTF-8, LF, no BOM) leaves the field out. */
+export function withFormat(doc: MdDocument, format: TextFormat): MdDocument {
+  const { format: _previous, ...rest } = doc;
+  return isPlainText(format) ? rest : { ...rest, format };
+}
+
+function isPlainText(format: TextFormat): boolean {
+  return (
+    format === PLAIN_TEXT ||
+    (!format.bom && format.lineEnding === '\n' && format.encoding === undefined)
+  );
 }
 
 export function isDirty(doc: MdDocument): boolean {

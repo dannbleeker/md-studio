@@ -49,6 +49,34 @@ test('opening a dropped file replaces the document and lists it as recent', asyn
   await expect(page.locator('.recent-item', { hasText: 'dropped.md' })).toBeVisible();
 });
 
+test('a dropped Windows-1252 file shows its letters, and downloads in its encoding', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    // biome-ignore lint/suspicious/noExplicitAny: deleting a browser global for the test.
+    delete (window as any).showSaveFilePicker;
+  });
+  await newDocument(page);
+  await page.evaluate(() => {
+    const data = new DataTransfer();
+    // "# Æble på\n" in Windows-1252: not valid UTF-8.
+    const bytes = new Uint8Array([0x23, 0x20, 0xc6, 0x62, 0x6c, 0x65, 0x20, 0x70, 0xe5, 0x0a]);
+    data.items.add(new File([bytes], 'old.md', { type: 'text/markdown' }));
+    window.dispatchEvent(new DragEvent('drop', { dataTransfer: data, cancelable: true }));
+  });
+  await expect(visualPane(page).locator('h1')).toHaveText('Æble på');
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.keyboard.press('ControlOrMeta+S');
+  const download = await downloadPromise;
+  const stream = await download.createReadStream();
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) chunks.push(chunk as Buffer);
+  expect([...Buffer.concat(chunks)]).toEqual([
+    0x23, 0x20, 0xc6, 0x62, 0x6c, 0x65, 0x20, 0x70, 0xe5, 0x0a,
+  ]);
+});
+
 test('documents open in tabs that keep their own content', async ({ page }) => {
   await newDocument(page);
   await setText(page, 'first doc');
@@ -82,6 +110,37 @@ test('documents open in tabs that keep their own content', async ({ page }) => {
   await page.getByRole('button', { name: 'Discard' }).click();
   await expect(page.getByRole('tablist')).toHaveCount(0);
   await expect.poll(() => textContent(page)).toBe('first doc');
+});
+
+test('the start screen and back keeps a just-made visual edit and the scroll position', async ({
+  page,
+}) => {
+  await newDocument(page);
+  const long = Array.from({ length: 200 }, (_, i) => `## Section ${i}\n\nline ${i}`).join('\n\n');
+  await setText(page, `# Long\n\n${long}\n`);
+  await expect(visualPane(page).locator('h2').last()).toHaveText('Section 199');
+  const textScroller = page.getByTestId('text-editor').locator('.cm-scroller');
+
+  // A visual edit, then Home well inside the 200 ms report debounce.
+  await visualPane(page).locator('h1').click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('!');
+  await page.getByRole('button', { name: 'MD Studio' }).click();
+  await page.getByRole('button', { name: /Continue/ }).click();
+  // Both panes are rebuilt from the store: the edit reached it.
+  await expect(visualPane(page).locator('h1')).toHaveText('Long!');
+
+  await textScroller.evaluate((el) => {
+    el.scrollTop = 2581;
+  });
+  await page.waitForTimeout(300); // let linked scroll settle
+  const saved = await textScroller.evaluate((el) => el.scrollTop);
+  expect(saved).toBeGreaterThan(1000);
+  await page.getByRole('button', { name: 'MD Studio' }).click();
+  await page.getByRole('button', { name: /Continue/ }).click();
+  await expect(visualPane(page).locator('h1')).toHaveText('Long!');
+  await expect.poll(() => textScroller.evaluate((el) => el.scrollTop)).toBeGreaterThan(saved - 5);
+  expect(await textScroller.evaluate((el) => el.scrollTop)).toBeLessThan(saved + 5);
 });
 
 test('switching tabs returns to the same scroll position; tabs can be dragged', async ({

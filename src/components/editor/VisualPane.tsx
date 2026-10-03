@@ -122,6 +122,11 @@ export function VisualPane({ onAdapter }: Props) {
       source: state.source,
     });
 
+    // Mounted again after the start screen: back to the scroll the store
+    // kept, once the first editor shows the document (unless a load came first).
+    const mountedAt = useStore.getState();
+    let restoreOnCreate = mountedAt.restoreView !== null;
+
     const sync = createVisualSync<Editor>({
       read,
       create,
@@ -130,6 +135,12 @@ export function VisualPane({ onAdapter }: Props) {
         rootEl.replaceChildren();
       },
       setEditor: (next) => {
+        if (next && restoreOnCreate) {
+          restoreOnCreate = false;
+          const now = useStore.getState();
+          if (now.loadId === mountedAt.loadId)
+            restoreScroll(scrollEl, now.restoreView?.visualScroll ?? 0);
+        }
         // The placeholder stays unregistered, so the format toolbar and
         // find bar can't act on it.
         if (next && !failed) {
@@ -172,9 +183,10 @@ export function VisualPane({ onAdapter }: Props) {
     };
     rootEl.addEventListener('focusin', onFocus);
 
-    const unregisterFlush = registerFlush(() => {
+    const flush = () => {
       if (unreported) editor?.action((ctx) => report(ctx, getMarkdown()(ctx)));
-    });
+    };
+    const unregisterFlush = registerFlush(flush);
 
     const unregisterView = registerViewPart(() =>
       isHidden(scrollEl) ? {} : { visualScroll: scrollEl.scrollTop }
@@ -191,6 +203,8 @@ export function VisualPane({ onAdapter }: Props) {
     });
 
     return () => {
+      // Whatever unmounts the pane, an edit still in its debounce is reported, not lost.
+      flush();
       onAdapter(null);
       unsubscribe();
       unregisterView();
