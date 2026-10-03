@@ -27,5 +27,7 @@ describe('document', () => {
   it('takes the front matter’s title, and otherwise looks past it', () => {
     expect(documentTitle('---\ntitle: From YAML\n---\n\n# Heading\n')).toBe('From YAML');
     expect(documentTitle('---\ndate: 2024\n---\n\n# Heading\n')).toBe('Heading');
+    // A block scalar's text is on the lines below: not worth reading.
+    expect(documentTitle('---\ntitle: >-\n  My Post\n---\n\n# Heading\n')).toBe('Heading');
   });
 });

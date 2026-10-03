@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocument } from '@/domain/document';
 import { resetStoreForTest, useStore } from '@/store';
 import { useUiStore } from '@/store/ui';
@@ -63,5 +63,15 @@ describe('TabBar', () => {
     render(<TabBar />);
     expect(screen.getByRole('tab', { name: 'a.md · Second' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'a.md · a' })).toBeInTheDocument();
+  });
+
+  it('shows the close shortcut the way the platform writes it', () => {
+    const platform = vi.spyOn(navigator, 'platform', 'get').mockReturnValue('MacIntel');
+    render(<TabBar />);
+    expect(screen.getByRole('button', { name: 'Close a.md' })).toHaveAttribute(
+      'title',
+      'Close a.md (⌥W)'
+    );
+    platform.mockRestore();
   });
 });

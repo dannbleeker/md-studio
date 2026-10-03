@@ -153,6 +153,7 @@ export const en = {
   'image.largeEmbed':
     'The embedded image makes the document large. Saving the document to disk lets images go in a folder instead.',
   'image.failed': 'Could not add the image.',
+  'image.documentChanged': 'The image wasn’t added: another document is open now.',
   'confirm.discard.title': 'Discard unsaved changes?',
   'confirm.discard.body': '“{name}” has changes that are not saved to disk.',
   'confirm.discard.ok': 'Discard',
@@ -172,6 +173,8 @@ export const en = {
   'cmd.welcome': 'Open the sample document',
   'toast.saved': 'Saved {name}',
   'toast.downloaded': 'Downloaded {name}',
+  'toast.savedAsUtf8':
+    '{name} was saved as UTF-8: it now holds characters its encoding can’t store.',
   'toast.opened': 'Opened {name}',
   'toast.exported': 'Exported {name}',
   'toast.exportFailed': 'Could not export the document.',

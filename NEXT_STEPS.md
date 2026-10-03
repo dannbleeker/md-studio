@@ -155,3 +155,9 @@
         visual pane acted at the old cursor position (ProseMirror waits
         for `selectionchange`, which Chromium queues behind input).
 
+- [x] **Bug hunt, part 6**: 29 confirmed bugs fixed (see the changelog).
+  - [x] The Markdown pane finds front matter by the app's own rule (a
+        small wrapper around the YAML and Markdown parsers), so `...` and
+        trailing spaces highlight correctly.
+  - [x] Paste and IME input over a selection from the front matter into
+        the body split like typing does.

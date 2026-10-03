@@ -93,6 +93,34 @@ test('the outline lists headings and jumps both panes to a section', async ({ pa
     .toBeLessThan(40);
 });
 
+test('the outline follows the visual pane in visual-only view', async ({ page }) => {
+  await newDocument(page);
+  const doc = Array.from(
+    { length: 30 },
+    (_, i) => `## Section ${i + 1}\n\n${'Paragraph text that wraps. '.repeat(10)}`
+  ).join('\n\n');
+  await setText(page, doc);
+  await expect(visualPane(page).locator('h2')).toHaveCount(30);
+  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  await page.getByRole('button', { name: 'Outline' }).click();
+  const outline = page.getByRole('navigation', { name: 'Outline' });
+  await expect(outline.getByRole('button')).toHaveCount(30);
+
+  // Scrolled by hand, not through the outline, so only the scroll listener can mark it.
+  await visualPane(page)
+    .locator('h2', { hasText: /^Section 20$/ })
+    .evaluate((el) => {
+      const scroller = el.closest<HTMLElement>('.pane-scroll');
+      if (scroller)
+        scroller.scrollTop +=
+          el.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 2;
+    });
+  await expect(outline.getByRole('button', { name: 'Section 20', exact: true })).toHaveAttribute(
+    'aria-current',
+    'location'
+  );
+});
+
 test('Ctrl+H again from the other pane refocuses and retargets the find bar', async ({ page }) => {
   await newDocument(page);
   await setText(page, '# Title\n\napple pie\n');

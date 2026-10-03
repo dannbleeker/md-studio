@@ -4,7 +4,7 @@
  */
 import { createDocument, isDirty, normalizeFileName } from '@/domain/document';
 import { neighbourTab, tabForFile } from '@/domain/tabs';
-import { writeText } from '@/domain/textFormat';
+import { encodeText } from '@/domain/textFormat';
 import { t } from '@/i18n';
 import { syncedTabs, useStore } from '@/store';
 import { flushEditors } from '@/store/flush';
@@ -78,17 +78,31 @@ export async function closeTab(id = useStore.getState().activeTabId): Promise<vo
 }
 
 /**
+ * A handle still being read back from IndexedDB (just after a tab switch
+ * or a reload). Save waits for it: without the handle it would ask where
+ * to save instead of writing to the file.
+ */
+let pendingRestore: Promise<void> | null = null;
+
+/**
  * After a reload the open document's handle is still in IndexedDB; put it
  * back so Save writes to the file instead of asking where. Permission is
  * requested at the first Save (it needs a user gesture).
  */
-export async function restoreDocumentHandle(): Promise<void> {
+export function restoreDocumentHandle(): Promise<void> {
   const { handleId, fileHandle } = useStore.getState();
-  if (!handleId || fileHandle) return;
-  const handle = await getHandle(handleId);
-  if (handle && useStore.getState().handleId === handleId) {
-    useStore.getState().restoreFileHandle(handle);
-  }
+  if (!handleId || fileHandle) return Promise.resolve();
+  const restoring = getHandle(handleId).then((handle) => {
+    if (handle && useStore.getState().handleId === handleId) {
+      useStore.getState().restoreFileHandle(handle);
+    }
+  });
+  pendingRestore = restoring;
+  const settled = () => {
+    if (pendingRestore === restoring) pendingRestore = null;
+  };
+  restoring.then(settled, settled);
+  return restoring;
 }
 
 export async function newDocument(): Promise<void> {
@@ -155,12 +169,31 @@ export async function openRecent(entry: RecentEntry): Promise<void> {
   if (entry.markdown) openSnapshot(entry.markdown, entry.fileName, false);
 }
 
+/**
+ * Saves still writing. The window regains focus when a file picker closes,
+ * and a disk check then would read this window's own new text before the
+ * save is recorded, and report it as changed by someone else.
+ */
+let savesInFlight = 0;
+
 export async function saveDocument(saveAs = false): Promise<void> {
+  savesInFlight++;
+  try {
+    await save(saveAs);
+  } finally {
+    savesInFlight--;
+  }
+}
+
+async function save(saveAs: boolean): Promise<void> {
+  if (pendingRestore) await pendingRestore.catch(() => {});
   // Land the visual pane's pending edits, then pin what this save writes
   // and which tab it belongs to.
   flushEditors();
   const { doc, fileHandle, handleId: startHandleId, activeTabId, markSaved } = useStore.getState();
-  const written = { tabId: activeTabId, markdown: doc.markdown };
+  // Encoded up front: the format it lands in is part of what was written.
+  const encoded = encodeText(doc.markdown, doc.format);
+  const written = { tabId: activeTabId, markdown: doc.markdown, format: encoded.format };
   try {
     // A handle restored after a reload or from Recent needs write
     // permission again; if refused, fall back to choosing a location.
@@ -170,7 +203,10 @@ export async function saveDocument(saveAs = false): Promise<void> {
         : null;
     // The file may have changed since we last read or wrote it (another
     // app, another device syncing the folder): ask before replacing that.
-    if (target && (await diskText(target)) !== doc.savedMarkdown) {
+    // A file that can't be read any more (deleted or moved) is simply
+    // written again, which recreates it.
+    const onDisk = target ? await diskText(target) : null;
+    if (onDisk !== null && onDisk !== doc.savedMarkdown) {
       const overwrite = await requestConfirm({
         title: t('confirm.overwrite.title'),
         body: t('confirm.overwrite.body', { name: doc.fileName }),
@@ -178,11 +214,7 @@ export async function saveDocument(saveAs = false): Promise<void> {
       });
       if (!overwrite) return;
     }
-    const result = await saveFile(
-      writeText(doc.markdown, doc.format),
-      normalizeFileName(doc.fileName),
-      target
-    );
+    const result = await saveFile(encoded.bytes, normalizeFileName(doc.fileName), target);
     if (!result) return;
     const newHandle = result.handle && result.handle !== fileHandle ? result.handle : null;
     const handleId = newHandle ? await putHandle(newHandle) : startHandleId;
@@ -190,7 +222,10 @@ export async function saveDocument(saveAs = false): Promise<void> {
     if (newHandle && handleId) settleOtherTabsOf(handleId, written.tabId);
     if (newHandle) void forgetUnusedHandles();
     showToast(
-      t(result.kind === 'written' ? 'toast.saved' : 'toast.downloaded', { name: result.name })
+      // The file's encoding could not hold the text: say it changed rather than drop characters.
+      encoded.format.encoding !== doc.format?.encoding
+        ? t('toast.savedAsUtf8', { name: result.name })
+        : t(result.kind === 'written' ? 'toast.saved' : 'toast.downloaded', { name: result.name })
     );
   } catch {
     showToast(t('toast.saveFailed'));
@@ -281,7 +316,7 @@ let warnedAbout: string | null = null;
  */
 export async function checkDiskChanges(): Promise<void> {
   const { fileHandle, doc, activeTabId } = useStore.getState();
-  if (!fileHandle) return;
+  if (!fileHandle || savesInFlight > 0) return;
   try {
     if (
       fileHandle.queryPermission &&
@@ -296,12 +331,16 @@ export async function checkDiskChanges(): Promise<void> {
   // Ignore results that arrive after a switch, an edit or a save.
   if (
     text === null ||
+    savesInFlight > 0 ||
     now.activeTabId !== activeTabId ||
     now.doc.savedMarkdown !== doc.savedMarkdown
   )
     return;
   if (text === doc.savedMarkdown) return;
-  if (!isDirty(now.doc)) {
+  // A visual edit still in its debounce is unsaved work too: report it
+  // before deciding, or the reload would replace it.
+  flushEditors();
+  if (!isDirty(useStore.getState().doc)) {
     now.reloadFromDisk(text);
     showToast(t('toast.reloadedFromDisk', { name: doc.fileName }));
   } else if (warnedAbout !== text) {

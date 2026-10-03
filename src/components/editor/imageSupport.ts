@@ -1,5 +1,5 @@
 import type { EditorView as TextView } from '@codemirror/view';
-import type { Editor } from '@milkdown/kit/core';
+import { type Editor, editorViewCtx } from '@milkdown/kit/core';
 import { insertImageCommand } from '@milkdown/kit/preset/commonmark';
 import type { Node } from '@milkdown/kit/prose/model';
 import { Plugin, TextSelection } from '@milkdown/kit/prose/state';
@@ -54,8 +54,13 @@ export function textPaneImageHandlers(): {
 
 /** ProseMirror plugin for the visual pane: pasted and dropped images become image nodes. */
 export function visualPaneImagePlugin(getEditor: () => Editor | null): Plugin {
+  // Focus first: a drop doesn't focus the pane, and focusing lands any
+  // text-pane edits not yet applied, which the insert would otherwise overwrite.
   const insert = (src: string, alt: string) =>
-    getEditor()?.action(callCommand(insertImageCommand.key, { src, alt }));
+    getEditor()?.action((ctx) => {
+      ctx.get(editorViewCtx).focus();
+      callCommand(insertImageCommand.key, { src, alt })(ctx);
+    });
   return new Plugin({
     props: {
       handlePaste(_view, event) {

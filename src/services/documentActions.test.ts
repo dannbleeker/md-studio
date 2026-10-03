@@ -29,7 +29,14 @@ vi.mock('./handleStore', () => ({
   ensurePermission: async (h: FileSystemFileHandle & { granted?: boolean }) => h.granted !== false,
 }));
 
-type FakeHandle = FileSystemFileHandle & { content: string; granted?: boolean; missing?: boolean };
+type FakeHandle = FileSystemFileHandle & {
+  /** The file's text read as UTF-8. */
+  content: string;
+  /** The file's raw bytes, when set (they win over `content`). */
+  bytes?: Uint8Array | undefined;
+  granted?: boolean;
+  missing?: boolean;
+};
 
 function fakeHandle(name: string, content: string, opts: Partial<FakeHandle> = {}): FakeHandle {
   const h = {
@@ -39,12 +46,16 @@ function fakeHandle(name: string, content: string, opts: Partial<FakeHandle> = {
     ...opts,
     async getFile() {
       if (h.missing) throw new DOMException('gone', 'NotFoundError');
-      return new File([h.content], name);
+      return new File([(h.bytes as BlobPart | undefined) ?? h.content], name);
     },
     async createWritable() {
       return {
-        write: async (data: string) => {
-          h.content = data;
+        write: async (data: string | Uint8Array) => {
+          h.bytes = typeof data === 'string' ? undefined : data;
+          h.content =
+            typeof data === 'string'
+              ? data
+              : new TextDecoder('utf-8', { ignoreBOM: true }).decode(data);
         },
         close: async () => {},
       };
@@ -174,6 +185,20 @@ describe('files changed on disk outside MD Studio', () => {
     });
   });
 
+  it('counts a visual edit not yet reported as unsaved work, not reloading over it', async () => {
+    const h = fakeHandle('a.md', 'v1');
+    openOnDisk(h);
+    let pending = true;
+    const off = registerFlush(() => {
+      if (pending) useStore.getState().setMarkdown('v1 typed', 'visual');
+      pending = false;
+    });
+    h.content = 'v2 from another app';
+    await checkDiskChanges();
+    off();
+    expect(useStore.getState().doc.markdown).toBe('v1 typed');
+  });
+
   it('keeps unsaved work and asks before Save overwrites the newer file', async () => {
     const h = fakeHandle('a.md', 'v1');
     openOnDisk(h);
@@ -193,6 +218,19 @@ describe('files changed on disk outside MD Studio', () => {
     useUiStore.getState().confirm?.resolve(true);
     await again;
     expect(h.content).toBe('my edit');
+  });
+
+  it('writes a deleted file back without the "newer file" prompt', async () => {
+    useUiStore.setState({ confirm: null, toasts: [] });
+    const h = fakeHandle('a.md', 'v1');
+    openOnDisk(h);
+    useStore.getState().setMarkdown('v2', 'text');
+    h.missing = true;
+    const saving = saveDocument();
+    await vi.waitFor(() => expect(h.content).toBe('v2'));
+    expect(useUiStore.getState().confirm).toBeNull();
+    await saving;
+    expect(useStore.getState().doc.savedMarkdown).toBe('v2');
   });
 
   it('saves without asking when the file is as we left it', async () => {
@@ -241,6 +279,22 @@ describe('saves that take a while', () => {
       markdown: 'v3 typed during the save',
       savedMarkdown: 'v2',
     });
+  });
+
+  it('does not report its own write as a change on disk', async () => {
+    useUiStore.setState({ confirm: null, toasts: [] });
+    const { h, release } = slowHandle('a.md', 'v1');
+    useStore.getState().loadDocument(createDocument('v1', 'a.md'), h, 'id-a');
+    useStore.getState().setMarkdown('v2', 'text');
+    const saving = saveDocument();
+    await vi.waitFor(() => expect(h.content).toBe('v2'));
+    // The window regains focus (a file picker closing) while the save is
+    // still finishing: the file on disk is our own new text.
+    await checkDiskChanges();
+    release();
+    await saving;
+    const messages = useUiStore.getState().toasts.map((toast) => toast.message);
+    expect(messages.some((m) => m.includes('changed on disk'))).toBe(false);
   });
 
   it('records the save on the tab it started in, even after a tab switch', async () => {
@@ -353,6 +407,100 @@ describe('Windows files', () => {
     await checkDiskChanges();
     expect(useUiStore.getState().confirm).toBeNull();
     expect(useStore.getState().doc.markdown).toBe('# Title\n\nline one!\nline two\n');
+  });
+});
+
+describe('saving right after a tab switch', () => {
+  beforeEach(() => handles.clear());
+
+  it('waits for the tab’s file to be re-attached and saves in place', async () => {
+    const h = fakeHandle('a.md', 'a');
+    handles.set('h1', h);
+    const doc = (markdown: string, fileName: string) => ({ markdown, fileName, updatedAt: 1 });
+    localStorage.setItem(
+      'md-studio:tabs:v1',
+      JSON.stringify({
+        activeId: 't2',
+        tabs: [
+          { id: 't1', doc: doc('a', 'a.md'), handleId: 'h1' },
+          { id: 't2', doc: doc('b', 'b.md'), handleId: null },
+        ],
+      })
+    );
+    resetStoreForTest();
+    const picker = vi.fn();
+    Object.assign(window, { showSaveFilePicker: picker });
+    // Ctrl+S while the switch still reads the handle from IndexedDB.
+    const switching = switchTab('t1');
+    useStore.getState().setMarkdown('a edited', 'text');
+    await saveDocument();
+    await switching;
+    delete (window as { showSaveFilePicker?: unknown }).showSaveFilePicker;
+    expect(picker).not.toHaveBeenCalled();
+    expect(h.content).toBe('a edited');
+  });
+});
+
+describe('files not in UTF-8', () => {
+  beforeEach(() => {
+    handles.clear();
+    resetStoreForTest();
+    useUiStore.setState({ toasts: [] });
+  });
+  // "Æble på\r\n" in Windows-1252.
+  const cp1252 = () => new Uint8Array([0xc6, 0x62, 0x6c, 0x65, 0x20, 0x70, 0xe5, 0x0d, 0x0a]);
+  const toasts = () => useUiStore.getState().toasts.map((t) => t.message);
+
+  it('open as Windows-1252 and are saved back in it, unchanged on disk afterwards', async () => {
+    const h = fakeHandle('old.md', '', { bytes: cp1252() });
+    await openHandle(h);
+    expect(useStore.getState().doc.markdown).toBe('Æble på\n');
+    useStore.getState().setMarkdown('Æble på\nmore\n', 'text');
+    await saveDocument();
+    expect([...(h.bytes ?? [])]).toEqual([...cp1252(), 0x6d, 0x6f, 0x72, 0x65, 0x0d, 0x0a]);
+    await checkDiskChanges();
+    expect(useUiStore.getState().confirm).toBeNull();
+    expect(useStore.getState().doc.savedMarkdown).toBe('Æble på\nmore\n');
+  });
+
+  it('save as UTF-8, with a notice, once the text has a character the encoding lacks', async () => {
+    const h = fakeHandle('old.md', '', { bytes: cp1252() });
+    await openHandle(h);
+    useStore.getState().setMarkdown('Æble ✓\n', 'text');
+    await saveDocument();
+    expect(h.content).toBe('Æble ✓\r\n');
+    expect(toasts()).toContain(
+      'old.md was saved as UTF-8: it now holds characters its encoding can’t store.'
+    );
+    expect(useStore.getState().doc.format?.encoding).toBeUndefined();
+    // The next save is plain UTF-8, without the notice again.
+    useUiStore.setState({ toasts: [] });
+    useStore.getState().setMarkdown('Æble ✓ æ\n', 'text');
+    await saveDocument();
+    expect(h.content).toBe('Æble ✓ æ\r\n');
+    expect(toasts()).toEqual(['Saved old.md']);
+  });
+
+  it('open as UTF-16 by their BOM and are saved back in UTF-16', async () => {
+    const text = '﻿# Æble\r\n';
+    const le = new Uint8Array(text.length * 2);
+    for (let i = 0; i < text.length; i++) {
+      le[i * 2] = text.charCodeAt(i) & 0xff;
+      le[i * 2 + 1] = text.charCodeAt(i) >> 8;
+    }
+    const h = fakeHandle('wide.md', '', { bytes: le });
+    await openHandle(h);
+    expect(useStore.getState().doc.markdown).toBe('# Æble\n');
+    useStore.getState().setMarkdown('# Æble!\n', 'text');
+    await saveDocument();
+    expect([...(h.bytes ?? [])].slice(0, 6)).toEqual([0xff, 0xfe, 0x23, 0x00, 0x20, 0x00]);
+    expect(h.bytes?.length).toBe('﻿# Æble!\r\n'.length * 2);
+  });
+
+  it('dropped onto the window open in their encoding too', async () => {
+    await openDroppedFile(new File([cp1252()], 'dropped.md'));
+    expect(useStore.getState().doc.markdown).toBe('Æble på\n');
+    expect(useStore.getState().doc.format?.encoding).toBe('windows-1252');
   });
 });
 

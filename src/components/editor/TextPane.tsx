@@ -1,5 +1,4 @@
 import { markdown } from '@codemirror/lang-markdown';
-import { yamlFrontmatter } from '@codemirror/lang-yaml';
 import { syntaxHighlighting } from '@codemirror/language';
 import { languages } from '@codemirror/language-data';
 import { search } from '@codemirror/search';
@@ -21,6 +20,7 @@ import { useStore } from '@/store';
 import { flushEditors } from '@/store/flush';
 import { registerViewPart } from '@/store/viewState';
 import { editors, isHidden, restoreScroll } from './editorRegistry';
+import { markdownWithFrontMatter } from './frontMatterLanguage';
 import { highlightStyle } from './highlight';
 import { textPaneImageHandlers } from './imageSupport';
 import type { ScrollAdapter } from './scrollAdapter';
@@ -43,7 +43,7 @@ const wrapping = new Compartment();
 const language = new Compartment();
 // Front matter is parsed as YAML, not Markdown: otherwise its closing
 // `---` underlines the line above it into a heading.
-const markdownLanguage = yamlFrontmatter({ content: markdown({ codeLanguages: languages }) });
+const markdownLanguage = markdownWithFrontMatter(markdown({ codeLanguages: languages }));
 const plainText: Extension = [];
 const languageFor = (text: Iterable<string>) =>
   tooDeeplyNested(text) ? plainText : markdownLanguage;
@@ -101,10 +101,17 @@ export function TextPane({ onAdapter }: Props) {
 
   useEffect(() => {
     if (!host.current) return;
+    // Mounted again after the start screen: back to the cursor and scroll
+    // the store kept for this document (see setScreen).
+    const { doc: initial, restoreView: at } = useStore.getState();
+    const clampInitial = (n: number) => Math.min(Math.max(n, 0), initial.markdown.length);
     const view = new EditorView({
       parent: host.current,
       state: EditorState.create({
-        doc: useStore.getState().doc.markdown,
+        doc: initial.markdown,
+        ...(at
+          ? { selection: { anchor: clampInitial(at.textAnchor), head: clampInitial(at.textHead) } }
+          : {}),
         extensions: [
           basicSetup,
           // Takes precedence over basicSetup's fallback default style.
@@ -140,6 +147,7 @@ export function TextPane({ onAdapter }: Props) {
     });
 
     editors.text = view;
+    if (at) restoreScroll(view.scrollDOM, at.textScroll);
     const onFocus = () => {
       editors.lastFocused = 'text';
       // About to type here: report the visual pane's pending edit first, so

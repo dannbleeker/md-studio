@@ -12,6 +12,77 @@ const DEFINITION = /^ {0,3}\[\^([^\]\s]+)\]:[ \t]?(.*)$/;
 const CONTINUATION = /^(?: {4}|\t)/;
 const REFERENCE = /\[\^([^\]\s]+)\]/g;
 
+const OPEN_FENCE = /^ *(`{3,}|~{3,})/;
+const LIST_ITEM = /^( *)([-*+]|\d{1,9}[.)])( *)/;
+
+/** A line's leading whitespace in columns, tabs to the next multiple of four. */
+function indentOf(line: string): number {
+  let col = 0;
+  for (const ch of line) {
+    if (ch === ' ') col++;
+    else if (ch === '\t') col += 4 - (col % 4);
+    else break;
+  }
+  return col;
+}
+
+/**
+ * Which lines are code: fenced blocks (a fence may sit indented inside a
+ * list item) and indented code blocks. Indented code is four columns past
+ * the content of the list item it sits in, after a blank line, so a
+ * paragraph's continuation lines and a list item's further paragraphs are
+ * not mistaken for it.
+ */
+function codeLines(lines: string[]): boolean[] {
+  const code = lines.map(() => false);
+  // Content columns of the list items the current line may belong to.
+  const columns: number[] = [];
+  let fence: string | null = null;
+  let prevBlank = true;
+  let prevCode = false;
+  lines.forEach((line, i) => {
+    if (fence) {
+      code[i] = true;
+      if (OPEN_FENCE.exec(line)?.[1]?.startsWith(fence)) fence = null;
+      return;
+    }
+    if (line.trim() === '') {
+      prevBlank = true;
+      return;
+    }
+    const indent = indentOf(line);
+    const popTo = (col: number) => {
+      while (columns.length > 0 && col < (columns.at(-1) ?? 0)) columns.pop();
+    };
+    // After a blank line, text less indented than an item's content has left that item.
+    if (prevBlank) popTo(indent);
+    const base = columns.at(-1) ?? 0;
+    const blankBefore = prevBlank;
+    prevBlank = false;
+    if (indent >= base + 4 && (blankBefore || prevCode)) {
+      code[i] = true;
+      prevCode = true;
+      return;
+    }
+    prevCode = false;
+    const fenceMatch = OPEN_FENCE.exec(line);
+    if (fenceMatch?.[1]) {
+      fence = fenceMatch[1];
+      code[i] = true;
+      return;
+    }
+    const item = LIST_ITEM.exec(line);
+    if (item && (item[3] !== '' || line.length === item[0].length)) {
+      popTo(indent);
+      const gap = item[3]?.length ?? 0;
+      // An empty item, or one whose text starts five or more spaces in
+      // (indented code), has its content one column past the marker.
+      columns.push(indent + (item[2]?.length ?? 1) + (gap === 0 || gap > 4 ? 1 : gap));
+    }
+  });
+  return code;
+}
+
 /** Applies `fn` to the parts of a line outside inline code spans. */
 function outsideCode(line: string, fn: (text: string) => string): string {
   return line
@@ -56,12 +127,15 @@ export function inlineFootnotes(markdown: string): string {
       else break;
       j++;
     }
-    if (!definitions.has(def[1])) definitions.set(def[1], content);
+    // Labels match case-insensitively, as in GFM: [^Note] refers to [^note].
+    const label = def[1].toLowerCase();
+    if (!definitions.has(label)) definitions.set(label, content);
     i = j - 1;
   }
 
   const order: string[] = [];
-  const number = (id: string) => {
+  const number = (ref: string) => {
+    const id = ref.toLowerCase();
     if (!definitions.has(id)) return null;
     if (!order.includes(id)) order.push(id);
     return order.indexOf(id) + 1;
@@ -72,19 +146,8 @@ export function inlineFootnotes(markdown: string): string {
       return n === null ? match : `\\[${n}\\]`;
     });
 
-  fence = null;
-  const out = body.map((line) => {
-    const fenceMatch = FENCE.exec(line);
-    if (fence) {
-      if (fenceMatch?.[1]?.startsWith(fence)) fence = null;
-      return line;
-    }
-    if (fenceMatch?.[1]) {
-      fence = fenceMatch[1];
-      return line;
-    }
-    return outsideCode(line, refs);
-  });
+  const code = codeLines(body);
+  const out = body.map((line, i) => (code[i] ? line : outsideCode(line, refs)));
   if (order.length === 0) return out.join('\n');
 
   // Notes may reference other notes; number those too, in order of use.

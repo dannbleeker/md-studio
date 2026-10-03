@@ -1,15 +1,18 @@
 /**
  * YAML front matter: a metadata block that opens the document with a `---`
- * line and closes with the next `---` line, as static site generators,
- * Obsidian and Pandoc read it. The visual pane parses it with
- * `remark-frontmatter`, so this follows the same rules: the opening fence
- * must be the very first line, both fences may carry trailing whitespace
- * but not leading, and nothing else (not `...`, not `----`) closes it.
- * The raw-text helpers (headings, block split) skip it with this, or they
- * would read the closing fence as a setext underline.
+ * line and closes with the next `---` or `...` line, as static site
+ * generators, Obsidian and Pandoc read it. Following Pandoc, an opening
+ * fence followed by a blank line is a rule, not front matter. The opening
+ * fence must be the very first line, and fences may carry trailing
+ * whitespace but not leading (`----` doesn't count). The visual pane parses
+ * with `remark-frontmatter` and corrects its result with this, so both
+ * panes agree. The raw-text helpers (headings, block split) skip it with
+ * this, or they would read the closing fence as a setext underline.
  */
 
 const FENCE = /^---[ \t]*\r?$/;
+const CLOSE = /^(?:---|\.\.\.)[ \t]*\r?$/;
+const BLANK = /^[ \t]*\r?$/;
 
 /**
  * End offset of the closing fence line (before its line break), or -1 when
@@ -22,7 +25,9 @@ export function frontMatterEnd(markdown: string): number {
   while (pos <= markdown.length) {
     const next = markdown.indexOf('\n', pos);
     const lineEnd = next < 0 ? markdown.length : next;
-    if (FENCE.test(markdown.slice(pos, lineEnd))) return lineEnd;
+    const line = markdown.slice(pos, lineEnd);
+    if (CLOSE.test(line)) return lineEnd;
+    if (pos === firstBreak + 1 && BLANK.test(line)) return -1;
     if (next < 0) return -1;
     pos = next + 1;
   }
@@ -58,12 +63,21 @@ export function frontMatterForExport(markdown: string, include: boolean): string
   return `${fence}yaml\n${yaml}\n${fence}\n\n${rest}`;
 }
 
-/** The `title:` field of the front matter, if it has a plain one. */
+/**
+ * The `title:` field of the front matter, if it has a one-line one: plain,
+ * or quoted with YAML's escapes (`''` in single quotes, `\"` and `\\` in
+ * double), less a trailing ` # comment`. A block scalar (`|`, `>-`, …) is
+ * left out: its text is on the lines below.
+ */
 export function frontMatterTitle(markdown: string): string {
   const end = frontMatterEnd(markdown);
   if (end < 0) return '';
   const match = /^title:[ \t]*(.*?)[ \t]*\r?$/m.exec(markdown.slice(0, end));
   const value = match?.[1] ?? '';
-  const quoted = /^(["'])(.*)\1$/.exec(value);
-  return (quoted ? (quoted[2] ?? '') : value).trim();
+  if (value.startsWith('#') || /^[|>][-+0-9]*(?:[ \t]+#.*)?$/.test(value)) return '';
+  const double = /^"((?:[^"\\]|\\.)*)"/.exec(value);
+  if (double) return (double[1] ?? '').replace(/\\(["\\/])/g, '$1').trim();
+  const single = /^'((?:[^']|'')*)'/.exec(value);
+  if (single) return (single[1] ?? '').replace(/''/g, "'").trim();
+  return value.replace(/[ \t]+#.*$/, '').trim();
 }

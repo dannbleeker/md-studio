@@ -77,6 +77,23 @@ describe('preserveUnchangedBlocks', () => {
   it('returns the new text when nothing can be kept', () => {
     expect(merge('a', 'b\n')).toBe('b\n');
     expect(merge('', 'x\n')).toBe('x\n');
+    expect(preserveUnchangedBlocks('a', 'b\n', blocksOf, norm).kept(0)).toBeNull();
+  });
+
+  it('reports where each kept block now is', () => {
+    const edited = serialize(source).replace('- list', '- list item\n- more');
+    const r = preserveUnchangedBlocks(source, edited, blocksOf, norm);
+    const at = (i: number) => {
+      const range = r.kept(i);
+      return range ? r.text.slice(range.start, range.end) : null;
+    };
+    expect([0, 1, 2, 3, 4].map(at)).toEqual([
+      'Title\n=====',
+      null,
+      '__strong__ words',
+      'last para',
+      null,
+    ]);
   });
 });
 
@@ -94,6 +111,27 @@ describe('splitBlocks', () => {
   it('keeps fenced code whole across blank lines', () => {
     expect(texts('```js\na\n\nb\n```\n\nafter')).toEqual(['```js\na\n\nb\n```', 'after']);
     expect(texts('~~~\n\n```\n~~~')).toEqual(['~~~\n\n```\n~~~']);
+  });
+
+  it('keeps HTML comments and raw HTML elements whole across blank lines', () => {
+    expect(texts('p\n\n<!--\n\nx\n\n-->\n\nafter')).toEqual(['p', '<!--\n\nx\n\n-->', 'after']);
+    expect(texts('<!-- one line -->\n\nafter')).toEqual(['<!-- one line -->', 'after']);
+    expect(texts('<pre>\na\n\nb\n</pre>\n\nafter')).toEqual(['<pre>\na\n\nb\n</pre>', 'after']);
+    // Not an HTML block start: a plain paragraph, split as usual.
+    expect(texts('<div>\n\nx')).toEqual(['<div>', 'x']);
+  });
+
+  it('keeps an indented code block whole across blank lines', () => {
+    expect(texts('intro\n\n    code a\n\n\n    code b\n\nafter')).toEqual([
+      'intro',
+      '    code a\n\n\n    code b',
+      'after',
+    ]);
+    expect(texts('\tcode a\n\n    code b\n')).toEqual(['\tcode a\n\n    code b']);
+    // Indented text after a blank line that is not followed by more indented text.
+    expect(texts('    code\n\nafter\n\n    more')).toEqual(['    code', 'after', '    more']);
+    // Indented lines continuing a paragraph are not code.
+    expect(texts('para\n    lazy\n\n    code')).toEqual(['para\n    lazy', '    code']);
   });
 
   it('handles empty and whitespace-only input', () => {
@@ -127,7 +165,11 @@ describe('splitBlocks: headings and rules end the run they close', () => {
       '---\ntitle: Post\ndate: 2024\n---',
       'Body',
     ]);
-    expect(texts('---\n\nnot: split\n\n---\nBody\n')).toEqual(['---\n\nnot: split\n\n---', 'Body']);
+    expect(texts('---\na: 1\n\nnot: split\n---\nBody\n')).toEqual([
+      '---\na: 1\n\nnot: split\n---',
+      'Body',
+    ]);
+    expect(texts('---\na: 1\n...\n\n---\n')).toEqual(['---\na: 1\n...', '---']);
     // Not at the start: a rule, then a setext heading.
     expect(texts('Intro\n\n---\ntitle: Post\n---\n')).toEqual(['Intro', '---', 'title: Post\n---']);
   });

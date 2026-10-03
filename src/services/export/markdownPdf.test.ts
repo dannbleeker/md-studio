@@ -39,6 +39,24 @@ function wordPositions(bytes: Uint8Array): Map<string, number> {
   return at;
 }
 
+/** The fill colour (`r g b`) each word is drawn in. */
+function wordColors(bytes: Uint8Array): Map<string, string> {
+  const raw = Buffer.from(bytes).toString('latin1');
+  const at = new Map<string, string>();
+  for (const m of raw.matchAll(/stream\r?\n([\s\S]*?)\r?\nendstream/g)) {
+    let content: string;
+    try {
+      content = inflateSync(Buffer.from(m[1] ?? '', 'latin1')).toString('latin1');
+    } catch {
+      continue;
+    }
+    for (const t of content.matchAll(/([\d.]+ [\d.]+ [\d.]+) rg[^<]*<([0-9A-Fa-f]+)> Tj/g)) {
+      at.set(Buffer.from(t[2] ?? '', 'hex').toString('latin1'), t[1] ?? '');
+    }
+  }
+  return at;
+}
+
 describe('markdownToPdf', () => {
   it('starts a single document on its first page, with no cover or contents', async () => {
     const pdf = await PDFDocument.load(
@@ -183,5 +201,51 @@ describe('markdownToPdf', () => {
     const right = await at('--:');
     expect(center).toBeGreaterThan(left);
     expect(right).toBeGreaterThan(center);
+  });
+
+  it('draws code exactly as written, entities included', async () => {
+    const text = drawnText(
+      await markdownToPdf({
+        sources: [
+          'Use `&amp;` for and.\n\n```\n&copy; 2026\n```\n\n| a |\n| - |\n| `&lt;` |\n\n- `&gt;` item',
+        ],
+        title: 'T',
+      })
+    );
+    for (const code of ['&amp;', '&copy; 2026', '&lt;', '&gt;']) expect(text).toContain(code);
+    expect(text).not.toContain('\xa9');
+  });
+
+  it('still decodes entities in prose and table cells next to code', async () => {
+    const text = drawnText(
+      await markdownToPdf({
+        sources: ['a &copy; `&copy;`\n\n| &eacute; `&eacute;` |\n| - |'],
+        title: 'T',
+      })
+    );
+    expect(text).toContain('\xa9');
+    expect(text).toContain('&copy;');
+    expect(text).toContain('\xe9 &eacute;');
+  });
+
+  it('draws quotes, tables and headings inside list items', async () => {
+    const text = drawnText(
+      await markdownToPdf({
+        sources: [
+          '- item\n\n  > QUOTED\n\n- item two\n\n  | a | b |\n  | - | - |\n  | CELLX | 2 |\n\n- ## HEAD',
+        ],
+        title: 'T',
+      })
+    );
+    for (const word of ['QUOTED', 'CELLX', 'HEAD']) expect(text).toContain(word);
+  });
+
+  it('styles an H3 as a subtitle only directly under an H1', async () => {
+    const direct = wordColors(await markdownToPdf({ sources: ['# T\n\n### SUB'], title: 'T' }));
+    const later = wordColors(
+      await markdownToPdf({ sources: ['# T\n\nA paragraph.\n\n### LATER'], title: 'T' })
+    );
+    expect(direct.get('SUB')).toBe('0.42 0.45 0.5');
+    expect(later.get('LATER')).toBe(later.get('T'));
   });
 });

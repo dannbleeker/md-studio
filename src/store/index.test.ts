@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocument, isDirty } from '@/domain/document';
 import { loadTabs } from '@/services/storage';
-import { resetStoreForTest, useStore } from './index';
+import { registerFlush } from './flush';
+import { resetStoreForTest, syncedTabs, useStore } from './index';
 import { DEFAULT_SETTINGS } from './settings';
 import { useUiStore } from './ui';
 import { registerViewPart } from './viewState';
@@ -186,6 +187,24 @@ describe('tabs', () => {
     off();
   });
 
+  it('going to the start screen lands pending edits and keeps where the reader was', () => {
+    open('aaaaaa', 'a.md');
+    const where = { textAnchor: 3, textHead: 5, textScroll: 2581, visualScroll: 90 };
+    const offView = registerViewPart(() => where);
+    // A visual edit still in its debounce when Home is pressed.
+    const offFlush = registerFlush(() => useStore.getState().setMarkdown('aaaaaa!', 'visual'));
+    useStore.getState().setScreen('start');
+    offFlush();
+    offView();
+    const s = useStore.getState();
+    expect(s.screen).toBe('start');
+    expect(s.doc.markdown).toBe('aaaaaa!');
+    // The editors unmount on the start screen and apply this when they come back.
+    expect(s.restoreView).toEqual(where);
+    useStore.getState().activateTab(s.activeTabId);
+    expect(useStore.getState()).toMatchObject({ screen: 'editor', restoreView: where });
+  });
+
   it('reorders tabs', () => {
     open('a', 'a.md');
     open('b', 'b.md');
@@ -249,5 +268,101 @@ describe('tabs', () => {
     vi.advanceTimersByTime(350);
     vi.useRealTimers();
     expect(loadTabs()?.tabs.map((t) => t.doc.fileName)).toEqual(['mine.md', 'theirs.md']);
+  });
+});
+
+describe('another window of the app', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    resetStoreForTest();
+  });
+  afterEach(() => vi.useRealTimers());
+
+  const open = (md: string, name: string) =>
+    useStore.getState().loadDocument(createDocument(md, name), null);
+  /** What another window does: rewrite one stored tab, then the browser tells this one. */
+  function otherWindowEdits(fileName: string, markdown: string, when: 'later' | 'earlier') {
+    vi.advanceTimersByTime(350); // this window's own write lands first
+    const updatedAt = when === 'later' ? Date.now() : 1;
+    const stored = JSON.parse(localStorage.getItem('md-studio:tabs:v1') ?? '{}');
+    for (const tab of stored.tabs)
+      if (tab.doc.fileName === fileName)
+        tab.doc = {
+          ...tab.doc,
+          savedMarkdown: tab.doc.savedMarkdown ?? tab.doc.markdown,
+          markdown,
+          updatedAt,
+        };
+    localStorage.setItem('md-studio:tabs:v1', JSON.stringify(stored));
+    window.dispatchEvent(new StorageEvent('storage', { key: 'md-studio:tabs:v1' }));
+  }
+  const tabText = (fileName: string) =>
+    syncedTabs(useStore.getState()).find((t) => t.doc.fileName === fileName)?.doc.markdown;
+
+  it('shows its newer copy of a background tab, so this window can’t write over it', () => {
+    open('x v1', 'x.md');
+    open('y', 'y.md');
+    otherWindowEdits('x.md', 'x v2, theirs', 'later');
+    expect(tabText('x.md')).toBe('x v2, theirs');
+    // Closing it now asks: it holds their unsaved work.
+    expect(isDirty(syncedTabs(useStore.getState())[0]?.doc ?? createDocument())).toBe(true);
+    useStore.getState().setMarkdown('y edited', 'text');
+    vi.advanceTimersByTime(350);
+    expect(loadTabs()?.tabs.find((t) => t.doc.fileName === 'x.md')?.doc.markdown).toBe(
+      'x v2, theirs'
+    );
+  });
+
+  it('loads its newer copy of the active tab into the editors', () => {
+    open('x v1', 'x.md');
+    const { loadId } = useStore.getState();
+    otherWindowEdits('x.md', 'x v2, theirs', 'later');
+    const s = useStore.getState();
+    expect(s.doc.markdown).toBe('x v2, theirs');
+    expect(s.source).toBe('load');
+    expect(s.loadId).toBe(loadId + 1);
+    // Typing goes on from their copy.
+    vi.advanceTimersByTime(1);
+    useStore.getState().setMarkdown('x v3, mine', 'text');
+    vi.advanceTimersByTime(350);
+    expect(loadTabs()?.tabs[0]?.doc.markdown).toBe('x v3, mine');
+  });
+
+  it('ignores an older copy, and never adds or removes tabs', () => {
+    open('x mine', 'x.md');
+    const { loadId } = useStore.getState();
+    otherWindowEdits('x.md', 'x older', 'earlier');
+    expect(useStore.getState().doc.markdown).toBe('x mine');
+    expect(useStore.getState().loadId).toBe(loadId);
+
+    const stored = JSON.parse(localStorage.getItem('md-studio:tabs:v1') ?? '{}');
+    stored.tabs = [{ id: 'theirs', doc: createDocument('t', 't.md'), handleId: null }];
+    localStorage.setItem('md-studio:tabs:v1', JSON.stringify(stored));
+    window.dispatchEvent(new StorageEvent('storage', { key: 'md-studio:tabs:v1' }));
+    expect(useStore.getState().tabs.map((t) => t.doc.fileName)).toEqual(['x.md']);
+  });
+
+  it('applies settings it changed, and a change here keeps them', () => {
+    localStorage.setItem(
+      'md-studio:settings:v1',
+      JSON.stringify({ ...DEFAULT_SETTINGS, theme: 'dark', fontSize: 'nope' })
+    );
+    window.dispatchEvent(new StorageEvent('storage', { key: 'md-studio:settings:v1' }));
+    expect(useStore.getState().settings).toEqual({ ...DEFAULT_SETTINGS, theme: 'dark' });
+
+    // Even when this window missed the event, a change here doesn't revert theirs.
+    localStorage.setItem(
+      'md-studio:settings:v1',
+      JSON.stringify({ ...DEFAULT_SETTINGS, theme: 'dark', showOutline: false })
+    );
+    useStore.getState().updateSettings({ linkedScroll: false });
+    const expected = {
+      ...DEFAULT_SETTINGS,
+      theme: 'dark',
+      showOutline: false,
+      linkedScroll: false,
+    };
+    expect(useStore.getState().settings).toEqual(expected);
+    expect(JSON.parse(localStorage.getItem('md-studio:settings:v1') ?? '{}')).toEqual(expected);
   });
 });

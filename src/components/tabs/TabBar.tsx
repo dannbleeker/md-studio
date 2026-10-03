@@ -1,8 +1,10 @@
 import { type DragEvent, type KeyboardEvent, type MouseEvent, useState } from 'react';
 import { isDirty } from '@/domain/document';
+import { forPlatform } from '@/domain/keys';
 import { tabLabels } from '@/domain/tabs';
 import { t } from '@/i18n';
 import { closeTab, switchTab } from '@/services/documentActions';
+import { isMac } from '@/services/platform';
 import { syncedTabs, useStore } from '@/store';
 
 /** Our own drag type, so a dragged tab is never mistaken for a dropped file. */
@@ -114,7 +116,8 @@ export function TabBar() {
               type="button"
               className="tab-close"
               aria-label={t('tabs.close', { name: label })}
-              title={`${t('tabs.close', { name: label })} (Alt+W)`}
+              // Only the hint goes through forPlatform: a file name may itself contain "Ctrl+".
+              title={`${t('tabs.close', { name: label })} (${forPlatform('Alt+W', isMac())})`}
               tabIndex={-1}
               onClick={() => void closeTab(tab.id)}
             >

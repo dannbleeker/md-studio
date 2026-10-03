@@ -79,4 +79,14 @@ describe('CommandPalette', () => {
     expect(useUiStore.getState().paletteOpen).toBe(true);
     expect(screen.getByText('This document has no headings.')).toBeInTheDocument();
   });
+
+  it('ignores Enter while an IME is composing', () => {
+    render(<CommandPalette />);
+    const input = screen.getByRole('combobox', { name: 'Commands' });
+    fireEvent.keyDown(input, { key: 'Enter', isComposing: true });
+    fireEvent.keyDown(input, { key: 'Enter', keyCode: 229 });
+    expect(useUiStore.getState().paletteOpen).toBe(true);
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(useUiStore.getState().paletteOpen).toBe(false);
+  });
 });

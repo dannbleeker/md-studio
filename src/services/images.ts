@@ -114,7 +114,15 @@ export async function placeImages(
   files: File[],
   insert: (src: string, alt: string) => void
 ): Promise<void> {
-  const { fileHandle, handleId } = useStore.getState();
+  const { fileHandle, handleId, loadId } = useStore.getState();
+  // Saving or asking takes time, and both panes reuse one editor across
+  // tabs: if another document is showing by now, the image isn't inserted
+  // into it (its link would also point next to the first document).
+  const stillHere = () => {
+    if (useStore.getState().loadId === loadId) return true;
+    showToast(t('image.documentChanged'));
+    return false;
+  };
   for (const file of files) {
     const alt = file.name.replace(/\.[^.]+$/, '') || 'image';
     try {
@@ -132,12 +140,14 @@ export async function placeImages(
         if (folder) {
           const link = await saveNextToDocument(folder, fileHandle, file);
           if (link) {
+            if (!stillHere()) return;
             insert(link, alt);
             continue;
           }
         }
       }
       const dataUrl = await toDataUrl(await shrink(file));
+      if (!stillHere()) return;
       insert(dataUrl, alt);
       if (dataUrl.length > LARGE_EMBED) showToast(t('image.largeEmbed'));
     } catch {

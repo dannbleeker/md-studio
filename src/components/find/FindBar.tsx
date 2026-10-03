@@ -103,6 +103,8 @@ export function FindBar() {
           value={options.search}
           onChange={(e) => setOptions((o) => ({ ...o, search: e.target.value }))}
           onKeyDown={(e) => {
+            // Enter confirms an IME composition (Japanese, Chinese…); it is not a search.
+            if (e.nativeEvent.isComposing || e.keyCode === 229) return;
             if (e.key === 'Enter') {
               e.preventDefault();
               act(e.shiftKey ? 'prev' : 'next');
@@ -117,6 +119,7 @@ export function FindBar() {
           className="btn-icon"
           onClick={() => act('prev')}
           title={t('find.prev')}
+          aria-label={t('find.prev')}
         >
           ↑
         </button>
@@ -125,6 +128,7 @@ export function FindBar() {
           className="btn-icon"
           onClick={() => act('next')}
           title={t('find.next')}
+          aria-label={t('find.next')}
         >
           ↓
         </button>
@@ -182,6 +186,7 @@ export function FindBar() {
             value={options.replace}
             onChange={(e) => setOptions((o) => ({ ...o, replace: e.target.value }))}
             onKeyDown={(e) => {
+              if (e.nativeEvent.isComposing || e.keyCode === 229) return;
               if (e.key === 'Enter') {
                 e.preventDefault();
                 act('replace');

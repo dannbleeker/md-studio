@@ -57,4 +57,9 @@ describe('markdownToPlainText', () => {
     expect(markdownToPlainText('10. ten\n    - nested')).toBe('10. ten\n    - nested\n');
     expect(markdownToPlainText('> - a\n>\n>   more')).not.toMatch(/^ +$/m);
   });
+
+  it('keeps code exactly as written, entities included', () => {
+    expect(markdownToPlainText('Use `&amp;` for &copy;')).toBe('Use &amp; for ©\n');
+    expect(markdownToPlainText('```\n&copy;\n```')).toBe('&copy;\n');
+  });
 });
