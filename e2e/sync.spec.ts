@@ -514,6 +514,34 @@ test('typing over a selection from front matter into the body keeps the body out
   await expect.poll(() => textContent(page)).toMatch(/^---\ntitleZ\n---\n\n.*world\n$/);
 });
 
+test('pasting over a selection from front matter into the body keeps the body out', async ({
+  page,
+}) => {
+  await newDocument(page);
+  await setText(page, '---\ntitle: Post\n---\n\nHello world\n');
+  const visual = visualPane(page);
+  await expect(visual.locator('pre.front-matter')).toHaveText('title: Post');
+  await visual.locator('p').click();
+  await visual.evaluate((root) => {
+    const code = root.querySelector('pre.front-matter code')!.firstChild!;
+    const para = root.querySelector('p')!.firstChild!;
+    const range = document.createRange();
+    range.setStart(code, 'title'.length);
+    range.setEnd(para, 'Hello'.length);
+    getSelection()?.removeAllRanges();
+    getSelection()?.addRange(range);
+  });
+  await page.waitForTimeout(80);
+  await visual.evaluate((root) => {
+    const data = new DataTransfer();
+    data.setData('text/plain', ': Pasted');
+    root.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true }));
+  });
+  await expect(visual.locator('pre.front-matter')).toHaveText('title: Pasted');
+  await expect(visual.locator('p')).toHaveText(' world');
+  await expect.poll(() => textContent(page)).toMatch(/^---\ntitle: Pasted\n---\n\n.*world\n$/);
+});
+
 test('a visual edit keeps headings, tables and front matter it didn’t touch exactly as written', async ({
   page,
 }) => {

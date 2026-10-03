@@ -27,8 +27,12 @@
   - Front matter: follows Pandoc's rules too (`...` closes it, a `---`
     followed by a blank line is a rule), so body text is never swallowed;
     block commands, a typed `---`, and selections reaching into the body
-    can no longer split, nest or merge the block; titles read YAML quoting,
-    comments and block scalars.
+    can no longer split, nest or merge the block, and typing, pasting or
+    composing over a selection that reaches into the body splits it
+    instead; titles read YAML quoting, comments and block scalars. The
+    Markdown pane finds front matter by the same rule
+    (`editor/frontMatterLanguage.ts`): a `...` closer used to make it
+    highlight the whole body as YAML.
   - Files: Ctrl+S right after a tab switch saves in place instead of
     asking where; no false "changed on disk" from Save As's own write;
     saving a file deleted on disk recreates it without an overwrite

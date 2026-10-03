@@ -176,6 +176,25 @@ describe('front matter editing', () => {
     expect(again.state.doc.child(1).textContent).toBe(' world');
   });
 
+  it('splits a paste over such a selection the same way, pasting as plain text', () => {
+    const view = load(POST);
+    select(view, 6, BODY + 5);
+    view.pasteText('Z: 1\ny: 2', new Event('paste') as ClipboardEvent);
+    expect(types(view.state.doc)).toEqual(['front_matter', 'paragraph']);
+    expect(view.state.doc.child(0).textContent).toBe('titleZ: 1\ny: 2');
+    expect(view.state.doc.child(1).textContent).toBe(' world');
+  });
+
+  it('lets an IME compose over such a selection, starting inside the block', () => {
+    const view = load(POST);
+    select(view, 6, BODY + 5);
+    view.dom.dispatchEvent(new CompositionEvent('compositionstart'));
+    expect(view.state.doc.child(0).textContent).toBe('title');
+    expect(view.state.doc.child(1).textContent).toBe(' world');
+    expect(view.state.selection.empty).toBe(true);
+    expect(view.state.selection.from).toBe(6);
+  });
+
   it('never takes the first paragraph in on Backspace or Delete', () => {
     const view = load(POST);
     select(view, BODY);

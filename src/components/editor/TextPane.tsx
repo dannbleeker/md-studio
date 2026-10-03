@@ -1,5 +1,4 @@
 import { markdown } from '@codemirror/lang-markdown';
-import { yamlFrontmatter } from '@codemirror/lang-yaml';
 import { syntaxHighlighting } from '@codemirror/language';
 import { languages } from '@codemirror/language-data';
 import { search } from '@codemirror/search';
@@ -21,6 +20,7 @@ import { useStore } from '@/store';
 import { flushEditors } from '@/store/flush';
 import { registerViewPart } from '@/store/viewState';
 import { editors, isHidden, restoreScroll } from './editorRegistry';
+import { markdownWithFrontMatter } from './frontMatterLanguage';
 import { highlightStyle } from './highlight';
 import { textPaneImageHandlers } from './imageSupport';
 import type { ScrollAdapter } from './scrollAdapter';
@@ -43,7 +43,7 @@ const wrapping = new Compartment();
 const language = new Compartment();
 // Front matter is parsed as YAML, not Markdown: otherwise its closing
 // `---` underlines the line above it into a heading.
-const markdownLanguage = yamlFrontmatter({ content: markdown({ codeLanguages: languages }) });
+const markdownLanguage = markdownWithFrontMatter(markdown({ codeLanguages: languages }));
 const plainText: Extension = [];
 const languageFor = (text: Iterable<string>) =>
   tooDeeplyNested(text) ? plainText : markdownLanguage;

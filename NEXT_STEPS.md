@@ -156,9 +156,8 @@
         for `selectionchange`, which Chromium queues behind input).
 
 - [x] **Bug hunt, part 6**: 29 confirmed bugs fixed (see the changelog).
-  - [ ] The Markdown pane highlights front matter closed by `...`, or
-        opened by `---` with trailing spaces, wrongly (lang-yaml's grammar
-        wants an exact `---`). Highlighting only; needs a custom wrapper.
-  - [ ] Paste or IME input over a selection that runs from the front
-        matter into the body is refused (nothing happens) rather than
-        split like typing is.
+  - [x] The Markdown pane finds front matter by the app's own rule (a
+        small wrapper around the YAML and Markdown parsers), so `...` and
+        trailing spaces highlight correctly.
+  - [x] Paste and IME input over a selection from the front matter into
+        the body split like typing does.

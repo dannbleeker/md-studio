@@ -244,6 +244,26 @@ const guard = $prose(
           if (tr) view.dispatch(tr);
           return tr !== null;
         },
+        // A paste lands where the selection starts, in the metadata, which
+        // is plain text: the slice's text, split across like typing.
+        handlePaste: (view, _event, slice) => {
+          const tr = replaceAcross(
+            view.state,
+            slice.content.textBetween(0, slice.content.size, '\n')
+          );
+          if (tr) view.dispatch(tr);
+          return tr !== null;
+        },
+        handleDOMEvents: {
+          // An IME replaces the selection with what it composes, an edit the
+          // filter would refuse (losing the input). Removing the selected
+          // parts first lets it compose at a plain cursor in the block.
+          compositionstart: (view) => {
+            const tr = replaceAcross(view.state, '');
+            if (tr) view.dispatch(tr);
+            return false;
+          },
+        },
       },
     })
 );
