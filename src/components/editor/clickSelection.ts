@@ -17,7 +17,9 @@ export const clickSelection = new Plugin({
   props: {
     handleDOMEvents: {
       keydown: (view: EditorView, event: KeyboardEvent) => {
-        if (!event.isComposing)
+        // 229 is an IME's first key in Chromium, before isComposing is set;
+        // ProseMirror leaves the selection alone for it too.
+        if (!event.isComposing && event.keyCode !== 229)
           (view as unknown as WithObserver).domObserver?.onSelectionChange?.();
         return false;
       },
