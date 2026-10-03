@@ -22,11 +22,14 @@ import type { MessageKey } from '@/i18n/en';
 import { isMac } from '@/services/platform';
 import { requestPrompt, useUiStore } from '@/store/ui';
 import { editors } from './editorRegistry';
+import { selectionInFrontMatter } from './frontMatter';
 
 /** Runs a Milkdown command on the visual pane and keeps its focus. */
 function run<T>(key: CmdKey<T>, payload?: T): void {
   const editor = editors.milkdown;
   if (!editor) return;
+  // Formatting is for the body; the metadata is edited as plain text.
+  if (editors.visual && selectionInFrontMatter(editors.visual.state)) return;
   editor.action(callCommand(key, payload));
   editors.visual?.focus();
 }
