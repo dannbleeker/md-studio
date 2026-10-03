@@ -15,6 +15,7 @@
  */
 
 import { closesFence, openFence } from './fences';
+import { frontMatterEnd } from './frontMatter';
 
 export type BlockRange = { start: number; end: number };
 
@@ -103,7 +104,8 @@ const THEMATIC_BREAK = /^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$/;
  * Cheap top-level block split for `preserveUnchangedBlocks`: runs of
  * non-blank lines, with fenced code kept whole across blank lines, and a
  * heading or thematic break ending the run it closes (`# Title` directly
- * followed by text is two blocks, as the serializer writes them). It
+ * followed by text is two blocks, as the serializer writes them), and
+ * front matter as one block, as the visual pane parses it. It
  * doesn't need to match the Markdown parser exactly (a loose list becomes
  * several chunks, which compare fine on their own, and the merge is
  * verified anyway); a full parse per edit costs ~150 ms on a 3,000-line
@@ -114,12 +116,14 @@ export function splitBlocks(md: string): BlockRange[] {
   let start = -1;
   let end = 0;
   let fence: string | null = null;
-  let pos = 0;
+  const front = frontMatterEnd(md);
+  if (front >= 0) out.push({ start: 0, end: front });
+  let pos = front >= 0 ? front + 1 : 0;
   const close = () => {
     if (start >= 0) out.push({ start, end });
     start = -1;
   };
-  for (const line of md.split('\n')) {
+  for (const line of md.slice(pos).split('\n')) {
     const lineEnd = pos + line.length;
     const blank = line.trim() === '';
     if (fence) {

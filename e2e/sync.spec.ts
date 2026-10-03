@@ -390,6 +390,30 @@ test('blank lines typed in the visual pane never become <br /> in the Markdown',
   expect(await textContent(page)).not.toContain('<br');
 });
 
+test('front matter shows as one metadata block and edits as plain text', async ({ page }) => {
+  const source = '---\ntitle: Post\ndate: 2024-01-01\n---\n\n# Title\n\nBody\n';
+  await newDocument(page);
+  await setText(page, source);
+  const visual = visualPane(page);
+  const block = visual.locator('pre.front-matter');
+  await expect(block).toHaveText('title: Post\ndate: 2024-01-01');
+  // Not a rule and a heading any more, and not in the outline.
+  await expect(visual.locator('hr')).toHaveCount(0);
+  await expect(visual.locator('h1, h2')).toHaveText(['Title']);
+
+  // The last line of the block, then its end.
+  const box = await block.boundingBox();
+  if (!box) throw new Error('no front matter block');
+  await page.mouse.click(box.x + box.width - 10, box.y + box.height - 16);
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('tags: [a]');
+  await expect
+    .poll(() => textContent(page))
+    .toBe('---\ntitle: Post\ndate: 2024-01-01\ntags: [a]\n---\n\n# Title\n\nBody\n');
+  await expect(visual.locator('pre.front-matter')).toHaveCount(1);
+});
+
 test('a visual edit keeps headings, tables and front matter it didn’t touch exactly as written', async ({
   page,
 }) => {

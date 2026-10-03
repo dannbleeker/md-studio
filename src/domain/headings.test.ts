@@ -33,6 +33,19 @@ describe('findHeadings', () => {
     expect(findHeadings('text\n\n---\n')).toEqual([]);
   });
 
+  // The visual pane shows front matter as a metadata block, not headings.
+  it('skips front matter, whose closing fence is not an underline', () => {
+    const md = '---\ntitle: Post\n# not: a heading\n---\n\n# Real\nIntro\n---\n';
+    expect(findHeadings(md)).toEqual([
+      { line: 5, level: 1, text: 'Real' },
+      { line: 6, level: 2, text: 'Intro' },
+    ]);
+    // Not at the start: a rule, then a setext heading.
+    expect(findHeadings('Intro\n\n---\ntitle: Post\n---\n').map((h) => h.text)).toEqual([
+      'title: Post',
+    ]);
+  });
+
   it('accepts an empty ATX heading', () => {
     expect(findHeadings('#\n')).toEqual([{ line: 0, level: 1, text: '' }]);
   });

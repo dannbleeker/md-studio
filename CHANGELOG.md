@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Front matter in the visual pane.** YAML front matter (a `---` block
+  on the first line) shows as one labelled metadata block, edited as plain
+  text, instead of a rule and a heading. It no longer counts as a heading
+  in the outline, the heading palette or linked scroll. Parsing uses
+  `remark-frontmatter`; `domain/frontMatter.ts` applies the same rules to
+  the raw-text helpers. A front matter block moved or pasted below the
+  top becomes a YAML code block.
 - **Bug hunt, part 5** (editors and sync; files, tabs and persistence;
   UI, accessibility and exports).
   - Data loss: an idle second window no longer writes its old copy of a

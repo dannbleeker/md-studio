@@ -35,6 +35,7 @@ export const en = {
   'view.visual': 'Visual',
   'pane.text': 'Markdown source',
   'pane.visual': 'Visual editor',
+  'pane.frontMatter': 'Front matter',
   'settings.title': 'Settings',
   'settings.theme': 'Theme',
   'settings.theme.system': 'Match system',

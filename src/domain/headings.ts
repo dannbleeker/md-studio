@@ -5,10 +5,12 @@
  * top-level heading element the visual pane renders, so this has to agree
  * with what a CommonMark renderer turns into an `<h1>`–`<h6>` at the root:
  * ATX and setext headings, but nothing inside fenced code, indented code,
- * block quotes, or lists.
+ * block quotes, lists, or front matter (whose closing `---` would
+ * otherwise underline its last line into a heading).
  */
 
 import { closesFence, openFence } from './fences';
+import { frontMatterLines } from './frontMatter';
 
 export type Heading = {
   /** 0-based line index of the heading text. */
@@ -48,7 +50,7 @@ export function findHeadings(markdown: string): Heading[] {
   // Inside an HTML block: until a blank line, or `-->` for a comment.
   let html: 'block' | 'comment' | null = null;
 
-  for (let i = 0; i < lines.length; i++) {
+  for (let i = frontMatterLines(markdown); i < lines.length; i++) {
     const line = lines[i] ?? '';
     const blank = line.trim() === '';
 

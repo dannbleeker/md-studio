@@ -37,7 +37,8 @@ src/
                model, tabs, headings + fences, scroll anchor mapping,
                changed region + minimal text diff, block-preserving merge,
                reference definitions, nesting guard, fuzzy match, export
-               formats, footnotes, image paths and info
+               formats, footnotes, image paths and info,
+               front matter
   store/       Zustand: index.ts (document, tabs, settings, recents,
                persistence subscription), settings.ts, ui.ts (dialogs and
                find bar flags, toasts, confirm/prompt, format state),

@@ -36,6 +36,11 @@ a moment later.
 **Linked scroll** (split view) keeps both panes on the same section as you
 scroll. Turn it off in the toolbar or in Settings.
 
+**Front matter**, the YAML metadata block some tools put at the top of a
+file between two `---` lines, shows in the visual view as a grey box
+labelled Front matter. Edit it there as plain text; Backspace in an empty
+box removes it.
+
 ## Formatting
 
 In the visual view, the toolbar above the document formats without

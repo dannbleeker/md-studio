@@ -28,6 +28,7 @@ import { registerViewPart } from '@/store/viewState';
 import { applyFull, applyIncremental } from './applyMarkdown';
 import { editors, isHidden, restoreScroll, visualHeadings } from './editorRegistry';
 import { reportFormat } from './formatState';
+import { frontMatter, remarkFrontMatter } from './frontMatter';
 import { imageNodeView, visualPaneImagePlugin } from './imageSupport';
 import { imageTitleFix } from './imageTitleFix';
 import { keepSourceStyle } from './keepSourceStyle';
@@ -89,7 +90,7 @@ export function VisualPane({ onAdapter }: Props) {
             }),
             visualPaneImagePlugin(() => editor),
           ]);
-          ctx.update(remarkPluginsCtx, (plugins) => [...plugins, imageTitleFix]);
+          ctx.update(remarkPluginsCtx, (plugins) => [...plugins, remarkFrontMatter, imageTitleFix]);
           ctx.update(nodeViewCtx, (views) => {
             const image: (typeof views)[number] = ['image', imageNodeView];
             return [...views, image];
@@ -106,6 +107,7 @@ export function VisualPane({ onAdapter }: Props) {
         })
         .use(commonmark)
         .use(gfm)
+        .use(frontMatter)
         .use(history)
         .use(clipboard)
         .use(listener)

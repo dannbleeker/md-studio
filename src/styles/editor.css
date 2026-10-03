@@ -341,3 +341,24 @@
 .visual-failed {
   opacity: 0.45;
 }
+
+/* YAML front matter: metadata, shown apart from the document's content. */
+.visual-doc pre.front-matter {
+  position: relative;
+  margin: 0 0 1.5em;
+  padding-top: 1.6rem;
+  color: var(--text-muted);
+  border-style: dashed;
+}
+.visual-doc pre.front-matter::before {
+  content: attr(data-label);
+  position: absolute;
+  top: 0.4rem;
+  left: 1rem;
+  font-family: var(--font-ui, inherit);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  pointer-events: none;
+}
