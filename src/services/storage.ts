@@ -8,10 +8,10 @@ import type { Tab, Tabs } from '@/domain/tabs';
 import { TEXT_ENCODINGS, type TextFormat } from '@/domain/textFormat';
 
 const DOC_KEY = 'md-studio:document:v1';
-const SETTINGS_KEY = 'md-studio:settings:v1';
+export const SETTINGS_KEY = 'md-studio:settings:v1';
 const RECENTS_KEY = 'md-studio:recents:v1';
 const HANDLE_KEY = 'md-studio:document-handle:v1';
-const TABS_KEY = 'md-studio:tabs:v1';
+export const TABS_KEY = 'md-studio:tabs:v1';
 
 /** Snapshots above this size are left out of the recent list to protect the storage quota. */
 const MAX_RECENT_BYTES = 256 * 1024;
