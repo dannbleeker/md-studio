@@ -2,6 +2,48 @@
 
 ## Unreleased
 
+- **Bug hunt, part 6**: 32 confirmed bugs fixed, each with a test that
+  failed before the fix.
+  - Data loss:
+    - Files in Windows-1252 or UTF-16 were decoded as UTF-8 and saved
+      back corrupted. They now open correctly and are saved in their own
+      encoding (as UTF-8, with a notice, only when the text no longer
+      fits it).
+    - With the app open in two windows, one window kept showing its old
+      copy of a tab and could overwrite or delete the other window's
+      newer work, and settings changed in one window reverted in the
+      other. Windows now pick up each other's newer tabs and settings.
+    - A format-toolbar button (or an image dropped on the visual pane)
+      right after a Markdown-pane edit wrote the visual pane's stale copy
+      over that edit.
+    - Going to the start screen right after a visual edit dropped the
+      edit; the cursor and scroll position are now kept too.
+    - A file reloaded from disk could replace a visual edit made in the
+      last 200 ms.
+  - Editors and sync: a Markdown-pane edit could show in the wrong block
+    of the visual pane after a list; a visual edit rewrote the source of
+    every block after an indented code block with a blank line, and moved
+    link reference definitions to the end of the document.
+  - Front matter: follows Pandoc's rules too (`...` closes it, a `---`
+    followed by a blank line is a rule), so body text is never swallowed;
+    block commands, a typed `---`, and selections reaching into the body
+    can no longer split, nest or merge the block; titles read YAML quoting,
+    comments and block scalars.
+  - Files: Ctrl+S right after a tab switch saves in place instead of
+    asking where; no false "changed on disk" from Save As's own write;
+    saving a file deleted on disk recreates it without an overwrite
+    prompt; an image finishing after a document switch is no longer
+    inserted into the other document.
+  - Exports: code keeps HTML entities as written; the PDF draws quotes,
+    tables and headings inside list items and styles an H3 as a subtitle
+    only directly under an H1; Word keeps a list item that opens with
+    code; footnotes match labels case-insensitively and leave indented
+    code alone.
+  - UI: the outline follows the visual pane in visual-only view; Mac
+    tooltips show ⌘; the find bar's arrows have names; Enter during IME
+    composition no longer runs palette commands or find; a dialog's radio
+    group starts on the checked option.
+
 - **Keys right after a click land where you clicked.** Clicking into the
   visual pane and pressing a key straight away (or while the page was busy,
   e.g. syncing a large document) could act at the old cursor position:
