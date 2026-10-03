@@ -23,12 +23,16 @@ import { isMac } from '@/services/platform';
 import { requestPrompt, useUiStore } from '@/store/ui';
 import { editors } from './editorRegistry';
 
-/** Runs a Milkdown command on the visual pane and keeps its focus. */
+/**
+ * Runs a Milkdown command on the visual pane and keeps its focus. Focus
+ * comes first: focusing lands any text-pane edits not yet applied to the
+ * visual tree, and a command on a stale tree would be serialized over them.
+ */
 function run<T>(key: CmdKey<T>, payload?: T): void {
   const editor = editors.milkdown;
   if (!editor) return;
-  editor.action(callCommand(key, payload));
   editors.visual?.focus();
+  editor.action(callCommand(key, payload));
 }
 
 async function editLink(current: string | null): Promise<void> {

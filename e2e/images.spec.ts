@@ -67,3 +67,25 @@ test('dropping a non-Markdown file outside the editors does not navigate away', 
   await expect(page).toHaveURL(/localhost:4173\/$/);
   await expect(textPane(page)).toBeVisible();
 });
+
+test('an image dropped on the visual pane right after a text edit keeps that edit', async ({
+  page,
+}) => {
+  const target = '[data-testid="visual-editor"] .ProseMirror p:last-of-type';
+  await newDocument(page);
+  await setText(page, 'hello world\n\nsecond');
+  await expect(visualPane(page).locator('p')).toHaveCount(2);
+  // The first drop loads the image service, so the second inserts at once.
+  await sendImage(page, target, 'drop');
+  await expect.poll(() => textContent(page)).toContain('![diagram]');
+  await page.waitForTimeout(3000);
+  await textPane(page).click();
+  await page.keyboard.press('ControlOrMeta+Home');
+  await page.keyboard.press('End');
+  await page.keyboard.type('XYZ');
+  await sendImage(page, target, 'drop');
+  await page.waitForTimeout(800);
+  const text = await textContent(page);
+  expect(text).toContain('hello worldXYZ');
+  expect(text.match(/!\[diagram\]/g)).toHaveLength(2);
+});

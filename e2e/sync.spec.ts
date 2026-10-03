@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import { newDocument, setText, textContent, textPane, visualPane } from './helpers';
 
 test('text pane edits render in the visual pane', async ({ page }) => {
@@ -454,4 +454,80 @@ test('keys pressed before the browser reports a click act where the user clicked
   await page.keyboard.type('Z');
   await expect.poll(() => textContent(page)).toContain('Z');
   expect(await textContent(page)).toBe('# Title\n\nAlpha para\n\nZ\n\nDelta para\n');
+});
+
+/** The visual pane's top-level blocks as `TAG:text`, to see where an edit landed. */
+const visualBlocks = (page: Page) =>
+  visualPane(page).evaluate((pm) =>
+    Array.from(pm.children).map((el) => `${el.tagName}:${el.textContent ?? ''}`)
+  );
+
+/**
+ * Locates a format toolbar button now and returns a press that needs no
+ * actionability waits, so it can follow a keystroke within milliseconds.
+ */
+async function formatButton(page: Page, name: RegExp): Promise<() => Promise<void>> {
+  const box = await page
+    .getByRole('toolbar', { name: 'Formatting' })
+    .getByRole('button', { name })
+    .boundingBox();
+  if (!box) throw new Error('format button not visible');
+  return async () => {
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.up();
+  };
+}
+
+/**
+ * Puts `hello world / second / filler…` in both panes, with the visual
+ * pane last focused in "second". The filler keeps an edit to the first
+ * line small enough for an incremental update.
+ */
+async function typedAfterVisualFocus(page: Page): Promise<void> {
+  await newDocument(page);
+  let md = 'hello world\n\nsecond';
+  for (let i = 0; i < 8; i++) md += `\n\nfiller paragraph number ${i}`;
+  await setText(page, md);
+  const visual = visualPane(page);
+  await expect(visual.locator('p')).toHaveCount(10);
+  await visual.locator('p', { hasText: 'second' }).click();
+  await page.waitForTimeout(3000);
+}
+
+async function typeXyzOnFirstLine(page: Page): Promise<void> {
+  await textPane(page).click();
+  await page.keyboard.press('ControlOrMeta+Home');
+  await page.keyboard.press('End');
+  await page.keyboard.type('XYZ');
+}
+
+async function expectRuleAndXyzInBothPanes(page: Page): Promise<void> {
+  await expect(visualPane(page).locator('hr')).toHaveCount(1);
+  await page.waitForTimeout(600);
+  const text = await textContent(page);
+  expect(text).toContain('hello worldXYZ');
+  expect(text).toMatch(/\n(\*\*\*|---)/);
+  expect(await visualBlocks(page)).toEqual(
+    expect.arrayContaining(['P:hello worldXYZ', 'P:second', 'HR:'])
+  );
+}
+
+test('a format button right after a text edit keeps that edit', async ({ page }) => {
+  await typedAfterVisualFocus(page);
+  const rule = await formatButton(page, /^Horizontal rule/);
+  await typeXyzOnFirstLine(page);
+  // Before the 150 ms text-to-visual update has run.
+  await rule();
+  await expectRuleAndXyzInBothPanes(page);
+});
+
+test('a format button while a full re-parse is due keeps the text edit', async ({ page }) => {
+  await typedAfterVisualFocus(page);
+  const rule = await formatButton(page, /^Horizontal rule/);
+  await typeXyzOnFirstLine(page);
+  // After the incremental update, before the 2.5 s reconcile.
+  await page.waitForTimeout(500);
+  await rule();
+  await expectRuleAndXyzInBothPanes(page);
 });
