@@ -559,3 +559,16 @@ test('a visual edit leaves an indented code block with a blank line alone', asyn
   await expect.poll(() => textContent(page)).toContain('moreZ');
   expect(await textContent(page)).toBe(source.replace('more', 'moreZ'));
 });
+
+test('a visual edit keeps link reference definitions where they were', async ({ page }) => {
+  await newDocument(page);
+  const source = '[a]: http://x\n\nSee [a].\n\nmore\n';
+  await setText(page, source);
+  const visual = visualPane(page);
+  await expect(visual.locator('a')).toHaveCount(1);
+  await visual.locator('p', { hasText: 'more' }).click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('Z');
+  await expect.poll(() => textContent(page)).toContain('moreZ');
+  expect(await textContent(page)).toBe(source.replace('more', 'moreZ'));
+});

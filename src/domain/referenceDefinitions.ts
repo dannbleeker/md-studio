@@ -1,4 +1,4 @@
-import { splitBlocks } from './preserveBlocks';
+import { type BlockRange, splitBlocks } from './preserveBlocks';
 
 /**
  * Link reference definitions (`[id]: url`) and footnotes act at a
@@ -29,12 +29,24 @@ const isDefinitionBlock = (block: string) =>
  * Splits the definition blocks out of a document, so the rest can be
  * compared block by block (with the definitions in scope) and the
  * definitions put back afterwards. The serializer writes reference links
- * inline and drops their definitions.
+ * inline and drops their definitions. `placed` records where each
+ * definition block stood: before the body block numbered `before`.
  */
-export function splitDefinitions(md: string): { body: string; definitions: string } {
+export function splitDefinitions(md: string): {
+  body: string;
+  definitions: string;
+  placed: PlacedDefinition[];
+} {
   const blocks = splitBlocks(md);
+  const placed: PlacedDefinition[] = [];
+  let bodyBlocks = 0;
+  for (const b of blocks) {
+    const text = md.slice(b.start, b.end);
+    if (isDefinitionBlock(text)) placed.push({ text, before: bodyBlocks });
+    else bodyBlocks++;
+  }
+  if (placed.length === 0) return { body: md, definitions: '', placed };
   const defs = blocks.filter((b) => isDefinitionBlock(md.slice(b.start, b.end)));
-  if (defs.length === 0) return { body: md, definitions: '' };
   let body = '';
   let at = 0;
   for (const b of defs) {
@@ -44,6 +56,53 @@ export function splitDefinitions(md: string): { body: string; definitions: strin
   body += md.slice(at);
   return {
     body: `${body.replace(/\n{3,}/g, '\n\n').trim()}\n`,
-    definitions: defs.map((b) => md.slice(b.start, b.end)).join('\n\n'),
+    definitions: placed.map((d) => d.text).join('\n\n'),
+    placed,
   };
+}
+
+/** A definition block and the number of body blocks before it. */
+export type PlacedDefinition = { text: string; before: number };
+
+/**
+ * Puts definition blocks back into a merged body: each next to a body
+ * block it stood beside, where that block was kept (`kept` maps an old
+ * body block to its range in `body`, or null when it was rewritten).
+ * Definitions with no kept neighbour go at the end.
+ */
+export function placeDefinitions(
+  body: string,
+  placed: PlacedDefinition[],
+  kept: (oldBlock: number) => BlockRange | null
+): string {
+  // Keyed by insertion point: a kept block's start (definitions go in
+  // front of it) or end (after it); the old gap stays on the other side.
+  const groups = new Map<string, { offset: number; front: boolean; texts: string[] }>();
+  const rest: string[] = [];
+  for (const def of placed) {
+    const next = kept(def.before);
+    const prev = def.before > 0 ? kept(def.before - 1) : null;
+    const point = next
+      ? { offset: next.start, front: true }
+      : prev
+        ? { offset: prev.end, front: false }
+        : null;
+    if (!point) {
+      rest.push(def.text);
+      continue;
+    }
+    const key = `${point.offset}:${point.front}`;
+    const group = groups.get(key) ?? { ...point, texts: [] };
+    group.texts.push(def.text);
+    groups.set(key, group);
+  }
+  let out = body;
+  // From the end backwards, so earlier offsets stay valid.
+  for (const { offset, front, texts } of [...groups.values()].sort((a, b) => b.offset - a.offset)) {
+    const defs = texts.join('\n\n');
+    out = front
+      ? `${out.slice(0, offset)}${defs}\n\n${out.slice(offset)}`
+      : `${out.slice(0, offset)}\n\n${defs}${out.slice(offset)}`;
+  }
+  return rest.length ? `${out.trimEnd()}\n\n${rest.join('\n\n')}\n` : out;
 }

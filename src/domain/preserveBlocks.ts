@@ -29,7 +29,11 @@ export type PreserveResult = {
    * definitions, which callers check for separately).
    */
   check: { text: BlockRange; newMd: BlockRange } | null;
+  /** Where an old block kept verbatim now is in `text`; null for a rewritten one. */
+  kept: (oldBlock: number) => BlockRange | null;
 };
+
+const noneKept = () => null;
 
 export function preserveUnchangedBlocks(
   oldMd: string,
@@ -37,7 +41,7 @@ export function preserveUnchangedBlocks(
   blocksOf: (md: string) => BlockRange[],
   norm: (blockSource: string) => string
 ): PreserveResult {
-  if (oldMd === newMd) return { text: newMd, check: null };
+  if (oldMd === newMd) return { text: newMd, check: null, kept: noneKept };
   const oldBlocks = blocksOf(oldMd);
   const newBlocks = blocksOf(newMd);
   const oldText = (i: number) => oldMd.slice(oldBlocks[i]!.start, oldBlocks[i]!.end);
@@ -52,7 +56,7 @@ export function preserveUnchangedBlocks(
   while (s < oldN - p && s < newN - p && same(oldN - 1 - s, newN - 1 - s)) s++;
 
   // Nothing worth keeping: the serializer's text is the answer.
-  if (p === 0 && s === 0) return { text: newMd, check: null };
+  if (p === 0 && s === 0) return { text: newMd, check: null, kept: noneKept };
 
   const middle = newN - s > p ? newMd.slice(newBlocks[p]!.start, newBlocks[newN - s - 1]!.end) : '';
   const head = p > 0 ? oldMd.slice(0, oldBlocks[p - 1]!.end) : '';
@@ -79,8 +83,17 @@ export function preserveUnchangedBlocks(
   out += tail;
 
   const firstSuffix = oldBlocks[oldN - s];
+  const kept = (i: number): BlockRange | null => {
+    const block = oldBlocks[i];
+    if (!block) return null;
+    if (i < p) return block;
+    if (i < oldN - s || !firstSuffix) return null;
+    const shift = tailStart - firstSuffix.start;
+    return { start: block.start + shift, end: block.end + shift };
+  };
   return {
     text: out,
+    kept,
     check: {
       text: {
         start: p > 0 ? oldBlocks[p - 1]!.start : 0,

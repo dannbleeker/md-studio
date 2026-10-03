@@ -1,7 +1,11 @@
 import { parserCtx, serializerCtx } from '@milkdown/kit/core';
 import type { Ctx } from '@milkdown/kit/ctx';
 import { preserveUnchangedBlocks, splitBlocks } from '@/domain/preserveBlocks';
-import { hasReferenceDefinition, splitDefinitions } from '@/domain/referenceDefinitions';
+import {
+  hasReferenceDefinition,
+  placeDefinitions,
+  splitDefinitions,
+} from '@/domain/referenceDefinitions';
 
 /**
  * Canonical form of a block = Milkdown's own parse + serialize, cached by
@@ -26,9 +30,9 @@ export function keepSourceStyle(ctx: Ctx, oldMd: string, newMd: string): string 
       const doc = parse(source);
       return doc ? serialize(doc).trim() : source.trim();
     };
-    const { body, definitions } = hasReferenceDefinition(oldMd)
+    const { body, definitions, placed } = hasReferenceDefinition(oldMd)
       ? splitDefinitions(oldMd)
-      : { body: oldMd, definitions: '' };
+      : { body: oldMd, definitions: '', placed: [] };
     // Each block is judged with the definitions in scope, so `[foo]` and
     // the serializer's inlined `[foo](url)` count as the same block.
     const scoped = definitions
@@ -46,7 +50,8 @@ export function keepSourceStyle(ctx: Ctx, oldMd: string, newMd: string): string 
     };
     const result = preserveUnchangedBlocks(body, newMd, splitBlocks, norm);
     const check = result.check;
-    const merged = definitions ? `${result.text.trimEnd()}\n\n${definitions}\n` : result.text;
+    // Definitions go back where they stood, beside a block that was kept.
+    const merged = definitions ? placeDefinitions(result.text, placed, result.kept) : result.text;
     if (merged === newMd || !check) return newMd;
     // Link reference definitions apply document-wide, so with any present
     // only a full comparison proves the merge (newMd is the serializer's

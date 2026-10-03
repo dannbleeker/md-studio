@@ -77,6 +77,23 @@ describe('preserveUnchangedBlocks', () => {
   it('returns the new text when nothing can be kept', () => {
     expect(merge('a', 'b\n')).toBe('b\n');
     expect(merge('', 'x\n')).toBe('x\n');
+    expect(preserveUnchangedBlocks('a', 'b\n', blocksOf, norm).kept(0)).toBeNull();
+  });
+
+  it('reports where each kept block now is', () => {
+    const edited = serialize(source).replace('- list', '- list item\n- more');
+    const r = preserveUnchangedBlocks(source, edited, blocksOf, norm);
+    const at = (i: number) => {
+      const range = r.kept(i);
+      return range ? r.text.slice(range.start, range.end) : null;
+    };
+    expect([0, 1, 2, 3, 4].map(at)).toEqual([
+      'Title\n=====',
+      null,
+      '__strong__ words',
+      'last para',
+      null,
+    ]);
   });
 });
 
