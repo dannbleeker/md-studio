@@ -37,6 +37,7 @@ export async function buildPdf() {
     creator: BOOK_PUBLISHER,
     keywords: [BOOK_ID],
     cover: { eyebrow: 'AN MD STUDIO GUIDE' },
+    pageNumbers: true,
   });
 }
 

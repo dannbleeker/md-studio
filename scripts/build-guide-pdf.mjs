@@ -23,6 +23,7 @@ async function main() {
     title: 'MD Studio user guide',
     author: BOOK_AUTHOR,
     producer: 'MD Studio guide builder (pdf-lib)',
+    pageNumbers: true,
   });
   await writeFile(OUT_PATH, bytes);
   console.log(`✓ Wrote ${OUT_PATH} (${(bytes.length / 1024).toFixed(1)} KB)`);

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Book and guide PDFs.** Pages are numbered (the book's cover excepted),
+  the book's contents list each chapter's page with a dotted leader, and
+  the cover's eyebrow uses the indigo of the other Studio books. A new
+  `pageNumbers` option in `markdownPdf.mjs` does this; the app's PDF
+  export leaves it off.
+
 - **Bug hunt, part 6**: 29 confirmed bugs fixed, each with a test that
   failed before the fix.
   - Data loss:

@@ -14,5 +14,7 @@ export type MarkdownPdfOptions = {
   >;
   /** Book mode: cover page, clickable contents and bookmarks. */
   cover?: { eyebrow?: string } | null;
+  /** Number the pages (not a cover) and the contents entries. */
+  pageNumbers?: boolean;
 };
 export function markdownToPdf(options: MarkdownPdfOptions): Promise<Uint8Array>;

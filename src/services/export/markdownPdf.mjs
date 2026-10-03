@@ -11,7 +11,7 @@
 
 import { decodeHTML } from 'entities';
 import { marked } from 'marked';
-import { PDFDocument, PDFName, PDFString, rgb, StandardFonts } from 'pdf-lib';
+import { LineCapStyle, PDFDocument, PDFName, PDFString, rgb, StandardFonts } from 'pdf-lib';
 
 const PAGE = { w: 595.28, h: 841.89 }; // A4 portrait, points
 const M = { top: 68, bottom: 64, left: 66, right: 66 };
@@ -22,6 +22,8 @@ const HEAD = rgb(0.07, 0.09, 0.15);
 const MUTED = rgb(0.42, 0.45, 0.5);
 // Slate accent #3d5170, matching the app theme.
 const ACCENT = rgb(0.239, 0.318, 0.439);
+// The eyebrow above a book's title, in the indigo the other Studio books use.
+const COVER_ACCENT = rgb(0.39, 0.4, 0.95);
 const CODE_INK = rgb(0.239, 0.318, 0.439);
 const CODE_BG = rgb(0.95, 0.96, 0.97);
 const QUOTE_BG = rgb(0.933, 0.945, 0.965);
@@ -70,7 +72,9 @@ const runText = (run) => (run.code ? pdfGlyphs(run.text) : pdfText(run.text));
  * `sources` are rendered in order; each H1 starts a new page. With `cover`
  * set, the document gets a cover page, a clickable contents page and one
  * bookmark per H1 (the book); without it, the first page starts straight
- * with the content (single-document export).
+ * with the content (single-document export). `pageNumbers` numbers the
+ * pages and the contents entries (the book and the user guide; the app's
+ * Export leaves them off).
  */
 export async function markdownToPdf({
   sources,
@@ -81,6 +85,7 @@ export async function markdownToPdf({
   creator = '',
   keywords = [],
   cover = null,
+  pageNumbers = false,
   images = new Map(),
 }) {
   const pdf = await PDFDocument.create();
@@ -626,7 +631,7 @@ export async function markdownToPdf({
   let tocPage = null;
   if (cover) {
     const page = addPage();
-    if (cover.eyebrow) center(page, cover.eyebrow, F.bold, 11, ACCENT, 250);
+    if (cover.eyebrow) center(page, cover.eyebrow, F.bold, 11, COVER_ACCENT, 250);
     center(page, title, F.bold, 42, HEAD, 300);
     if (subject) {
       // subtitle, wrapped + centred
@@ -671,17 +676,32 @@ export async function markdownToPdf({
     flow([{ text: 'Contents', b: true }], { size: 22, lineHeight: 28, color: HEAD });
     gap(10);
     const linkAnnots = [];
+    const pageRefs = pdf.getPages().map((p) => p.ref);
     for (const d of dest) {
       space(19);
       const top = S.y;
       const label = pdfText(d.title);
-      safeDraw(tocPage, label, {
-        x: M.left + 4,
-        y: PAGE.h - top - 11,
-        font: F.regular,
-        size: 11.5,
-        color: INK,
-      });
+      const labelX = M.left + 4;
+      const baseline = PAGE.h - top - 11;
+      safeDraw(tocPage, label, { x: labelX, y: baseline, font: F.regular, size: 11.5, color: INK });
+      if (pageNumbers) {
+        // The page as the reader's PDF viewer counts it, the same number the
+        // page itself carries; a dotted leader carries the eye across.
+        const num = String(pageRefs.indexOf(d.pageRef) + 1);
+        const numX = PAGE.w - M.right - safeWidth(F.regular, num, 11.5);
+        safeDraw(tocPage, num, { x: numX, y: baseline, font: F.regular, size: 11.5, color: INK });
+        const from = labelX + safeWidth(F.regular, label, 11.5) + 6;
+        if (numX - 6 > from) {
+          tocPage.drawLine({
+            start: { x: from, y: baseline + 1 },
+            end: { x: numX - 6, y: baseline + 1 },
+            thickness: 0.8,
+            color: MUTED,
+            dashArray: [0.8, 3],
+            lineCap: LineCapStyle.Round,
+          });
+        }
+      }
       // clickable rect over the whole line
       const ctx = pdf.context;
       const action = ctx.obj({
@@ -699,6 +719,25 @@ export async function markdownToPdf({
       S.y += 19;
     }
     tocPage.node.set(PDFName.of('Annots'), pdf.context.obj(linkAnnots));
+  }
+
+  // --- page numbers -------------------------------------------------------------
+  // Centred in the bottom margin, small and grey, as in the other Studio
+  // books. A book's cover carries none; the count still includes it, so the
+  // number matches the page the PDF viewer shows.
+  if (pageNumbers) {
+    pdf.getPages().forEach((page, i) => {
+      if (cover && i === 0) return;
+      const num = String(i + 1);
+      const tw = safeWidth(F.regular, num, 9);
+      safeDraw(page, num, {
+        x: (PAGE.w - tw) / 2,
+        y: M.bottom / 2,
+        font: F.regular,
+        size: 9,
+        color: MUTED,
+      });
+    });
   }
 
   // --- chapter bookmarks (PDF outline) ----------------------------------------

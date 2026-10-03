@@ -1,5 +1,5 @@
 import { inflateSync } from 'node:zlib';
-import { PDFDocument } from 'pdf-lib';
+import { PDFArray, PDFDocument, PDFName, PDFRawStream } from 'pdf-lib';
 import { describe, expect, it } from 'vitest';
 import { markdownToPdf } from './markdownPdf.mjs';
 
@@ -19,6 +19,25 @@ function drawnText(bytes: Uint8Array): string {
     }
   }
   return out.join(' ');
+}
+
+/** The text drawn on each page, as one list of strings per page. */
+async function pageTexts(bytes: Uint8Array): Promise<string[][]> {
+  const pdf = await PDFDocument.load(bytes);
+  return pdf.getPages().map((page) => {
+    const contents = page.node.get(PDFName.of('Contents'));
+    const refs = contents instanceof PDFArray ? contents.asArray() : [contents];
+    const out: string[] = [];
+    for (const ref of refs) {
+      const stream = ref ? pdf.context.lookup(ref) : undefined;
+      if (!(stream instanceof PDFRawStream)) continue;
+      const content = inflateSync(Buffer.from(stream.contents)).toString('latin1');
+      for (const t of content.matchAll(/<([0-9A-Fa-f]+)> Tj/g)) {
+        out.push(Buffer.from(t[1] ?? '', 'hex').toString('latin1'));
+      }
+    }
+    return out;
+  });
 }
 
 /** Where each word is drawn: its x position on the page. */
@@ -87,6 +106,65 @@ describe('markdownToPdf', () => {
     );
     // cover + contents + one page per H1
     expect(pdf.getPageCount()).toBe(4);
+  });
+
+  it('numbers the pages of a book, leaving the cover unnumbered', async () => {
+    const long = Array.from({ length: 80 }, (_, i) => `Paragraph ${i}.`).join('\n\n');
+    const pages = await pageTexts(
+      await markdownToPdf({
+        sources: [`# One\n\n${long}`, '# Two\n\nShort.'],
+        title: 'Book',
+        cover: { eyebrow: 'GUIDE' },
+        pageNumbers: true,
+      })
+    );
+    expect(pages.length).toBeGreaterThan(4);
+    expect(pages[0]).not.toContain('1');
+    for (const [i, texts] of pages.entries()) if (i > 0) expect(texts).toContain(String(i + 1));
+  });
+
+  it('gives each contents entry the page its chapter starts on', async () => {
+    const long = Array.from({ length: 80 }, (_, i) => `Paragraph ${i}.`).join('\n\n');
+    const pages = await pageTexts(
+      await markdownToPdf({
+        sources: [`# One\n\n${long}`, '# Two\n\nShort.'],
+        title: 'Book',
+        cover: { eyebrow: 'GUIDE' },
+        pageNumbers: true,
+      })
+    );
+    const two =
+      pages.findIndex((texts) => texts.includes('Two') && !texts.includes('Contents')) + 1;
+    expect(two).toBeGreaterThan(3);
+    const contents = pages[1] ?? [];
+    expect(contents.slice(contents.indexOf('One'), contents.indexOf('One') + 2)).toEqual([
+      'One',
+      '3',
+    ]);
+    expect(contents.slice(contents.indexOf('Two'), contents.indexOf('Two') + 2)).toEqual([
+      'Two',
+      String(two),
+    ]);
+  });
+
+  it('numbers every page of a document without a cover, and none by default', async () => {
+    const long = Array.from({ length: 80 }, (_, i) => `Paragraph ${i}.`).join('\n\n');
+    const numbered = await pageTexts(
+      await markdownToPdf({ sources: [long], title: 'Guide', pageNumbers: true })
+    );
+    expect(numbered.length).toBeGreaterThan(1);
+    for (const [i, texts] of numbered.entries()) expect(texts).toContain(String(i + 1));
+    const plain = await pageTexts(await markdownToPdf({ sources: [long], title: 'Export' }));
+    expect(plain[1]).not.toContain('2');
+  });
+
+  it('draws the cover eyebrow in the Studio books’ indigo', async () => {
+    const bytes = await markdownToPdf({
+      sources: ['# One'],
+      title: 'Book',
+      cover: { eyebrow: 'GUIDE' },
+    });
+    expect(wordColors(bytes).get('GUIDE')).toBe('0.39 0.4 0.95');
   });
 
   it('draws nested list items and task boxes', async () => {
