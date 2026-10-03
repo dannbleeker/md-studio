@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocument, isDirty } from '@/domain/document';
 import { loadTabs } from '@/services/storage';
+import { registerFlush } from './flush';
 import { resetStoreForTest, syncedTabs, useStore } from './index';
 import { DEFAULT_SETTINGS } from './settings';
 import { useUiStore } from './ui';
@@ -184,6 +185,24 @@ describe('tabs', () => {
       visualScroll: 90,
     });
     off();
+  });
+
+  it('going to the start screen lands pending edits and keeps where the reader was', () => {
+    open('aaaaaa', 'a.md');
+    const where = { textAnchor: 3, textHead: 5, textScroll: 2581, visualScroll: 90 };
+    const offView = registerViewPart(() => where);
+    // A visual edit still in its debounce when Home is pressed.
+    const offFlush = registerFlush(() => useStore.getState().setMarkdown('aaaaaa!', 'visual'));
+    useStore.getState().setScreen('start');
+    offFlush();
+    offView();
+    const s = useStore.getState();
+    expect(s.screen).toBe('start');
+    expect(s.doc.markdown).toBe('aaaaaa!');
+    // The editors unmount on the start screen and apply this when they come back.
+    expect(s.restoreView).toEqual(where);
+    useStore.getState().activateTab(s.activeTabId);
+    expect(useStore.getState()).toMatchObject({ screen: 'editor', restoreView: where });
   });
 
   it('reorders tabs', () => {

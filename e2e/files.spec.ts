@@ -84,6 +84,37 @@ test('documents open in tabs that keep their own content', async ({ page }) => {
   await expect.poll(() => textContent(page)).toBe('first doc');
 });
 
+test('the start screen and back keeps a just-made visual edit and the scroll position', async ({
+  page,
+}) => {
+  await newDocument(page);
+  const long = Array.from({ length: 200 }, (_, i) => `## Section ${i}\n\nline ${i}`).join('\n\n');
+  await setText(page, `# Long\n\n${long}\n`);
+  await expect(visualPane(page).locator('h2').last()).toHaveText('Section 199');
+  const textScroller = page.getByTestId('text-editor').locator('.cm-scroller');
+
+  // A visual edit, then Home well inside the 200 ms report debounce.
+  await visualPane(page).locator('h1').click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('!');
+  await page.getByRole('button', { name: 'MD Studio' }).click();
+  await page.getByRole('button', { name: /Continue/ }).click();
+  // Both panes are rebuilt from the store: the edit reached it.
+  await expect(visualPane(page).locator('h1')).toHaveText('Long!');
+
+  await textScroller.evaluate((el) => {
+    el.scrollTop = 2581;
+  });
+  await page.waitForTimeout(300); // let linked scroll settle
+  const saved = await textScroller.evaluate((el) => el.scrollTop);
+  expect(saved).toBeGreaterThan(1000);
+  await page.getByRole('button', { name: 'MD Studio' }).click();
+  await page.getByRole('button', { name: /Continue/ }).click();
+  await expect(visualPane(page).locator('h1')).toHaveText('Long!');
+  await expect.poll(() => textScroller.evaluate((el) => el.scrollTop)).toBeGreaterThan(saved - 5);
+  expect(await textScroller.evaluate((el) => el.scrollTop)).toBeLessThan(saved + 5);
+});
+
 test('switching tabs returns to the same scroll position; tabs can be dragged', async ({
   page,
 }) => {

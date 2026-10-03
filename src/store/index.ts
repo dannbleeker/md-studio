@@ -257,7 +257,27 @@ export const useStore = create<State>()((set, get) => ({
 
   restoreFileHandle: (fileHandle) => set({ fileHandle }),
 
-  setScreen: (screen) => set({ screen }),
+  setScreen: (screen) => {
+    if (screen !== 'start' || get().screen === 'start') {
+      set({ screen });
+      return;
+    }
+    // The editors unmount on the start screen: land their pending edits and
+    // keep their cursor and scroll, which they apply when they mount again.
+    flushEditors();
+    const s = get();
+    const view = captureView(s.restoreView ?? undefined);
+    if (!view) {
+      set({ screen });
+      return;
+    }
+    set({
+      screen,
+      restoreView: view,
+      // Also the tab's own record, for a switch to another tab from there.
+      tabs: s.tabs.map((tab) => (tab.id === s.activeTabId ? { ...tab, view } : tab)),
+    });
+  },
   setViewMode: (viewMode) => set({ viewMode }),
   updateSettings: (patch) => {
     // Onto what is stored, not this window's copy: another window may have

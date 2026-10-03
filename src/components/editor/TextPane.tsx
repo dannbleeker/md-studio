@@ -101,10 +101,17 @@ export function TextPane({ onAdapter }: Props) {
 
   useEffect(() => {
     if (!host.current) return;
+    // Mounted again after the start screen: back to the cursor and scroll
+    // the store kept for this document (see setScreen).
+    const { doc: initial, restoreView: at } = useStore.getState();
+    const clampInitial = (n: number) => Math.min(Math.max(n, 0), initial.markdown.length);
     const view = new EditorView({
       parent: host.current,
       state: EditorState.create({
-        doc: useStore.getState().doc.markdown,
+        doc: initial.markdown,
+        ...(at
+          ? { selection: { anchor: clampInitial(at.textAnchor), head: clampInitial(at.textHead) } }
+          : {}),
         extensions: [
           basicSetup,
           // Takes precedence over basicSetup's fallback default style.
@@ -140,6 +147,7 @@ export function TextPane({ onAdapter }: Props) {
     });
 
     editors.text = view;
+    if (at) restoreScroll(view.scrollDOM, at.textScroll);
     const onFocus = () => {
       editors.lastFocused = 'text';
       // About to type here: report the visual pane's pending edit first, so
