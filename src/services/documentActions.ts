@@ -337,7 +337,10 @@ export async function checkDiskChanges(): Promise<void> {
   )
     return;
   if (text === doc.savedMarkdown) return;
-  if (!isDirty(now.doc)) {
+  // A visual edit still in its debounce is unsaved work too: report it
+  // before deciding, or the reload would replace it.
+  flushEditors();
+  if (!isDirty(useStore.getState().doc)) {
     now.reloadFromDisk(text);
     showToast(t('toast.reloadedFromDisk', { name: doc.fileName }));
   } else if (warnedAbout !== text) {

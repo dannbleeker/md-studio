@@ -29,7 +29,11 @@ export type PreserveResult = {
    * definitions, which callers check for separately).
    */
   check: { text: BlockRange; newMd: BlockRange } | null;
+  /** Where an old block kept verbatim now is in `text`; null for a rewritten one. */
+  kept: (oldBlock: number) => BlockRange | null;
 };
+
+const noneKept = () => null;
 
 export function preserveUnchangedBlocks(
   oldMd: string,
@@ -37,7 +41,7 @@ export function preserveUnchangedBlocks(
   blocksOf: (md: string) => BlockRange[],
   norm: (blockSource: string) => string
 ): PreserveResult {
-  if (oldMd === newMd) return { text: newMd, check: null };
+  if (oldMd === newMd) return { text: newMd, check: null, kept: noneKept };
   const oldBlocks = blocksOf(oldMd);
   const newBlocks = blocksOf(newMd);
   const oldText = (i: number) => oldMd.slice(oldBlocks[i]!.start, oldBlocks[i]!.end);
@@ -52,7 +56,7 @@ export function preserveUnchangedBlocks(
   while (s < oldN - p && s < newN - p && same(oldN - 1 - s, newN - 1 - s)) s++;
 
   // Nothing worth keeping: the serializer's text is the answer.
-  if (p === 0 && s === 0) return { text: newMd, check: null };
+  if (p === 0 && s === 0) return { text: newMd, check: null, kept: noneKept };
 
   const middle = newN - s > p ? newMd.slice(newBlocks[p]!.start, newBlocks[newN - s - 1]!.end) : '';
   const head = p > 0 ? oldMd.slice(0, oldBlocks[p - 1]!.end) : '';
@@ -79,8 +83,17 @@ export function preserveUnchangedBlocks(
   out += tail;
 
   const firstSuffix = oldBlocks[oldN - s];
+  const kept = (i: number): BlockRange | null => {
+    const block = oldBlocks[i];
+    if (!block) return null;
+    if (i < p) return block;
+    if (i < oldN - s || !firstSuffix) return null;
+    const shift = tailStart - firstSuffix.start;
+    return { start: block.start + shift, end: block.end + shift };
+  };
   return {
     text: out,
+    kept,
     check: {
       text: {
         start: p > 0 ? oldBlocks[p - 1]!.start : 0,
@@ -99,10 +112,35 @@ const ATX = /^ {0,3}#{1,6}(?:[ \t]|$)/;
 /** A setext underline (after paragraph text) or, at a block's start, a thematic break. */
 const SETEXT = /^ {0,3}(?:=+|-+)[ \t]*$/;
 const THEMATIC_BREAK = /^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$/;
+/** A line indented enough to be indented code. */
+const CODE_INDENT = /^(?: {4}| {0,3}\t)/;
+
+/**
+ * HTML blocks that run across blank lines until their end marker
+ * (CommonMark types 1-5: raw text elements, comments, processing
+ * instructions, declarations, CDATA), as [start, end] patterns.
+ */
+const HTML_BLOCKS: Array<[RegExp, RegExp]> = [
+  [/^ {0,3}<(?:script|pre|style|textarea)(?=[\s>]|$)/i, /<\/(?:script|pre|style|textarea)>/i],
+  [/^ {0,3}<!--/, /-->/],
+  [/^ {0,3}<\?/, /\?>/],
+  [/^ {0,3}<![A-Za-z]/, />/],
+  [/^ {0,3}<!\[CDATA\[/, /\]\]>/],
+];
+
+/** The end marker an HTML block opened on `line` still waits for, or null. */
+function openHtmlBlock(line: string): RegExp | null {
+  for (const [open, close] of HTML_BLOCKS) {
+    const m = open.exec(line);
+    if (m) return close.test(line.slice(m[0].length)) ? null : close;
+  }
+  return null;
+}
 
 /**
  * Cheap top-level block split for `preserveUnchangedBlocks`: runs of
- * non-blank lines, with fenced code kept whole across blank lines, and a
+ * non-blank lines, with fenced code, indented code and multi-paragraph
+ * HTML blocks (comments, <pre>…) kept whole across blank lines, and a
  * heading or thematic break ending the run it closes (`# Title` directly
  * followed by text is two blocks, as the serializer writes them), and
  * front matter as one block, as the visual pane parses it. It
@@ -116,21 +154,39 @@ export function splitBlocks(md: string): BlockRange[] {
   let start = -1;
   let end = 0;
   let fence: string | null = null;
+  let html: RegExp | null = null;
   const front = frontMatterEnd(md);
   if (front >= 0) out.push({ start: 0, end: front });
   let pos = front >= 0 ? front + 1 : 0;
+  /** The current run is an indented code block (so far). */
+  let code = false;
   const close = () => {
     if (start >= 0) out.push({ start, end });
     start = -1;
+    code = false;
   };
-  for (const line of md.slice(pos).split('\n')) {
+  const lines = md.slice(pos).split('\n');
+  /** The next non-blank line after `i` is indented as code. */
+  const codeFollows = (i: number) => {
+    for (let j = i + 1; j < lines.length; j++) {
+      const next = lines[j]!;
+      if (next.trim() !== '') return CODE_INDENT.test(next);
+    }
+    return false;
+  };
+  for (const [i, line] of lines.entries()) {
     const lineEnd = pos + line.length;
     const blank = line.trim() === '';
     if (fence) {
       if (closesFence(line, fence)) fence = null;
       end = lineEnd;
+    } else if (html) {
+      if (html.test(line)) html = null;
+      end = lineEnd;
     } else if (blank) {
-      close();
+      // Indented code runs on across blank lines while the code continues
+      // (the serializer writes it as one block).
+      if (!(code && codeFollows(i))) close();
     } else if (ATX.test(line) || (start < 0 && THEMATIC_BREAK.test(line))) {
       // A block of its own, ending whatever came before.
       close();
@@ -140,10 +196,15 @@ export function splitBlocks(md: string): BlockRange[] {
       end = lineEnd;
       close();
     } else {
-      if (start < 0) start = pos;
+      // Indented code can't interrupt a paragraph: only a run's first line starts it.
+      if (start < 0) {
+        start = pos;
+        code = CODE_INDENT.test(line);
+      } else if (!CODE_INDENT.test(line)) code = false;
       end = lineEnd;
       const open = openFence(line);
       if (open) fence = open;
+      else html = openHtmlBlock(line);
     }
     pos = lineEnd + 1;
   }

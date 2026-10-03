@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { actsAtDistance, hasReferenceDefinition, splitDefinitions } from './referenceDefinitions';
+import {
+  actsAtDistance,
+  hasReferenceDefinition,
+  placeDefinitions,
+  splitDefinitions,
+} from './referenceDefinitions';
 
 describe('reference definitions', () => {
   it('recognises definitions, indented up to three spaces', () => {
@@ -17,14 +22,57 @@ describe('reference definitions', () => {
 
   it('leaves a document without definitions alone', () => {
     const md = '# A\n\n[b][x] text\n';
-    expect(splitDefinitions(md)).toEqual({ body: md, definitions: '' });
+    expect(splitDefinitions(md)).toEqual({ body: md, definitions: '', placed: [] });
   });
 
-  it('splits out definition blocks, wherever they are', () => {
+  it('splits out definition blocks, wherever they are, noting where they stood', () => {
     const md = '# A\n\n[x]: https://x.dk\n[y]: https://y.dk\n\nUse [x].\n\n[z]: /z\n';
     expect(splitDefinitions(md)).toEqual({
       body: '# A\n\nUse [x].\n',
       definitions: '[x]: https://x.dk\n[y]: https://y.dk\n\n[z]: /z',
+      placed: [
+        { text: '[x]: https://x.dk\n[y]: https://y.dk', before: 1 },
+        { text: '[z]: /z', before: 2 },
+      ],
+    });
+  });
+
+  describe('placeDefinitions', () => {
+    const body = 'one\n\ntwo\n\nthree\n';
+    // Blocks of `body`, as preserveUnchangedBlocks reports kept ones.
+    const ranges = [
+      { start: 0, end: 3 },
+      { start: 5, end: 8 },
+      { start: 10, end: 15 },
+    ];
+    const all = (i: number) => ranges[i] ?? null;
+
+    it('puts each definition back in front of the block that followed it', () => {
+      const placed = [
+        { text: '[a]: /a', before: 0 },
+        { text: '[b]: /b', before: 2 },
+        { text: '[c]: /c', before: 2 },
+      ];
+      expect(placeDefinitions(body, placed, all)).toBe(
+        '[a]: /a\n\none\n\ntwo\n\n[b]: /b\n\n[c]: /c\n\nthree\n'
+      );
+    });
+
+    it('puts a definition after the block before it when the next was rewritten', () => {
+      const kept = (i: number) => (i === 2 ? null : all(i));
+      expect(placeDefinitions(body, [{ text: '[b]: /b', before: 2 }], kept)).toBe(
+        'one\n\ntwo\n\n[b]: /b\n\nthree\n'
+      );
+      expect(placeDefinitions(body, [{ text: '[z]: /z', before: 3 }], all)).toBe(
+        'one\n\ntwo\n\nthree\n\n[z]: /z\n'
+      );
+    });
+
+    it('appends a definition with no kept neighbour', () => {
+      const kept = (i: number) => (i === 0 ? all(i) : null);
+      expect(placeDefinitions(body, [{ text: '[b]: /b', before: 2 }], kept)).toBe(
+        'one\n\ntwo\n\nthree\n\n[b]: /b\n'
+      );
     });
   });
 

@@ -101,10 +101,12 @@ export function VisualPane({ onAdapter }: Props) {
             ...prev,
             attributes: { 'aria-label': t('pane.visual'), spellcheck: 'true' },
           }));
-          ctx.get(listenerCtx).markdownUpdated((listenerCtx, markdown) => {
+          ctx.get(listenerCtx).markdownUpdated((listenerCtx) => {
             // Already flushed, or fired after a load (another tab, a reload
-            // from disk): nothing of the user's to report.
-            if (unreported) report(listenerCtx, markdown);
+            // from disk): nothing of the user's to report. The listener's
+            // own Markdown is the last user transaction's document, from
+            // before any text-pane edits applied since: report the current one.
+            if (unreported) report(listenerCtx, getMarkdown()(listenerCtx));
           });
         })
         .use(commonmark)
