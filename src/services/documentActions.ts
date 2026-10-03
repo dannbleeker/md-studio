@@ -169,7 +169,23 @@ export async function openRecent(entry: RecentEntry): Promise<void> {
   if (entry.markdown) openSnapshot(entry.markdown, entry.fileName, false);
 }
 
+/**
+ * Saves still writing. The window regains focus when a file picker closes,
+ * and a disk check then would read this window's own new text before the
+ * save is recorded, and report it as changed by someone else.
+ */
+let savesInFlight = 0;
+
 export async function saveDocument(saveAs = false): Promise<void> {
+  savesInFlight++;
+  try {
+    await save(saveAs);
+  } finally {
+    savesInFlight--;
+  }
+}
+
+async function save(saveAs: boolean): Promise<void> {
   if (pendingRestore) await pendingRestore.catch(() => {});
   // Land the visual pane's pending edits, then pin what this save writes
   // and which tab it belongs to.
@@ -187,7 +203,10 @@ export async function saveDocument(saveAs = false): Promise<void> {
         : null;
     // The file may have changed since we last read or wrote it (another
     // app, another device syncing the folder): ask before replacing that.
-    if (target && (await diskText(target)) !== doc.savedMarkdown) {
+    // A file that can't be read any more (deleted or moved) is simply
+    // written again, which recreates it.
+    const onDisk = target ? await diskText(target) : null;
+    if (onDisk !== null && onDisk !== doc.savedMarkdown) {
       const overwrite = await requestConfirm({
         title: t('confirm.overwrite.title'),
         body: t('confirm.overwrite.body', { name: doc.fileName }),
@@ -297,7 +316,7 @@ let warnedAbout: string | null = null;
  */
 export async function checkDiskChanges(): Promise<void> {
   const { fileHandle, doc, activeTabId } = useStore.getState();
-  if (!fileHandle) return;
+  if (!fileHandle || savesInFlight > 0) return;
   try {
     if (
       fileHandle.queryPermission &&
@@ -312,6 +331,7 @@ export async function checkDiskChanges(): Promise<void> {
   // Ignore results that arrive after a switch, an edit or a save.
   if (
     text === null ||
+    savesInFlight > 0 ||
     now.activeTabId !== activeTabId ||
     now.doc.savedMarkdown !== doc.savedMarkdown
   )

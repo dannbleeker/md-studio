@@ -206,6 +206,19 @@ describe('files changed on disk outside MD Studio', () => {
     expect(h.content).toBe('my edit');
   });
 
+  it('writes a deleted file back without the "newer file" prompt', async () => {
+    useUiStore.setState({ confirm: null, toasts: [] });
+    const h = fakeHandle('a.md', 'v1');
+    openOnDisk(h);
+    useStore.getState().setMarkdown('v2', 'text');
+    h.missing = true;
+    const saving = saveDocument();
+    await vi.waitFor(() => expect(h.content).toBe('v2'));
+    expect(useUiStore.getState().confirm).toBeNull();
+    await saving;
+    expect(useStore.getState().doc.savedMarkdown).toBe('v2');
+  });
+
   it('saves without asking when the file is as we left it', async () => {
     const h = fakeHandle('a.md', 'v1');
     openOnDisk(h);
@@ -252,6 +265,22 @@ describe('saves that take a while', () => {
       markdown: 'v3 typed during the save',
       savedMarkdown: 'v2',
     });
+  });
+
+  it('does not report its own write as a change on disk', async () => {
+    useUiStore.setState({ confirm: null, toasts: [] });
+    const { h, release } = slowHandle('a.md', 'v1');
+    useStore.getState().loadDocument(createDocument('v1', 'a.md'), h, 'id-a');
+    useStore.getState().setMarkdown('v2', 'text');
+    const saving = saveDocument();
+    await vi.waitFor(() => expect(h.content).toBe('v2'));
+    // The window regains focus (a file picker closing) while the save is
+    // still finishing: the file on disk is our own new text.
+    await checkDiskChanges();
+    release();
+    await saving;
+    const messages = useUiStore.getState().toasts.map((toast) => toast.message);
+    expect(messages.some((m) => m.includes('changed on disk'))).toBe(false);
   });
 
   it('records the save on the tab it started in, even after a tab switch', async () => {
