@@ -27,6 +27,9 @@ function ExportForm({ onDone }: { onDone: () => void }) {
   const [htmlTheme, setHtmlTheme] = useState<HtmlTheme>(
     () => useStore.getState().settings.exportHtmlTheme
   );
+  const [frontMatter, setFrontMatter] = useState(
+    () => useStore.getState().settings.exportFrontMatter
+  );
 
   return (
     <form
@@ -34,8 +37,12 @@ function ExportForm({ onDone }: { onDone: () => void }) {
       onSubmit={(e) => {
         e.preventDefault();
         onDone();
-        useStore.getState().updateSettings({ exportFormat: format, exportHtmlTheme: htmlTheme });
-        void exportDocument(format, { htmlTheme });
+        useStore.getState().updateSettings({
+          exportFormat: format,
+          exportHtmlTheme: htmlTheme,
+          exportFrontMatter: frontMatter,
+        });
+        void exportDocument(format, { htmlTheme, frontMatter });
       }}
     >
       <h2>{t('export.title')}</h2>
@@ -72,6 +79,15 @@ function ExportForm({ onDone }: { onDone: () => void }) {
           </select>
         </label>
       ) : null}
+
+      <label className="checkbox">
+        <input
+          type="checkbox"
+          checked={frontMatter}
+          onChange={(e) => setFrontMatter(e.target.checked)}
+        />
+        {t('export.frontMatter')}
+      </label>
 
       <div className="dialog-actions">
         <button type="button" className="btn" onClick={onDone}>

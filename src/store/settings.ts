@@ -24,6 +24,11 @@ export type Settings = {
   /** The Export dialog's last choices, offered again next time. */
   exportFormat: ExportFormat;
   exportHtmlTheme: HtmlTheme;
+  /**
+   * Include YAML front matter in exports and print. Off by default: it is
+   * metadata for other tools, not part of the document's text.
+   */
+  exportFrontMatter: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -38,6 +43,7 @@ export const DEFAULT_SETTINGS: Settings = {
   webImages: false,
   exportFormat: 'pdf',
   exportHtmlTheme: 'auto',
+  exportFrontMatter: false,
 };
 
 const VIEW_MODES: readonly ViewMode[] = ['split', 'text', 'visual'];
@@ -65,5 +71,6 @@ export function sanitizeSettings(raw: Record<string, unknown>): Settings {
     webImages: bool(raw.webImages, d.webImages),
     exportFormat: oneOf(EXPORT_FORMATS, raw.exportFormat, d.exportFormat),
     exportHtmlTheme: oneOf(HTML_THEMES, raw.exportHtmlTheme, d.exportHtmlTheme),
+    exportFrontMatter: bool(raw.exportFrontMatter, d.exportFrontMatter),
   };
 }

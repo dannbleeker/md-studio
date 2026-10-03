@@ -148,11 +148,9 @@
 - [x] **Bug hunt, part 5**: 21 confirmed bugs fixed (see the changelog).
   - [x] YAML front matter shows in the visual pane as a metadata block
         (decided: shown, not hidden).
-    - [ ] The Markdown pane still highlights the line above the closing
-          `---` as a heading (CodeMirror's parser; `@codemirror/lang-yaml`
-          has a front matter wrapper, at some bundle cost).
-    - [ ] Exports (HTML, Word, PDF, plain text) still render front
-          matter as a rule and a heading; dropping it there is open.
+    - [x] The Markdown pane highlights it as YAML.
+    - [x] Exports and print leave it out, with a setting (off by
+          default) to include it as a code block.
   - [ ] Unconfirmed: a click in the visual pane right after typing
         sometimes leaves the cursor where it was (seen only in quick
         automated sequences).

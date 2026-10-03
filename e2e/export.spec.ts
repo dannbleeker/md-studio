@@ -46,3 +46,22 @@ test('export leaves the document and its save state alone', async ({ page }) => 
   await expect(page.getByRole('img', { name: 'Unsaved changes' })).toBeVisible();
   await expect(page.locator('.file-name')).toHaveAttribute('title', 'Untitled.md');
 });
+
+test('front matter is left out of exports unless the setting includes it', async ({ page }) => {
+  await newDocument(page);
+  await setText(page, '---\ntitle: Post\n---\n\n# Report\n\nBody text.\n');
+  const exportText = async (include: boolean) => {
+    await page.getByRole('button', { name: 'Export', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Export' });
+    await dialog.getByRole('radio', { name: /^Plain text/ }).check();
+    await dialog.getByRole('checkbox', { name: /front matter/ }).setChecked(include);
+    const download = page.waitForEvent('download');
+    await dialog.getByRole('button', { name: 'Export' }).click();
+    return readFile(await (await download).path(), 'utf8');
+  };
+  const without = await exportText(false);
+  expect(without).toContain('Report');
+  expect(without).not.toContain('title: Post');
+  expect(without).not.toContain('---');
+  expect(await exportText(true)).toContain('title: Post');
+});

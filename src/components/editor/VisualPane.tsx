@@ -151,8 +151,14 @@ export function VisualPane({ onAdapter }: Props) {
       measure: perfMeasure,
     });
 
+    // Printing shows this pane: front matter prints only when exports include it.
+    const printFrontMatter = (include: boolean) =>
+      rootEl.classList.toggle('print-front-matter', include);
+    printFrontMatter(useStore.getState().settings.exportFrontMatter);
+
     const unsubscribe = useStore.subscribe((state, prev) => {
       sync.onChange(read(state), read(prev));
+      printFrontMatter(state.settings.exportFrontMatter);
       if (state.loadId !== prev.loadId) {
         restoreScroll(scrollEl, state.restoreView?.visualScroll ?? 0);
       }

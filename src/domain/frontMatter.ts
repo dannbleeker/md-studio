@@ -37,3 +37,33 @@ export function frontMatterLines(markdown: string): number {
   for (let i = 0; i < end; i++) if (markdown.charCodeAt(i) === 10) lines++;
   return lines;
 }
+
+/**
+ * The Markdown handed to an exporter. Front matter is metadata for other
+ * tools, and every exporter would render it as a rule and a heading: it is
+ * dropped, or with `include`, turned into a YAML code block so it shows as
+ * the visual pane shows it.
+ */
+export function frontMatterForExport(markdown: string, include: boolean): string {
+  const end = frontMatterEnd(markdown);
+  if (end < 0) return markdown;
+  const rest = markdown.slice(end + 1).replace(/^(?:[ \t]*\r?\n)+/, '');
+  const yaml = markdown
+    .slice(markdown.indexOf('\n') + 1, markdown.lastIndexOf('\n', end - 1) + 1)
+    .replace(/\r?\n$/, '');
+  if (!include || yaml.trim() === '') return rest;
+  // Longer than any backtick run inside, so nothing in the YAML closes it.
+  const longest = Math.max(0, ...(yaml.match(/`+/g) ?? []).map((run) => run.length));
+  const fence = '`'.repeat(Math.max(3, longest + 1));
+  return `${fence}yaml\n${yaml}\n${fence}\n\n${rest}`;
+}
+
+/** The `title:` field of the front matter, if it has a plain one. */
+export function frontMatterTitle(markdown: string): string {
+  const end = frontMatterEnd(markdown);
+  if (end < 0) return '';
+  const match = /^title:[ \t]*(.*?)[ \t]*\r?$/m.exec(markdown.slice(0, end));
+  const value = match?.[1] ?? '';
+  const quoted = /^(["'])(.*)\1$/.exec(value);
+  return (quoted ? (quoted[2] ?? '') : value).trim();
+}

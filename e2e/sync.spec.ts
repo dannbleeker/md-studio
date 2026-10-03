@@ -401,11 +401,17 @@ test('front matter shows as one metadata block and edits as plain text', async (
   await expect(visual.locator('hr')).toHaveCount(0);
   await expect(visual.locator('h1, h2')).toHaveText(['Title']);
 
-  // The last line of the block, then its end.
-  const box = await block.boundingBox();
-  if (!box) throw new Error('no front matter block');
-  await page.mouse.click(box.x + box.width - 10, box.y + box.height - 16);
-  await page.keyboard.press('End');
+  // The cursor at the end of the block (End doesn't move within a <pre> line).
+  await block.click();
+  await block.locator('code').evaluate((code) => {
+    const range = document.createRange();
+    range.selectNodeContents(code);
+    range.collapse(false);
+    getSelection()?.removeAllRanges();
+    getSelection()?.addRange(range);
+  });
+  // ProseMirror adopts the DOM selection on the async `selectionchange`.
+  await page.waitForTimeout(50);
   await page.keyboard.press('Enter');
   await page.keyboard.type('tags: [a]');
   await expect

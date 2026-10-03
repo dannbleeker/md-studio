@@ -145,6 +145,10 @@ Pasted images and images in the document's `images` folder come along (PDF:
 PNG and JPEG; Word also GIF); images on the web are not fetched and show
 their alt text. Footnotes become numbered notes at the end.
 
+Front matter is left out of exports and print. To include it, as a code
+block at the top, tick **Include front matter in exports and print** in
+the Export dialog or in Settings.
+
 The command palette also has a direct command per format, e.g. *Export as
 PDF*. PDF uses standard fonts: Latin text (including æ, ø, å) comes through,
 but emoji and non-Latin scripts are left out. The first PDF or Word export

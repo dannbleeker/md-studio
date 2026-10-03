@@ -97,6 +97,7 @@ export const en = {
   'export.docx.hint': 'Editable in Word, with real headings, lists and tables.',
   'export.txt': 'Plain text',
   'export.txt.hint': 'Formatting marks removed, structure kept.',
+  'export.frontMatter': 'Include front matter in exports and print',
   'export.theme': 'Page theme',
   'export.theme.auto': 'Follow reader’s system',
   'export.theme.light': 'Light',

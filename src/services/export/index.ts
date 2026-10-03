@@ -12,13 +12,14 @@ import {
   type HtmlTheme,
 } from '@/domain/exportFormats';
 import { inlineFootnotes } from '@/domain/footnotes';
+import { frontMatterForExport } from '@/domain/frontMatter';
 import { hasCharactersPdfCantShow } from '@/domain/pdfCharacters';
 import { t } from '@/i18n';
 import { useStore } from '@/store';
 import { showToast } from '@/store/ui';
 import { saveBlobAs } from '../fileSystem';
 
-export type ExportOptions = { htmlTheme: HtmlTheme };
+export type ExportOptions = { htmlTheme: HtmlTheme; frontMatter: boolean };
 
 async function render(
   format: ExportFormat,
@@ -55,15 +56,16 @@ export async function exportDocument(format: ExportFormat, options: ExportOption
   const { doc } = useStore.getState();
   const name = exportFileName(doc.fileName, format);
   const title = documentTitle(doc.markdown) || name.replace(/\.[^.]+$/, '');
+  const markdown = frontMatterForExport(doc.markdown, options.frontMatter);
   try {
     // The exporters have no footnote support; see domain/footnotes.ts.
-    const blob = await render(format, inlineFootnotes(doc.markdown), title, options);
+    const blob = await render(format, inlineFootnotes(markdown), title, options);
     const result = await saveBlobAs(blob, name, formatInfo(format));
     if (!result) return;
     showToast(
       t(result.kind === 'written' ? 'toast.exported' : 'toast.downloaded', { name: result.name })
     );
-    if (format === 'pdf' && hasCharactersPdfCantShow(doc.markdown)) {
+    if (format === 'pdf' && hasCharactersPdfCantShow(markdown)) {
       showToast(t('toast.pdfMissingCharacters'), undefined, 10000);
     }
   } catch {

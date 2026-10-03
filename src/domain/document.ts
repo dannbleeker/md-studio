@@ -1,3 +1,4 @@
+import { frontMatterEnd, frontMatterTitle } from './frontMatter';
 import { PLAIN_TEXT, type TextFormat } from './textFormat';
 
 /**
@@ -49,9 +50,16 @@ export function normalizeFileName(name: string): string {
 
 /** First heading, else first non-empty line, used as a recent-list subtitle. */
 export function documentTitle(markdown: string): string {
-  for (const raw of markdown.split(/\r?\n/)) {
+  const fromFrontMatter = frontMatterTitle(markdown);
+  if (fromFrontMatter) return clip(fromFrontMatter);
+  // Front matter without a title isn't the document's first line either.
+  const end = frontMatterEnd(markdown);
+  const body = end < 0 ? markdown : markdown.slice(end + 1);
+  for (const raw of body.split(/\r?\n/)) {
     const line = raw.replace(/^ {0,3}#{1,6}\s+/, '').trim();
-    if (line) return line.length > 80 ? `${line.slice(0, 79)}…` : line;
+    if (line) return clip(line);
   }
   return '';
 }
+
+const clip = (title: string) => (title.length > 80 ? `${title.slice(0, 79)}…` : title);

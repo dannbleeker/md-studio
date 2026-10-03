@@ -36,6 +36,11 @@ export type Command = {
 };
 
 const state = () => useStore.getState();
+/** Exports from the palette use the Export dialog's last choices. */
+const exportOptions = () => ({
+  htmlTheme: state().settings.exportHtmlTheme,
+  frontMatter: state().settings.exportFrontMatter,
+});
 const ui = () => useUiStore.getState();
 
 export const COMMANDS: readonly Command[] = [
@@ -136,25 +141,25 @@ export const COMMANDS: readonly Command[] = [
     id: 'export-html',
     editorOnly: true,
     label: 'cmd.exportHtml',
-    run: () => void exportDocument('html', { htmlTheme: state().settings.exportHtmlTheme }),
+    run: () => void exportDocument('html', exportOptions()),
   },
   {
     id: 'export-pdf',
     editorOnly: true,
     label: 'cmd.exportPdf',
-    run: () => void exportDocument('pdf', { htmlTheme: state().settings.exportHtmlTheme }),
+    run: () => void exportDocument('pdf', exportOptions()),
   },
   {
     id: 'export-docx',
     editorOnly: true,
     label: 'cmd.exportDocx',
-    run: () => void exportDocument('docx', { htmlTheme: state().settings.exportHtmlTheme }),
+    run: () => void exportDocument('docx', exportOptions()),
   },
   {
     id: 'export-txt',
     editorOnly: true,
     label: 'cmd.exportTxt',
-    run: () => void exportDocument('txt', { htmlTheme: state().settings.exportHtmlTheme }),
+    run: () => void exportDocument('txt', exportOptions()),
   },
   {
     id: 'print',
