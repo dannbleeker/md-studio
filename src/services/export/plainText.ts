@@ -52,7 +52,8 @@ function inline(tokens: Token[] | undefined): string {
         out += '\n';
         break;
       case 'codespan':
-        out += decode((t as Tokens.Codespan).text);
+        // Code text is the source as written: `&amp;` in code means those five characters.
+        out += (t as Tokens.Codespan).text;
         break;
       default:
         out +=

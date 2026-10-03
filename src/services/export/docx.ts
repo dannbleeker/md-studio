@@ -76,7 +76,8 @@ function inline(tokens: Token[] | undefined, style: Style = {}): ParagraphChild[
         out.push(...inline((t as Tokens.Del).tokens, { ...style, strike: true }));
         break;
       case 'codespan':
-        out.push(run(decode((t as Tokens.Codespan).text), { ...style, code: true }));
+        // Code text is the source as written: `&amp;` in code means those five characters.
+        out.push(run((t as Tokens.Codespan).text, { ...style, code: true }));
         break;
       case 'link': {
         const link = t as Tokens.Link;
@@ -179,8 +180,13 @@ function blocks(tokens: Token[], level = 0, quote = false): (Paragraph | Table)[
           : 0;
         for (const item of list.items) {
           // marked puts a task item's box first, as its own token.
-          const [first, ...rest] = item.tokens.filter((tok) => tok.type !== 'checkbox');
-          const children = first && 'tokens' in first ? inline(first.tokens) : [];
+          const itemBlocks = item.tokens.filter((tok) => tok.type !== 'checkbox');
+          const [first, ...rest] = itemBlocks;
+          // Only running text goes in the bullet's own paragraph; an item
+          // that opens with a code block, table or the like gets an empty
+          // bullet and keeps that block whole below it.
+          const lead = first && (first.type === 'text' || first.type === 'paragraph');
+          const children = lead && 'tokens' in first ? inline(first.tokens) : [];
           if (item.task) children.unshift(new TextRun({ text: item.checked ? '☑ ' : '☐ ' }));
           out.push(
             new Paragraph({
@@ -204,7 +210,7 @@ function blocks(tokens: Token[], level = 0, quote = false): (Paragraph | Table)[
                 : { bullet: { level: Math.min(level, 8) } }),
             })
           );
-          out.push(...blocks(rest, level + 1, quote));
+          out.push(...blocks(lead ? rest : itemBlocks, level + 1, quote));
         }
         break;
       }

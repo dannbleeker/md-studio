@@ -108,4 +108,17 @@ describe('markdownToDocx', () => {
     expect(xml).toContain('<w:jc w:val="center"/>');
     expect(xml).toContain('<w:jc w:val="end"/>');
   });
+
+  it('keeps code exactly as written, entities included', async () => {
+    const xml = await documentXml('Use `&amp;` for &copy;\n\n```\n&lt;x&gt;\n```');
+    expect(xml).toContain('&amp;amp;');
+    expect(xml).toContain('©');
+    expect(xml).toContain('&amp;lt;x&amp;gt;');
+  });
+
+  it('keeps a list item whose first block is a code block', async () => {
+    const xml = await documentXml('- ```\n  CODEX\n  ```\n- two');
+    expect(xml).toContain('CODEX');
+    expect(xml).toContain('two');
+  });
 });

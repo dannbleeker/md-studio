@@ -42,8 +42,10 @@ function decodeEntities(s) {
 // arrows (2190-21FF). Prose may name a toolbar button by its icon (e.g. "⧉ Copy
 // outline", "🔎 All maps"); the EPUB shows the glyph, the PDF drops it and keeps
 // the words. (Box-drawing in code fences renders via codeBlock's safe path.)
-function pdfText(s) {
-  return decodeEntities(s)
+// Code goes through this alone: its text is the source as written, so an
+// entity in code (`&amp;`) is shown, not decoded.
+function pdfGlyphs(s) {
+  return String(s)
     .replace(/→/g, '->')
     .replace(/←/g, '<-')
     .replace(/↔/g, '<->')
@@ -54,6 +56,13 @@ function pdfText(s) {
     )
     .replace(/️/g, '');
 }
+
+function pdfText(s) {
+  return pdfGlyphs(decodeEntities(s));
+}
+
+/** A run's text as drawn: prose has its entities decoded, code is kept as written. */
+const runText = (run) => (run.code ? pdfGlyphs(run.text) : pdfText(run.text));
 
 /**
  * Render Markdown sources to a PDF and return its bytes.
@@ -210,7 +219,7 @@ export async function markdownToPdf({
         spaceBefore = true;
         continue;
       }
-      const text = pdfText(r.text);
+      const text = runText(r);
       const parts = text.split(/\s+/);
       parts.forEach((p, i) => {
         if (p === '') return;
@@ -394,7 +403,15 @@ export async function markdownToPdf({
         else if (block.type === 'paragraph' || block.type === 'text') {
           gap(3);
           flow(inlineRuns(block.tokens), { x: textX, width: textWidth, ...inQuote });
+        } else if (block.type === 'heading') {
+          // A heading in an item stays in the item's column, set off in bold.
+          flow(
+            inlineRuns(block.tokens).map((r) => ({ ...r, b: true })),
+            { x: textX, width: textWidth, ...inQuote }
+          );
         } else if (block.type === 'code') codeBlock(block);
+        else if (block.type === 'blockquote') blockquote(block, 0, textX);
+        else if (block.type === 'table') table(block);
       }
       gap(1.5);
     }
@@ -436,7 +453,7 @@ export async function markdownToPdf({
       });
       S.y += 6;
       for (let k = 0; k < fit; k++, i++) {
-        safeDraw(S.page, pdfText(wrapped[i]), {
+        safeDraw(S.page, pdfGlyphs(wrapped[i]), {
           x: M.left + 8,
           y: PAGE.h - S.y - size,
           font: F.mono,
@@ -462,9 +479,9 @@ export async function markdownToPdf({
     const wrapCell = (cell, font) => {
       // The cell's parsed text, not its source: `**x**` is drawn as "x".
       const text = inlineRuns(cell.tokens)
-        .map((r) => r.text ?? '')
+        .map((r) => (r.text === undefined ? '' : runText(r)))
         .join('');
-      const words = pdfText(text)
+      const words = text
         .split(/\s+/)
         .filter(Boolean)
         .flatMap((w) => splitToWidth(w, font, size, colW - 2 * pad));
@@ -520,9 +537,15 @@ export async function markdownToPdf({
   }
 
   // Everything inside a quote is drawn, one bar deeper per nested quote.
-  function blockquote(token, depth = 0) {
-    const x = M.left + 12 + depth * 12;
-    const quoted = { x, width: CONTENT_W - 16 - depth * 12, leftBar: ACCENT, bg: QUOTE_BG };
+  // `left` is where the quote's column starts: the margin, or a list item's text.
+  function blockquote(token, depth = 0, left = M.left) {
+    const x = left + 12 + depth * 12;
+    const quoted = {
+      x,
+      width: CONTENT_W - (left - M.left) - 16 - depth * 12,
+      leftBar: ACCENT,
+      bg: QUOTE_BG,
+    };
     gap(2);
     for (const inner of token.tokens) {
       if (inner.type === 'paragraph' || inner.type === 'heading' || inner.type === 'text') {
@@ -535,7 +558,7 @@ export async function markdownToPdf({
       } else if (inner.type === 'list') {
         list(inner, 0, quoted);
       } else if (inner.type === 'blockquote') {
-        blockquote(inner, depth + 1);
+        blockquote(inner, depth + 1, left);
       } else if (inner.type === 'code') {
         codeBlock(inner);
       } else if (inner.type === 'table') {
@@ -547,6 +570,9 @@ export async function markdownToPdf({
 
   function renderTokens(tokens, dest) {
     for (const token of tokens) {
+      // The subtitle style is for an H3 directly under a chapter title;
+      // anything drawn in between ends that.
+      if (token.type !== 'heading' && token.type !== 'space') S.afterH1 = false;
       switch (token.type) {
         case 'heading':
           heading(token, dest);
