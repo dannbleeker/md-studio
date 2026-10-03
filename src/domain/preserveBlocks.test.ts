@@ -104,6 +104,19 @@ describe('splitBlocks', () => {
     expect(texts('<div>\n\nx')).toEqual(['<div>', 'x']);
   });
 
+  it('keeps an indented code block whole across blank lines', () => {
+    expect(texts('intro\n\n    code a\n\n\n    code b\n\nafter')).toEqual([
+      'intro',
+      '    code a\n\n\n    code b',
+      'after',
+    ]);
+    expect(texts('\tcode a\n\n    code b\n')).toEqual(['\tcode a\n\n    code b']);
+    // Indented text after a blank line that is not followed by more indented text.
+    expect(texts('    code\n\nafter\n\n    more')).toEqual(['    code', 'after', '    more']);
+    // Indented lines continuing a paragraph are not code.
+    expect(texts('para\n    lazy\n\n    code')).toEqual(['para\n    lazy', '    code']);
+  });
+
   it('handles empty and whitespace-only input', () => {
     expect(splitBlocks('')).toEqual([]);
     expect(splitBlocks('\n  \n')).toEqual([]);

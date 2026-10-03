@@ -546,3 +546,16 @@ test('a text edit after a list continuation paragraph lands on the right block',
   await page.waitForTimeout(400);
   expect(await visualBlocks(page)).toEqual(['P:b', 'P:c', 'UL:ab', 'P:cx']);
 });
+
+test('a visual edit leaves an indented code block with a blank line alone', async ({ page }) => {
+  await newDocument(page);
+  const source = 'intro\n\n    code a\n\n    code b\n\nTitle\n=====\n\n+ plus\n\nmore\n';
+  await setText(page, source);
+  const visual = visualPane(page);
+  await expect(visual.locator('li')).toHaveCount(1);
+  await visual.locator('p', { hasText: 'more' }).click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('Z');
+  await expect.poll(() => textContent(page)).toContain('moreZ');
+  expect(await textContent(page)).toBe(source.replace('more', 'moreZ'));
+});

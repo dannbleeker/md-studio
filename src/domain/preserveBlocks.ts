@@ -99,6 +99,8 @@ const ATX = /^ {0,3}#{1,6}(?:[ \t]|$)/;
 /** A setext underline (after paragraph text) or, at a block's start, a thematic break. */
 const SETEXT = /^ {0,3}(?:=+|-+)[ \t]*$/;
 const THEMATIC_BREAK = /^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$/;
+/** A line indented enough to be indented code. */
+const CODE_INDENT = /^(?: {4}| {0,3}\t)/;
 
 /**
  * HTML blocks that run across blank lines until their end marker
@@ -124,7 +126,8 @@ function openHtmlBlock(line: string): RegExp | null {
 
 /**
  * Cheap top-level block split for `preserveUnchangedBlocks`: runs of
- * non-blank lines, with fenced code kept whole across blank lines, and a
+ * non-blank lines, with fenced code, indented code and multi-paragraph
+ * HTML blocks (comments, <pre>…) kept whole across blank lines, and a
  * heading or thematic break ending the run it closes (`# Title` directly
  * followed by text is two blocks, as the serializer writes them), and
  * front matter as one block, as the visual pane parses it. It
@@ -142,11 +145,23 @@ export function splitBlocks(md: string): BlockRange[] {
   const front = frontMatterEnd(md);
   if (front >= 0) out.push({ start: 0, end: front });
   let pos = front >= 0 ? front + 1 : 0;
+  /** The current run is an indented code block (so far). */
+  let code = false;
   const close = () => {
     if (start >= 0) out.push({ start, end });
     start = -1;
+    code = false;
   };
-  for (const line of md.slice(pos).split('\n')) {
+  const lines = md.slice(pos).split('\n');
+  /** The next non-blank line after `i` is indented as code. */
+  const codeFollows = (i: number) => {
+    for (let j = i + 1; j < lines.length; j++) {
+      const next = lines[j]!;
+      if (next.trim() !== '') return CODE_INDENT.test(next);
+    }
+    return false;
+  };
+  for (const [i, line] of lines.entries()) {
     const lineEnd = pos + line.length;
     const blank = line.trim() === '';
     if (fence) {
@@ -156,7 +171,9 @@ export function splitBlocks(md: string): BlockRange[] {
       if (html.test(line)) html = null;
       end = lineEnd;
     } else if (blank) {
-      close();
+      // Indented code runs on across blank lines while the code continues
+      // (the serializer writes it as one block).
+      if (!(code && codeFollows(i))) close();
     } else if (ATX.test(line) || (start < 0 && THEMATIC_BREAK.test(line))) {
       // A block of its own, ending whatever came before.
       close();
@@ -166,7 +183,11 @@ export function splitBlocks(md: string): BlockRange[] {
       end = lineEnd;
       close();
     } else {
-      if (start < 0) start = pos;
+      // Indented code can't interrupt a paragraph: only a run's first line starts it.
+      if (start < 0) {
+        start = pos;
+        code = CODE_INDENT.test(line);
+      } else if (!CODE_INDENT.test(line)) code = false;
       end = lineEnd;
       const open = openFence(line);
       if (open) fence = open;
