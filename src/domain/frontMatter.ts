@@ -63,12 +63,21 @@ export function frontMatterForExport(markdown: string, include: boolean): string
   return `${fence}yaml\n${yaml}\n${fence}\n\n${rest}`;
 }
 
-/** The `title:` field of the front matter, if it has a plain one. */
+/**
+ * The `title:` field of the front matter, if it has a one-line one: plain,
+ * or quoted with YAML's escapes (`''` in single quotes, `\"` and `\\` in
+ * double), less a trailing ` # comment`. A block scalar (`|`, `>-`, …) is
+ * left out: its text is on the lines below.
+ */
 export function frontMatterTitle(markdown: string): string {
   const end = frontMatterEnd(markdown);
   if (end < 0) return '';
   const match = /^title:[ \t]*(.*?)[ \t]*\r?$/m.exec(markdown.slice(0, end));
   const value = match?.[1] ?? '';
-  const quoted = /^(["'])(.*)\1$/.exec(value);
-  return (quoted ? (quoted[2] ?? '') : value).trim();
+  if (value.startsWith('#') || /^[|>][-+0-9]*(?:[ \t]+#.*)?$/.test(value)) return '';
+  const double = /^"((?:[^"\\]|\\.)*)"/.exec(value);
+  if (double) return (double[1] ?? '').replace(/\\(["\\/])/g, '$1').trim();
+  const single = /^'((?:[^']|'')*)'/.exec(value);
+  if (single) return (single[1] ?? '').replace(/''/g, "'").trim();
+  return value.replace(/[ \t]+#.*$/, '').trim();
 }

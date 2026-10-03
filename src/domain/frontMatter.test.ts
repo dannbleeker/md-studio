@@ -116,6 +116,20 @@ describe('frontMatterTitle', () => {
     expect(frontMatterTitle("---\ntitle: 'single'\n---\n")).toBe('single');
   });
 
+  it('reads YAML quoting and comments, and skips block scalars', () => {
+    const title = (line: string) => frontMatterTitle(`---\n${line}\n---\n`);
+    expect(title('title: "My Post" # draft')).toBe('My Post');
+    expect(title('title: My Post # draft')).toBe('My Post');
+    expect(title('title: C# in a day')).toBe('C# in a day');
+    expect(title("title: 'It''s here'")).toBe("It's here");
+    expect(title('title: "Say \\"hi\\" \\\\ bye"')).toBe('Say "hi" \\ bye');
+    expect(title("title: 'x' # note")).toBe('x');
+    expect(title('title: # nothing')).toBe('');
+    expect(title('title: >-\n  My Post')).toBe('');
+    expect(title('title: |\n  My Post')).toBe('');
+    expect(title('title: >2- # c\n  My Post')).toBe('');
+  });
+
   it('is empty without a title, or without front matter', () => {
     expect(frontMatterTitle('---\ndate: 1\n---\n')).toBe('');
     expect(frontMatterTitle('title: x\n')).toBe('');
