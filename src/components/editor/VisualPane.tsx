@@ -26,6 +26,7 @@ import { registerFlush } from '@/store/flush';
 import { showToast } from '@/store/ui';
 import { registerViewPart } from '@/store/viewState';
 import { applyFull, applyIncremental } from './applyMarkdown';
+import { clickSelection } from './clickSelection';
 import { editors, isHidden, restoreScroll, visualHeadings } from './editorRegistry';
 import { reportFormat } from './formatState';
 import { frontMatter, remarkFrontMatter } from './frontMatter';
@@ -89,6 +90,7 @@ export function VisualPane({ onAdapter }: Props) {
               },
             }),
             visualPaneImagePlugin(() => editor),
+            clickSelection,
           ]);
           ctx.update(remarkPluginsCtx, (plugins) => [...plugins, remarkFrontMatter, imageTitleFix]);
           ctx.update(nodeViewCtx, (views) => {

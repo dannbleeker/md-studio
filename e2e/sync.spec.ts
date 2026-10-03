@@ -434,3 +434,24 @@ test('a visual edit keeps headings, tables and front matter it didn’t touch ex
   await expect.poll(() => textContent(page)).toContain('Edit meZ');
   expect(await textContent(page)).toBe(source.replace('Edit me', 'Edit meZ'));
 });
+
+test('keys pressed before the browser reports a click act where the user clicked', async ({
+  page,
+}) => {
+  await newDocument(page);
+  await setText(page, '# Title\n\nAlpha para\n\nDelta para\n');
+  const visual = visualPane(page);
+  await expect(visual.locator('p')).toHaveCount(2);
+  // The Markdown pane has focus, so the click below lets the browser place
+  // the cursor, and ProseMirror adopts it on selectionchange. Hold that
+  // event back, as a busy main thread does (Chromium runs input first).
+  await page.evaluate(() =>
+    window.addEventListener('selectionchange', (e) => e.stopImmediatePropagation(), true)
+  );
+  await visual.locator('p', { hasText: 'Alpha' }).click();
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Z');
+  await expect.poll(() => textContent(page)).toContain('Z');
+  expect(await textContent(page)).toBe('# Title\n\nAlpha para\n\nZ\n\nDelta para\n');
+});

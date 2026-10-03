@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Keys right after a click land where you clicked.** Clicking into the
+  visual pane and pressing a key straight away (or while the page was busy,
+  e.g. syncing a large document) could act at the old cursor position:
+  ProseMirror only adopts a click's selection on `selectionchange`, which
+  Chromium queues behind input events. The visual pane now reads the
+  selection before handling a key (`editor/clickSelection.ts`).
+
 - **Front matter.** YAML front matter (a `---` block on the first line)
   is now treated as metadata everywhere, instead of a rule and a heading.
   - The visual pane shows it as one labelled block, edited as plain text

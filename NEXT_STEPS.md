@@ -151,7 +151,7 @@
     - [x] The Markdown pane highlights it as YAML.
     - [x] Exports and print leave it out, with a setting (off by
           default) to include it as a code block.
-  - [ ] Unconfirmed: a click in the visual pane right after typing
-        sometimes leaves the cursor where it was (seen only in quick
-        automated sequences).
+  - [x] Confirmed and fixed: a key pressed right after clicking into the
+        visual pane acted at the old cursor position (ProseMirror waits
+        for `selectionchange`, which Chromium queues behind input).
 
