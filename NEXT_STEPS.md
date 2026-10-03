@@ -155,7 +155,7 @@
         visual pane acted at the old cursor position (ProseMirror waits
         for `selectionchange`, which Chromium queues behind input).
 
-- [x] **Bug hunt, part 6**: 32 confirmed bugs fixed (see the changelog).
+- [x] **Bug hunt, part 6**: 29 confirmed bugs fixed (see the changelog).
   - [ ] The Markdown pane highlights front matter closed by `...`, or
         opened by `---` with trailing spaces, wrongly (lang-yaml's grammar
         wants an exact `---`). Highlighting only; needs a custom wrapper.

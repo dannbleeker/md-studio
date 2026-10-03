@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- **Bug hunt, part 6**: 32 confirmed bugs fixed, each with a test that
+- **Bug hunt, part 6**: 29 confirmed bugs fixed, each with a test that
   failed before the fix.
   - Data loss:
     - Files in Windows-1252 or UTF-16 were decoded as UTF-8 and saved
