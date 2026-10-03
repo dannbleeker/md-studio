@@ -23,6 +23,15 @@ export function Dialog({ open, title, onClose, children, className }: Props) {
       // jsdom has no showModal; fall back to the `open` attribute there.
       if (typeof el.showModal === 'function') el.showModal();
       else el.setAttribute('open', '');
+      // The browser focuses the first focusable element, which in a radio
+      // group may be an unchecked option: Space would then silently change
+      // the choice. Start on the checked one instead.
+      const active = document.activeElement;
+      if (active instanceof HTMLInputElement && active.type === 'radio' && !active.checked) {
+        el.querySelector<HTMLInputElement>(
+          `input[type="radio"][name="${CSS.escape(active.name)}"]:checked`
+        )?.focus();
+      }
     } else if (!open && el.open) {
       if (typeof el.close === 'function') el.close();
       else el.removeAttribute('open');

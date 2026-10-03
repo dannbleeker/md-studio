@@ -94,6 +94,21 @@ describe('placeImages', () => {
     expect(root.subdirs.get('images')?.files.size).toBe(2);
   });
 
+  it('does not insert into a document opened while the image was being placed', async () => {
+    useStore.getState().loadDocument(createDocument('# x', 'notes.md'), docHandle, 'h1');
+    window.showDirectoryPicker = vi.fn(
+      async () => folder('docs', docHandle, ['notes.md']) as unknown as FileSystemDirectoryHandle
+    );
+    const placing = placeImages([png()], insert);
+    await vi.waitFor(() => expect(useUiStore.getState().confirm).not.toBeNull());
+    // The user switches to another document before answering.
+    useStore.getState().loadDocument(createDocument('# other', 'other.md'), null);
+    useUiStore.getState().confirm?.resolve(false);
+    await placing;
+    expect(inserted).toEqual([]);
+    expect(useUiStore.getState().toasts.at(-1)?.message).toMatch(/another document/);
+  });
+
   it('embeds, and stops asking, when the user declines the folder', async () => {
     useStore.getState().loadDocument(createDocument('# x', 'notes.md'), docHandle, 'h2');
     window.showDirectoryPicker = vi.fn();

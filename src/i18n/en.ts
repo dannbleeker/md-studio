@@ -153,6 +153,7 @@ export const en = {
   'image.largeEmbed':
     'The embedded image makes the document large. Saving the document to disk lets images go in a folder instead.',
   'image.failed': 'Could not add the image.',
+  'image.documentChanged': 'The image wasn’t added: another document is open now.',
   'confirm.discard.title': 'Discard unsaved changes?',
   'confirm.discard.body': '“{name}” has changes that are not saved to disk.',
   'confirm.discard.ok': 'Discard',

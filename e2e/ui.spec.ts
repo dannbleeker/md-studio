@@ -84,3 +84,16 @@ test('a dialog opened from the palette hands focus back to what opened the palet
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(commands).toBeFocused();
 });
+
+test('a dialog with a radio group starts on the checked option, so Space keeps it', async ({
+  page,
+}) => {
+  await newDocument(page);
+  await page.getByRole('button', { name: 'Export', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Export' });
+  const pdf = dialog.getByRole('radio', { name: /^PDF/ });
+  await expect(pdf).toBeChecked();
+  await expect(pdf).toBeFocused();
+  await page.keyboard.press('Space');
+  await expect(pdf).toBeChecked();
+});
