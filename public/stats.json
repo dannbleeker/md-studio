@@ -4,18 +4,18 @@
   "code": [
     {
       "category": "App code",
-      "files": 82,
-      "lines": 7339
+      "files": 83,
+      "lines": 8232
     },
     {
       "category": "Unit tests",
-      "files": 48,
-      "lines": 3518
+      "files": 53,
+      "lines": 4547
     },
     {
       "category": "E2E tests",
       "files": 14,
-      "lines": 1775
+      "lines": 2136
     },
     {
       "category": "Scripts",
@@ -34,20 +34,20 @@
     }
   ],
   "tests": {
-    "files": 46,
-    "total": 311,
-    "passed": 311,
+    "files": 51,
+    "total": 380,
+    "passed": 380,
     "failed": 0,
     "e2eSpecs": 13
   },
   "coverage": {
-    "lines": 62.73,
-    "statements": 61.07,
-    "functions": 54.66,
-    "branches": 63.18
+    "lines": 69.25,
+    "statements": 67.64,
+    "functions": 61.74,
+    "branches": 67.35
   },
   "bundle": {
-    "eagerGzipBytes": 451440,
+    "eagerGzipBytes": 455305,
     "eager": [
       "codemirror",
       "index",
@@ -56,27 +56,27 @@
       "rolldown-runtime"
     ],
     "chunks": {
-      "FindBar": 1841,
-      "FormatToolbar": 1018,
-      "OutlinePanel": 759,
-      "USER_GUIDE": 3615,
-      "codemirror": 215592,
+      "FindBar": 1884,
+      "FormatToolbar": 1036,
+      "OutlinePanel": 906,
+      "USER_GUIDE": 3782,
+      "codemirror": 215617,
       "decode": 22186,
-      "docx": 115974,
-      "exportImages": 812,
+      "docx": 115995,
+      "exportImages": 810,
       "html": 1703,
-      "images": 1298,
-      "index": 27511,
-      "markdownPdf": 178828,
+      "images": 1342,
+      "index": 31325,
+      "markdownPdf": 178905,
       "marked.esm": 13334,
-      "milkdown": 140187,
-      "plainText": 941,
+      "milkdown": 140213,
+      "plainText": 942,
       "react": 67523,
       "rolldown-runtime": 627,
       "welcome.en": 989,
       "workbox-window.prod.es5": 2199
     },
-    "lazyLanguageGzipBytes": 395343
+    "lazyLanguageGzipBytes": 394918
   },
   "book": {
     "chapters": 11,
@@ -84,7 +84,7 @@
     "words": 23045
   },
   "git": {
-    "commits": 89,
+    "commits": 92,
     "firstCommit": "2026-10-02",
     "lastCommit": "2026-10-03",
     "activeDays": 2
