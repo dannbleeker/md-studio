@@ -22,6 +22,66 @@ type VaultWindow = Window & {
   __vaults: Record<string, FileSystemDirectoryHandle>;
 };
 
+/**
+ * In-memory stand-in for the one IndexedDB store handleStore.ts uses. The
+ * specs hand the app real OPFS handles, and on CI's newer headless Chromium
+ * the note never opened (the browser session was dropped) once such a handle
+ * was structured-cloned into IndexedDB. The specs never reload, so nothing
+ * here needs the persistence; handleStore.test.ts covers the real store.
+ * Runs in the page, so it must stay self-contained.
+ */
+function fakeIndexedDb() {
+  const data = new Map<string, unknown>();
+  const done = (result: unknown) => {
+    const req: { result: unknown; onsuccess: (() => void) | null } = { result, onsuccess: null };
+    setTimeout(() => req.onsuccess?.(), 0);
+    return req;
+  };
+  const store = {
+    get: (key: string) => done(data.get(String(key))),
+    put: (value: unknown, key: string) => {
+      data.set(String(key), value);
+      return done(key);
+    },
+    delete: (key: string) => {
+      data.delete(String(key));
+      return done(undefined);
+    },
+    getAll: () => done([...data.values()]),
+    getAllKeys: () => done([...data.keys()]),
+  };
+  const database = {
+    createObjectStore: () => store,
+    transaction: () => ({ objectStore: () => store }),
+  };
+  const fake = {
+    open: () => {
+      const req: {
+        result: unknown;
+        onupgradeneeded: (() => void) | null;
+        onsuccess: (() => void) | null;
+      } = {
+        result: database,
+        onupgradeneeded: null,
+        onsuccess: null,
+      };
+      setTimeout(() => {
+        req.onupgradeneeded?.();
+        req.onsuccess?.();
+      }, 0);
+      return req;
+    },
+  };
+  Object.defineProperty(window, 'indexedDB', { value: fake, configurable: true });
+}
+
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(fakeIndexedDb);
+  // A dropped session shows up as a bare timeout otherwise: say what the page saw.
+  page.on('crash', () => console.log('page crashed'));
+  page.on('pageerror', (e) => console.log('pageerror:', e.message));
+});
+
 /** Builds `name` in OPFS with a small set of files. `sizes` are the PNG sizes by path. */
 async function buildVault(
   page: Page,
