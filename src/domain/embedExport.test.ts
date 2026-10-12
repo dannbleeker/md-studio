@@ -142,6 +142,17 @@ describe('expandEmbeds: what is never touched', () => {
     expect(out).toContain('attachment:');
   });
 
+  it('expands an embed after the container of an unclosed fence has ended', async () => {
+    // A fence left open inside a quote or list item ends with it (CommonMark), so
+    // the embed after the blank line and the unindented line is a real one.
+    const docs = [
+      '> ```js\n> code\n\n![[a b.png]]\n',
+      '- ```js\n  code\n\n![[a b.png]]\n',
+      '1. step\n   ```\n   code\n\n![[a b.png]]\n',
+    ];
+    for (const md of docs) expect(await expandEmbeds(md, null, env())).toContain('attachment:');
+  });
+
   it('returns text without tokens unchanged, so a second pass changes nothing', async () => {
     const md = 'Plain text\r\nwith [a link](x) and ![img](y.png)\r\n';
     const once = await expandEmbeds(md, null, env());
@@ -201,7 +212,7 @@ describe('expandEmbeds: notes', () => {
 
   it('labels a missing note, heading or block', async () => {
     const env = fakeEnv(VAULT);
-    expect(await expandEmbeds('![[Nowhere]]', null, env)).toBe('\\<missing:Nowhere\\>');
+    expect(await expandEmbeds('![[Nowhere]]', null, env)).toBe('\\<note-missing:Nowhere\\>');
     expect(await expandEmbeds('![[Sections#Three]]', null, env)).toBe(
       '\\<note-missing:Sections\\>'
     );
@@ -311,14 +322,14 @@ describe('expandEmbeds: budget', () => {
     const env = fakeEnv(files);
     const out = await expandEmbeds('![[A]]\n\n![[A]]\n\n![[A]]\n', null, env);
     expect(env.reads.length).toBeLessThanOrEqual(MAX_EXPANSIONS);
-    expect(out).toContain('\\<depth:');
+    expect(out).toContain('\\<limit:');
   });
 
   it('stops expanding once the text cap is reached', async () => {
     const big = `${'x'.repeat(MAX_EXPANDED_CHARS)}\n`;
     const env = fakeEnv({ 'Big.md': big });
     const out = await expandEmbeds('![[Big]]\n\n![[Big]]\n', null, env);
-    expect(out).toContain('\\<depth:Big\\>');
+    expect(out).toContain('\\<limit:Big\\>');
     expect(env.reads).toEqual(['Big.md']);
   });
 });
@@ -376,5 +387,249 @@ describe('expandEmbeds: Markdown images in a table', () => {
     const md = '| a |\n| - |\n| ![pic\\|300](<img/a b.png>) |\n';
     const out = await expandEmbeds(md, null, fakeEnv(VAULT));
     expect(out).toBe(`| a |\n| - |\n| ![pic](${ATTACHMENT_SCHEME}img/a%20b.png#size=300) |\n`);
+  });
+});
+
+describe('expandEmbeds: Markdown links that carry a [[x]] label', () => {
+  const env = () => fakeEnv(VAULT);
+
+  it('leaves a citation label alone', async () => {
+    for (const md of [
+      'Fact [[1]](https://example.com/a) and [[2]](https://b.example).',
+      'Ref [[1]][r1]\n\n[r1]: http://a',
+      '**[[1]](http://a)**',
+      '| [[1]](http://a) | b |\n| - | - |',
+      '![[1]](http://x/a.png)',
+      '[see [[1]]](http://a)',
+    ]) {
+      expect(await expandEmbeds(md, null, env())).toBe(md);
+    }
+  });
+
+  it('still replaces a wikilink next to, but not inside, a link', async () => {
+    expect(await expandEmbeds('[[Note]] and [a](http://b)', null, env())).toBe(
+      'Note and [a](http://b)'
+    );
+  });
+});
+
+describe('expandEmbeds: embedded notes keep their own folder', () => {
+  const files: Files = {
+    'pic.png': null,
+    'Sub/pic.png': null,
+    'assets/only.png': null,
+    'Sub/Other.md': '![](pic.png)\n\n![](../assets/only.png)\n\n![web](https://x.test/a.png)\n',
+  };
+  const env = () =>
+    fakeEnv(files, {
+      async resolve(target, from, opts) {
+        const dir = from?.includes('/') ? from.slice(0, from.lastIndexOf('/') + 1) : '';
+        const cands = opts.note
+          ? [target, `${target}.md`, `Sub/${target}.md`]
+          : [`${dir}${target}`.replace(/[^/]+\/\.\.\//, ''), target];
+        const hit = cands.find((c) => c in files);
+        return hit ? { path: hit, kind: classifyTarget(hit) } : null;
+      },
+    });
+
+  it('resolves a plain image against the embedded note, not the host', async () => {
+    const out = await expandEmbeds('![[Other]]', 'n.md', env());
+    expect(out).toBe(
+      `> ![pic.png](${ATTACHMENT_SCHEME}Sub/pic.png)\n>\n> ![only.png](${ATTACHMENT_SCHEME}assets/only.png)\n>\n> ![web](https://x.test/a.png)`
+    );
+  });
+
+  it('leaves the images of the host note as written', async () => {
+    const md = '![](pic.png)';
+    expect(await expandEmbeds(md, 'n.md', env())).toBe(md);
+  });
+});
+
+describe('expandEmbeds: a sized image in a table cell that stays unresolved', () => {
+  it('drops the backslash that escaped the pipe', async () => {
+    const env = fakeEnv(VAULT);
+    expect(
+      await expandEmbeds('| a |\n|---|\n| ![alt\\|100](https://x.test/a.png) |\n', null, env)
+    ).toBe('| a |\n|---|\n| ![alt](https://x.test/a.png) |\n');
+    expect(await expandEmbeds('| a |\n|---|\n| ![alt\\|100](nope.png) |\n', null, env)).toBe(
+      '| a |\n|---|\n| ![alt](nope.png) |\n'
+    );
+  });
+});
+
+describe('expandEmbeds: code stays literal in every container', () => {
+  const env = () => fakeEnv(VAULT);
+
+  it('leaves indented code in a quote, after a heading or break, and in an item', async () => {
+    for (const md of [
+      '> para\n>\n>     ![[a b.png]]\n>     ![[Note]]\n',
+      '# H\n    ![[a b.png]]\n',
+      '***\n    ![[a b.png]]\n',
+      '-     ![[Note]]\n',
+      '>     ![x|100](img/a b.png)\n',
+    ]) {
+      expect(await expandEmbeds(md, null, env())).toBe(md);
+    }
+  });
+});
+
+describe('expandEmbeds: speed', () => {
+  it('handles a long table with an embed per row', async () => {
+    const rows = Array.from({ length: 6000 }, (_, i) => `| ${i} | ![[a b.png|20]] |`).join('\n');
+    const start = performance.now();
+    const out = await expandEmbeds(`| n | img |\n|---|---|\n${rows}\n`, null, fakeEnv(VAULT));
+    expect(out).toContain('#size=20');
+    expect(performance.now() - start).toBeLessThan(1500);
+  });
+
+  it('handles a long run of pipe lines that is no table', async () => {
+    const rows = Array.from({ length: 6000 }, (_, i) => `a | ![[a b.png]] ${i}`).join('\n');
+    const start = performance.now();
+    await expandEmbeds(rows, null, fakeEnv(VAULT));
+    expect(performance.now() - start).toBeLessThan(1500);
+  });
+
+  it('handles a very wide delimiter-shaped line next to an embed', async () => {
+    // Trailing text after the dashes makes a backtracking delimiter match quadratic in the padding.
+    const wide = `|${' '.repeat(40000)}-${' '.repeat(40000)}x`;
+    const start = performance.now();
+    // The wide line is a candidate delimiter row for the header above it.
+    const out = await expandEmbeds(`| ![[a b.png]] |\n${wide}\n`, null, fakeEnv(VAULT));
+    expect(out).toContain('a%20b.png');
+    expect(performance.now() - start).toBeLessThan(500);
+  });
+});
+
+describe('expandEmbeds: crafted container prefixes', () => {
+  const vault = (note: string): Files => ({ 'N.md': note, 'a.png': null });
+
+  it('stays quick on a very long quote prefix with many tokens', async () => {
+    const md = `${'> '.repeat(20_000)}${'![[a.png]] '.repeat(2000)}`;
+    const start = performance.now();
+    await expandEmbeds(md, 'h.md', fakeEnv({}));
+    expect(performance.now() - start).toBeLessThan(1000);
+  });
+
+  it('stays quick on a very long list prefix with many tokens', async () => {
+    const md = `${'- '.repeat(20_000)}${'![[a.png]] '.repeat(2000)}`;
+    const start = performance.now();
+    await expandEmbeds(md, 'h.md', fakeEnv({}));
+    expect(performance.now() - start).toBeLessThan(1000);
+  });
+
+  it('does not copy a huge prefix onto every line of an embedded note', async () => {
+    const host = `${'> '.repeat(10_000)}![[N]]\n`;
+    const out = await expandEmbeds(host, 'h.md', fakeEnv(vault('line\n'.repeat(1000))));
+    expect(out.length).toBeLessThan(MAX_EXPANDED_CHARS);
+    // Too deep to quote line by line: the labelled form stands in for the note.
+    expect(out).toContain('\\<note:N\\>');
+  });
+
+  it('counts the quoted prefix against the expansion cap', async () => {
+    // 30 quote levels are allowed, but 20,000 short lines then cost 1.2 million characters.
+    const note = 'x\n'.repeat(20_000);
+    const host = `${'> '.repeat(30)}![[N]]\n\n![[N]]\n`;
+    const out = await expandEmbeds(host, 'h.md', fakeEnv(vault(note)));
+    expect(out).toContain('\\<limit:N\\>');
+  });
+});
+
+describe('expandEmbeds: plain wikilink text', () => {
+  it('does not let an alias change the structure of the page', async () => {
+    const env = fakeEnv(VAULT);
+    const render = async (md: string) => marked.parse(await expandEmbeds(md, null, env)) as string;
+    expect(await render('[[x|# Big heading]]')).not.toContain('<h1');
+    expect(await render('[[x|- bullet]]')).not.toContain('<ul');
+    expect(await render('[[x|1. numbered]]')).not.toContain('<ol');
+    expect(await render('Para\n[[x|===]]')).not.toContain('<h1');
+    expect(await render('Para\n[[x|---]]')).not.toContain('<h2');
+    expect(await render('[[x|+ plus]]')).not.toContain('<ul');
+    const out = await render('[[x|~~del~~ &amp; end]]');
+    expect(out).not.toContain('<del');
+    expect(out).toContain('&amp;amp;');
+  });
+});
+
+describe('expandEmbeds: footnotes and definitions of an embedded note', () => {
+  const files: Files = {
+    'Fn.md': 'Note[^1] ref.\n\n[^1]: Note def.\n',
+    'Ref.md': 'See [the site][r] and [r].\n\n[r]: https://note.example/ "T"\n',
+  };
+
+  it('keeps the note footnote separate from a host footnote of the same label', async () => {
+    const out = await expandEmbeds('Host[^1].\n\n[^1]: Host def\n\n![[Fn]]', null, fakeEnv(files));
+    const { inlineFootnotes } = await import('./footnotes');
+    const text = inlineFootnotes(out);
+    expect(text).toContain('Note def.');
+    expect(text).toContain('Host def');
+    expect(text).not.toContain('[^');
+    expect(text).not.toMatch(/\\\[1\\\]: Note def/);
+  });
+
+  it('inlines the reference links of the note so the host cannot capture them', async () => {
+    const out = await expandEmbeds(
+      'See [h][r].\n\n[r]: https://host.example/\n\n![[Ref]]',
+      null,
+      fakeEnv(files)
+    );
+    expect(out).toContain(
+      '> See [the site](https://note.example/ "T") and [r](https://note.example/ "T").'
+    );
+    expect(out).not.toContain('> [r]:');
+    expect(out).toContain('[r]: https://host.example/');
+  });
+});
+
+describe('expandEmbeds: limits', () => {
+  it('stops a small fan-out well before it fills megabytes', async () => {
+    const files: Files = {
+      'A.md': '![[B]]\n'.repeat(25),
+      'B.md': '![[C]]\n'.repeat(25),
+      'C.md': `${'word '.repeat(4000)}\n`,
+    };
+    // Blank lines so each embed stands alone.
+    files['A.md'] = '![[B]]\n\n'.repeat(25);
+    files['B.md'] = '![[C]]\n\n'.repeat(25);
+    const out = await expandEmbeds('![[A]]\n\n'.repeat(25), null, fakeEnv(files));
+    expect(out.length).toBeLessThan(2_000_000);
+    expect(out).toContain('<limit:');
+  });
+});
+
+describe('expandEmbeds: missing notes and web embeds', () => {
+  it('labels a note that is not there as a missing note', async () => {
+    const env = fakeEnv(VAULT);
+    expect(await expandEmbeds('![[Meeting notes]]', null, env)).toBe(
+      '\\<note-missing:Meeting notes\\>'
+    );
+    expect(await expandEmbeds('![[Meeting notes#Decisions]]', null, env)).toBe(
+      '\\<note-missing:Meeting notes\\>'
+    );
+    expect(await expandEmbeds('![[gone.png]]', null, env)).toBe('\\<missing:gone.png\\>');
+  });
+
+  it('turns a web-address embed into a Markdown image', async () => {
+    const env = fakeEnv(VAULT);
+    expect(await expandEmbeds('![[https://example.com/a.png]]', null, env)).toBe(
+      '![a.png](<https://example.com/a.png>)'
+    );
+    expect(await expandEmbeds('![[//example.com/a.png|my alt|300]]', null, env)).toBe(
+      '![my alt](<//example.com/a.png>)'
+    );
+  });
+});
+
+describe('expandEmbeds: a colon in the first path segment', () => {
+  it('writes a relative link, not a URL scheme', async () => {
+    const env = fakeEnv({ 'a:b.pdf': null, 'report: q1.pdf': null, 'javascript:x.pdf': null });
+    expect(await expandEmbeds('![[a:b.pdf]]', 'Host.md', env)).toBe(
+      '[\\<pdf:a:b.pdf\\>](./a:b.pdf)'
+    );
+    expect(await expandEmbeds('![[report: q1.pdf]]', 'Host.md', env)).toBe(
+      '[\\<pdf:report: q1.pdf\\>](./report:%20q1.pdf)'
+    );
+    expect(await expandEmbeds('![[javascript:x.pdf]]', 'Host.md', env)).toContain(
+      '(./javascript:x.pdf)'
+    );
   });
 });

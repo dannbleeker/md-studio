@@ -49,6 +49,11 @@ export type VisualSync = {
   onChange(state: SyncState, prev: SyncState): void;
   /** The user is about to edit the visual pane. */
   onFocus(): void;
+  /**
+   * About to print: the printout is this pane's tree even in text-only view,
+   * where it skips updates, so bring it up to the store's Markdown now.
+   */
+  prepareForPrint(): void;
   dispose(): void;
 };
 
@@ -97,13 +102,13 @@ export function createVisualSync<E>(host: SyncHost<E>): VisualSync {
     }
   };
 
-  /** Brings the pane up to the store's Markdown (text-pane edits). */
-  const catchUp = () => {
+  /** Brings the pane up to the store's Markdown (text-pane edits); `whileHidden` also in text-only view. */
+  const catchUp = (whileHidden = false) => {
     clearTimeout(pending);
     pending = undefined;
     if (!editor) return;
     const { markdown, viewMode } = host.read();
-    if (viewMode === 'text') {
+    if (viewMode === 'text' && !whileHidden) {
       staleWhileHidden = true;
       return;
     }
@@ -188,7 +193,7 @@ export function createVisualSync<E>(host: SyncHost<E>): VisualSync {
         return;
       }
       clearTimeout(pending);
-      pending = setTimeout(catchUp, TEXT_TO_VISUAL_DEBOUNCE_MS);
+      pending = setTimeout(() => catchUp(), TEXT_TO_VISUAL_DEBOUNCE_MS);
     },
 
     onFocus() {
@@ -199,6 +204,10 @@ export function createVisualSync<E>(host: SyncHost<E>): VisualSync {
       // once they type, the tree is serialized as the truth, and a
       // divergence from a full parse would become permanent.
       if (reconcileDue) applyAll(host.read().markdown);
+    },
+
+    prepareForPrint() {
+      if (pending || staleWhileHidden || reconcileDue) catchUp(true);
     },
 
     dispose() {

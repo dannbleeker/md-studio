@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetStoreForTest, useStore } from '@/store';
-import { exportDocument } from './index';
+import { exportDocument, printedText } from './index';
 
 const saved = vi.hoisted(() => ({ blob: null as Blob | null }));
 vi.mock('../fileSystem', () => ({
@@ -29,5 +29,19 @@ describe('exportDocument', () => {
     expect(html).not.toContain('data:image/png');
     expect(bitmap).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
+  });
+});
+
+describe('printedText', () => {
+  it('drops the attachment pictures an embed turned into', () => {
+    expect(printedText('a ![x.png](attachment:img/x.png#size=20) b')).toBe('a  b');
+    expect(printedText('plain text')).toBe('plain text');
+  });
+
+  it('stays quick on a long line of unclosed attachment starts', () => {
+    const md = `${'![a](attachment:'.repeat(12_500)}x`;
+    const start = performance.now();
+    expect(printedText(md)).toBe(md);
+    expect(performance.now() - start).toBeLessThan(500);
   });
 });

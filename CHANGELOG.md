@@ -69,7 +69,7 @@
     same `images/x.png` in different folders showed the first one's).
   - The CSP gains `media-src blob:` and `frame-src blob:`
     (`vite.config.ts`, pinned by a test).
-  - Tests: 384 -> 948 unit tests, plus two Playwright specs
+  - Tests: the unit suite grew to over 1,000 tests, plus two Playwright specs
     (`e2e/embeds.spec.ts`, `e2e/embeds-vault.spec.ts`).
   - Bundle: `index` re-pinned 32.5 -> 37.0 KB (measured 34.4 KB, +3.1 KB).
     Total eager JS grew about 7 KB gzip, because shared code also moved
@@ -77,6 +77,91 @@
     0.6 KB, `fences` 0.2 KB), which now have their own budget entries. The
     attachments service, vault index, transclusion, media and note
     renderers, banner and export expansion are lazy chunks.
+
+- **Obsidian embeds, post-review bug hunt**: 77 reproduced defects fixed
+  (a handful mitigated or documented, listed last), each with a regression
+  test that failed first.
+  - Visual pane and embeds (`editor/embedNode.ts`, `imageSupport.ts`):
+    a token never ends up hidden in code. Code blocks (toolbar, `` ``` ``
+    shortcut, joins) and inline code turn the chip back into its text; a
+    link mark is dropped; inserting an embed in marked text keeps only
+    emphasis, strong and strike-through. Tokens after an even number of
+    backslashes, or written with an entity, are read as embeds and survive
+    a round trip. Documents without tokens serialize exactly as before the
+    feature, so no backslashes are added to unrelated text. Plain-text copy
+    includes tokens. Find, Replace and Replace All in the visual pane see
+    the text of embed and wikilink tokens.
+  - Review follow-ups: a literal `!` from `\![[a.png]]`, `&#33;` or `&excl;`
+    stays text before the link; a chip with a bare pipe is written with the
+    pipe escaped inside a table cell; text that stops being code (block back
+    to a paragraph, inline code toggled off) gets its tokens back as chips; a
+    token beside an escaped address or URL (`a\@b.co`) is still read; the
+    visual pane keeps at most 200 transcluded notes on screen
+    (`MAX_LIVE_TRANSCLUSIONS`, a labelled placeholder beyond that); block id
+    hiding no longer walks the note for every indented line.
+  - Scanner (`domain/codeRegions.ts`, new, shared by `embeds.ts`,
+    `embedLinks.ts`, export and the banner): fences and indented code
+    inside list items, quotes and footnotes, fences opened on a bullet
+    line, code spans that wrap over a line break and escaped backticks
+    are read as CommonMark does. `\![[a.png]]` is a literal `!` and a
+    plain wikilink; a size written `\|300` in a table loses the backslash.
+    Root-absolute, backslash, anchor-only and empty image destinations are
+    not local files. The `embeds` chunk grew to about 4.3 KB gzip.
+  - Attachments service: a file saved during a rescan stays in the index;
+    lookups follow rescans (nearest file, ambiguity, first-scan answers);
+    links written before the index is complete use the full path; a failed
+    write cleans up; a folder that cannot be listed keeps its old entries
+    and is retried; Save As onto a document with a folder keeps that
+    folder; the truncated-index toast shows once per session; a
+    configuration that cannot be read refuses the save instead of using
+    `images`; a lapsed permission no longer empties the index on refocus;
+    notes over 2 MB say so; the image-drop toast points at Allow access.
+    Dropped images without an extension get one; relative-style wikilinks
+    get `./`; the vault index and web-image checks are linear.
+  - Rendering and print: transcluded notes keep list start numbers, task
+    state, alignment, footnotes and `|size`; nested list items and block
+    ids are cut correctly; `^id` markers are hidden; a Markdown image link
+    to a PDF, audio or video is an embed; the app's Open links work inside
+    a note; web-image changes and a late host path redraw a drawn note; a
+    rendered note is cached by content, not file date; blocked images never
+    get a live `src`. Printing from text-only view first brings the hidden
+    visual pane up to the open tab's Markdown (`store/flush.ts`,
+    `visualSync.prepareForPrint`; also on `beforeprint`). Ctrl+P and the Print command wait for every embed
+    and picture to load; ambiguity tooltips cover PDF, audio, video, file
+    chips and notes.
+  - Export: links labelled `[[1]]` stay links; notes embedded from another
+    folder keep their images; embedded notes isolate their reference
+    definitions and footnotes; wikilink text is escaped; web-address
+    embeds follow Load web images; `./` guards a colon in a path; a missing
+    note is labelled a missing note; the PDF character warning looks at
+    expanded text; HTML keeps webp, avif, bmp and svg as they are; a
+    withheld image is a dashed frame; a document with only plain wikilinks
+    no longer waits for the vault.
+  - Banner and palette: same-note and web-address embeds, quoted fences and
+    empty or anchor-only images no longer raise the banner; *Rescan
+    attachments* and *Choose attachment folder…* say why when they cannot
+    run. Docs: first-image wording (chapter 4), link-label token gap,
+    code, web-embed, size-limit and print notes. Unused key
+    `attachment.folderRoot` and `attachment.imageFallback` removed.
+  - Bounded work: block-id hiding and heading-link stripping are linear
+    (an indented `^id` line no longer walks the note, a heading of brackets
+    no longer rescans itself); `findMarkdownImages` finds each `![` pair in
+    one pass and gives a line a total scan budget; a transcluded note is
+    parsed up to 50,000 characters (was 200,000) and shows its opening text
+    as plain text when a paragraph holds over 1,000 `*`, `_` or `~`, a list
+    is nested 32 levels or more, or a table row has over 256 cells
+    (`domain/renderCost.ts`); Ctrl+P and Print also wait for embeds whose
+    load has started and for the first vault scan (up to 10 s). HTML export
+    reads a plain image link only when the vault classes the file as an
+    image (and under 32 MB), and keeps a bmp or svg as it is only when its
+    bytes are a real bitmap header or a closed `<svg>` document.
+  - Mitigated, not fully fixed: the HTML export still caps pictures at 5 MB
+    each and 25 MB in all (now announced in a toast); embedded notes in an
+    export are capped at about 1,000,000 characters (was 5,000,000) with
+    no toast on truncation; object URLs are reclaimed oldest-first with
+    other documents' first (a single document with over 4,000 distinct
+    embeds loses its oldest); the banner's not-found count can outlast a
+    corrected typo until a rescan or reload.
 
 - **Book and guide PDFs.** Pages are numbered (the book's cover excepted),
   the book's contents list each chapter's page with a dotted leader, and

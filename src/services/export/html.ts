@@ -50,6 +50,10 @@ const MIME = { png: 'image/png', jpg: 'image/jpeg', gif: 'image/gif' } as const;
 let loaded: ReadonlyMap<string, ExportImage> = new Map();
 let allowWebImages = true;
 let embeddedBytes = 0;
+let leftOut = 0;
+
+/** How many pictures the last page left out for size (the caps above). */
+export const imagesLeftOut = (): number => leftOut;
 
 function base64(bytes: Uint8Array): string {
   let binary = '';
@@ -59,8 +63,16 @@ function base64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-/** What stands in for an image that is not shown: its alt text, or the file it names. */
+/**
+ * What stands in for an image that is not shown: its alt text, or the file it
+ * names, in a dashed frame like the visual pane's. The frame is inline so the
+ * stylesheet stays as it is for pages that have no such image.
+ */
 function imagePlaceholder(href: string, text: string): string {
+  return `<span style="border:1px dashed var(--border);border-radius:3px;padding:0 .35em">${placeholderText(href, text)}</span>`;
+}
+
+function placeholderText(href: string, text: string): string {
   if (text.trim()) return escapeHtml(text);
   const last = href.split(/[#?]/)[0]?.split('/').pop() ?? '';
   let name = last;
@@ -75,14 +87,20 @@ function imagePlaceholder(href: string, text: string): string {
 /** An <img> with the bytes inline, or null when there are none or they are too large. */
 function embeddedImage(href: string, text: string, title: string): string | null {
   const image = loaded.get(href);
-  if (!image || image.bytes.length > MAX_IMAGE_BYTES) return null;
-  if (embeddedBytes + image.bytes.length > MAX_TOTAL_BYTES) return null;
+  if (!image) return null;
+  if (
+    image.bytes.length > MAX_IMAGE_BYTES ||
+    embeddedBytes + image.bytes.length > MAX_TOTAL_BYTES
+  ) {
+    leftOut++;
+    return null;
+  }
   embeddedBytes += image.bytes.length;
   const size = [
     image.displayWidth ? ` width="${image.displayWidth}"` : '',
     image.displayWidth && image.displayHeight ? ` height="${image.displayHeight}"` : '',
   ].join('');
-  return `<img src="data:${MIME[image.type]};base64,${base64(image.bytes)}" alt="${escapeHtml(text)}"${size}${title}>`;
+  return `<img src="data:${image.mime ?? MIME[image.type]};base64,${base64(image.bytes)}" alt="${escapeHtml(text)}"${size}${title}>`;
 }
 
 const marked = new Marked({
@@ -149,6 +167,7 @@ export function markdownToHtml(
   loaded = images ?? new Map();
   allowWebImages = webImages;
   embeddedBytes = 0;
+  leftOut = 0;
   const body = marked.parse(markdown, { async: false });
   return `<!doctype html>
 <html lang="en">

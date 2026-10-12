@@ -71,7 +71,8 @@ a picture 300 px wide, `![[report.pdf#page=3]]` a PDF, and audio, video and
 other files appear as a player or a chip with an **Open** link.
 `![[Other note]]` and `![[Other note#Heading]]` show that note or section
 as a read-only quote; `[[Other note]]` shows as a plain chip. MD Studio
-never rewrites the text of an embed, whichever pane you edit in. Inside a
+never rewrites the text of an embed, whichever pane you edit in (the two
+exceptions are listed under the known gaps below). Inside a
 table, write the pipe in an embed as a backslash and a pipe.
 
 To see the files, choose the vault's top folder (the one with `.obsidian`
@@ -81,6 +82,12 @@ After a reload the bar may ask you to **Allow access** again. *Rescan
 attachments* picks up files added elsewhere. Embeds are also placeholders
 in browsers that cannot read folders, with the text unchanged.
 
+The bar stays away for an embed of a section of the same note
+(`![[#Heading]]`) or of a web address, since neither needs a folder. If the
+command palette's *Choose attachment folder…* or *Rescan attachments* cannot
+run (browser unsupported, document not saved, no folder chosen, access to
+allow), it says why instead of doing nothing.
+
 Pasting or dropping any kind of file saves it in the folder the vault's
 settings name (`.obsidian/app.json` is read, never written), with a name
 like `Pasted image 20261012093000.png`, and links it. **Link style** in
@@ -89,8 +96,9 @@ Settings chooses wikilinks, Markdown links, or auto (follow the vault);
 note. Without a `.obsidian` folder, everything behaves as before.
 
 Known gaps: only top-level headings can be linked into (`![[Note#Heading]]`),
-a token that Markdown splits (emphasis inside the name) stays text, `%%comments%%`
-are not understood, and wikilinks are not clickable yet. Appendix B of the
+a token that Markdown splits (emphasis inside the name) or one inside the label
+of a Markdown link stays text and gains backslashes if you edit that paragraph
+in the visual pane, `%%comments%%` are not understood, and wikilinks are not clickable yet. Appendix B of the
 book lists every form.
 
 ## Finding and navigating
@@ -98,7 +106,9 @@ book lists every form.
 - **Find** (Ctrl+F) and **Find and replace** (Ctrl+H) open a bar above the
   editors. It searches the pane you are working in: the Markdown source,
   or the formatted document in visual view. Options: match case (Aa),
-  whole word (W) and regular expressions (.*). Enter goes to the next
+  whole word (W) and regular expressions (.*). In the visual pane, a match
+inside an embed or wikilink token (its file name or alias) counts too, and
+Replace rewrites the token if the result is still a valid one. Enter goes to the next
   match, Shift+Enter to the previous one, Escape closes the bar. A
   replacement in either pane appears in the other.
 - **Outline** (toolbar, or Ctrl+Shift+O) lists the document's headings.
@@ -184,7 +194,8 @@ are linked only when **Load web images** is on. Obsidian embeds of PDF,
 audio, video and other files become a labelled line; an embedded note is
 written out as a quote (a label when it shares a paragraph or sits in a
 table cell); wikilinks become their alias or name. Footnotes become
-numbered notes at the end.
+numbered notes at the end. The HTML page leaves out a picture over 5 MB, and
+all pictures past 25 MB, and says so; Word and PDF keep them.
 
 Front matter is left out of exports and print. To include it, as a code
 block at the top, tick **Include front matter in exports and print** in

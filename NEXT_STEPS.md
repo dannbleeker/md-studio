@@ -78,7 +78,44 @@
         targets (`findHeadings` is top-level only).
   - [ ] Tokens split across inline nodes (emphasis or a bare address
         inside a name) stay plain text and are escaped when that block is
-        edited in the visual pane.
+        edited in the visual pane. So is a token inside a Markdown link
+        label (`[a ![[b.png]]](url)`), on purpose: converting inside link
+        text would need a node that can sit in a link.
+  - [ ] Remaining limits after the post-review bug hunt: the HTML export
+        drops pictures over 5 MB (25 MB in all) and says so, but cannot
+        embed them; the embedded-note text cap (1,000,000 characters) is
+        a size cap, not a time budget for the PDF writer, and truncation
+        has no toast; object URLs: one document with over 4,000 distinct
+        embeds loses its oldest URLs (a per-view ref count would fix it);
+        tokens in raw HTML blocks are scanned as embeds but
+        the visual pane makes no chip for them; a native browser-menu
+        print cannot wait for embeds (Ctrl+P and the palette can);
+        `domain/codeRegions.ts` differs from micromark in two quirks
+        (empty list items after a paragraph; a document starting with an
+        unclosed `---`), listed in its header.
+  - [x] **Re-pin `bundle-budget.json`:** `embeds` re-pinned 3,300 to 4,500
+        (measured 4,347 B gzip, the shared `codeRegions.ts` scanner); `i18n`
+        and `ui` start-up chunks got ceilings; `index` lowered to 34,500.
+  - [x] `embedExport.ts` no longer has its own `fencedLines`: block
+        boundaries read `codeRanges`, so a fence left open in a quote or
+        list item ends with it. `stripContainers` stays: the table-row and
+        heading/break checks still need the line with its markers off.
+  - [ ] The `codeRegions.ts` table-row delimiter regex backtracks on a very
+        long line of pipes and spaces (about 2 s for 80 KB). Make it linear
+        by trimming the row first.
+  - [ ] **Base Milkdown bug, not from this feature:** the text handler
+        returns text that ends in whitespace unescaped, so a `\|` in a table
+        cell followed by a mark (`| x \| y **z** | q |`) is written as a bare
+        pipe and the row gains a cell. Plain Milkdown does the same on main.
+        Fixing it changes output for documents without tokens, so do it in a
+        separate change, e.g. by wrapping the text handler so that inside a
+        `tableCell` the pipe is always escaped.
+  - [ ] **Manual check against a real vault:** open a real Obsidian vault
+        (thousands of files, nested folders, PDFs, audio) in Chrome or
+        Edge and go through the embed forms in Appendix B, pasting and
+        dropping files, Save As and a reload with the permission prompt.
+        The test suite uses a fake file system; none of this has run
+        against a real one since the bug-hunt fixes.
   - [ ] Replace the headless Milkdown editor used for transclusion with
         a shared parser if the bundle sizes allow.
   - [ ] **Unverified:** the PDF viewer for `![[report.pdf]]` under the CSP

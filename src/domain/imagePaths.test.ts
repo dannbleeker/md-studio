@@ -107,3 +107,36 @@ describe('isRasterDataUrl', () => {
     expect(isRasterDataUrl('https://x.dk/a.png')).toBe(false);
   });
 });
+
+describe('large data: and blob: URLs', () => {
+  // The scans must not read a multi-megabyte pasted image to say "not a web
+  // image". Bounds are generous (the full scans took 5-30 ms per call here).
+  const big = `data:image/png;base64,${'A'.repeat(5_000_000)}`;
+
+  it('answers without reading the whole string', () => {
+    const started = performance.now();
+    for (let i = 0; i < 50; i += 1) {
+      expect(isWebImage(big)).toBe(false);
+      expect(isRelativeUrl(big)).toBe(false);
+    }
+    expect(performance.now() - started).toBeLessThan(100);
+  });
+
+  it('keeps the browser reading of the scheme prefix', () => {
+    for (const src of [
+      '  data:image/png;base64,AAAA',
+      'da\tta:image/png;base64,AAAA',
+      '\u0001DATA:image/png;base64,AAAA',
+      'blob:https://x.dk/uuid',
+      'BLOB:null/uuid',
+    ]) {
+      expect(isWebImage(src), src).toBe(false);
+      expect(isRelativeUrl(src), src).toBe(false);
+    }
+  });
+
+  it('still treats a data: or blob: scheme followed by // as a web image', () => {
+    expect(isWebImage('data://evil.example/a.png')).toBe(true);
+    expect(isWebImage('blob:\\\\evil.example/a.png')).toBe(true);
+  });
+});

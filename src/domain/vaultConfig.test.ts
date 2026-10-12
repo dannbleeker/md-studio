@@ -10,7 +10,7 @@ import {
   parseVaultConfig,
   type VaultConfig,
 } from './vaultConfig';
-import { buildVaultIndex, joinPath } from './vaultIndex';
+import { buildVaultIndex, joinPath, resolveTarget } from './vaultIndex';
 
 const cfg = (over: Partial<VaultConfig> = {}): VaultConfig => ({
   ...DEFAULT_VAULT_CONFIG,
@@ -330,6 +330,64 @@ describe('attachmentFileName: dropped files and non-image pastes', () => {
   });
 });
 
+describe('attachmentFileName: dropped images without a usable extension', () => {
+  const drop = (name: string, type: string, config: VaultConfig | null = cfg()) =>
+    attachmentFileName({ name, type }, 'drop', NOW, noneTaken, config);
+
+  it('adds the extension of the MIME type when the name has none', () => {
+    expect(drop('photo', 'image/jpeg')).toBe('photo.jpg');
+    expect(drop('download', 'image/webp')).toBe('download.webp');
+    expect(drop('photo', 'image/jpeg', null)).toBe('photo.jpg');
+  });
+
+  it('keeps a dotfile-like name usable', () => {
+    expect(drop('.png', 'image/png')).toBe('png.png');
+  });
+
+  it('swaps an extension a browser cannot show for the one the type names', () => {
+    expect(drop('x.jfif', 'image/jpeg')).toBe('x.jpg');
+    expect(drop('x.jpe', 'image/jpeg')).toBe('x.jpg');
+    expect(drop('anim.apng', 'image/apng')).toBe('anim.png');
+  });
+
+  it('names a type without a browser-safe extension after the type itself', () => {
+    expect(drop('shot', 'image/heic')).toBe('shot.heic');
+    expect(drop('shot', 'image/tiff')).toBe('shot.tiff');
+    expect(drop('logo', 'image/x-icon')).toBe('logo.ico');
+    expect(drop('logo', 'image/vnd.microsoft.icon')).toBe('logo.ico');
+  });
+
+  it('keeps the own extension of such a file', () => {
+    expect(drop('x.heic', 'image/heic')).toBe('x.heic');
+    expect(drop('x.tiff', 'image/tiff')).toBe('x.tiff');
+    expect(drop('logo.ico', 'image/x-icon')).toBe('logo.ico');
+  });
+
+  it('leaves recognised image names and non-image types alone', () => {
+    expect(drop('a.PNG', 'image/png')).toBe('a.PNG');
+    expect(drop('a.jpg', 'image/png')).toBe('a.jpg');
+    expect(drop('notes', 'text/plain')).toBe('notes');
+    expect(drop('blob', '')).toBe('blob');
+  });
+
+  it('does not take a hostile MIME subtype as an extension', () => {
+    expect(drop('x', 'image/../../etc')).toBe('x');
+    expect(drop('x', 'image/')).toBe('x');
+  });
+
+  it('still avoids collisions after adding the extension', () => {
+    expect(
+      attachmentFileName(
+        { name: 'photo', type: 'image/jpeg' },
+        'drop',
+        NOW,
+        taken('photo.jpg'),
+        cfg()
+      )
+    ).toBe('photo 1.jpg');
+  });
+});
+
 describe('attachmentFileName: sanitising', () => {
   const drop = (name: string) =>
     attachmentFileName({ name, type: 'application/octet-stream' }, 'drop', NOW, noneTaken, cfg());
@@ -382,7 +440,7 @@ describe('attachmentFileName: sanitising', () => {
 
 describe('attachmentFileName: collisions', () => {
   const drop = (name: string, isTaken: (n: string) => boolean) =>
-    attachmentFileName({ name, type: 'image/png' }, 'drop', NOW, isTaken, cfg());
+    attachmentFileName({ name, type: 'application/octet-stream' }, 'drop', NOW, isTaken, cfg());
 
   it('inserts " 1", " 2" before the extension until a name is free', () => {
     expect(drop('a.png', taken('a.png'))).toBe('a 1.png');
@@ -494,6 +552,32 @@ describe('formatAttachmentLink: wikilinks', () => {
 
   it('defaults to shortest without a config (legacy)', () => {
     expect(link({ config: null, targetPath: 'images/x.png' })).toBe('![[images/x.png]]');
+  });
+});
+
+describe('formatAttachmentLink: relative wikilinks', () => {
+  const index = buildVaultIndex(['photo.png', 'Notes/photo.png', 'Notes/n.md', 'Notes/Sub/p.png']);
+  const link = (targetPath: string, notePath: string) =>
+    formatAttachmentLink({
+      style: 'wikilink',
+      config: cfg({ newLinkFormat: 'relative' }),
+      index,
+      targetPath,
+      notePath,
+      kind: 'image',
+    });
+
+  it('marks a same-folder file as note-relative so a root file of that name is not picked', () => {
+    const text = link('Notes/photo.png', 'Notes/n.md');
+    expect(text).toBe('![[./photo.png]]');
+    const target = text.slice(3, -2);
+    expect(resolveTarget(index, target, 'Notes/n.md')?.path).toBe('Notes/photo.png');
+  });
+
+  it('leaves paths with a folder part and root notes as they were', () => {
+    expect(link('Notes/Sub/p.png', 'Notes/n.md')).toBe('![[Sub/p.png]]');
+    expect(link('photo.png', 'Notes/n.md')).toBe('![[../photo.png]]');
+    expect(link('photo.png', 'n.md')).toBe('![[photo.png]]');
   });
 });
 

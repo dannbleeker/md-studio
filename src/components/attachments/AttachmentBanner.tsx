@@ -16,14 +16,19 @@ const mayHaveAttachments = (markdown: string) => markdown.includes('![') || mark
 /**
  * How many embeds this text has that need files from disk. Wikilink
  * embeds and local Markdown images count; code is ignored, so a guide that
- * shows the syntax in a fence does not raise the notice.
+ * shows the syntax in a fence does not raise the notice. An embed of a
+ * section of this same note (empty target) or of a web address reads no
+ * file, so it does not count either.
  */
 async function countAttachmentEmbeds(markdown: string): Promise<number> {
-  const [embeds, links] = await Promise.all([
+  const [embeds, links, paths] = await Promise.all([
     import('@/domain/embeds'),
     import('@/domain/embedLinks'),
+    import('@/domain/imagePaths'),
   ]);
-  const wiki = embeds.findWikiRefs(markdown, { code: 'skip' }).filter((r) => r.embed).length;
+  const wiki = embeds
+    .findWikiRefs(markdown, { code: 'skip' })
+    .filter((r) => r.embed && r.target !== '' && !paths.isWebImage(r.target)).length;
   const images = links
     .findMarkdownImages(markdown, { code: 'skip' })
     .filter((i) => links.isLocalTarget(i.dest)).length;

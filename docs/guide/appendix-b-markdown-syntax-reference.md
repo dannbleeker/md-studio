@@ -132,7 +132,7 @@ other browsers they appear as labelled placeholders and the source is unchanged.
 | `![[data.zip]]` | A labelled chip with an **Open** link |
 | `![[Meeting notes]]` | The whole note, shown as a quoted block you cannot edit |
 | `![[Meeting notes#Decisions]]` | The section under that heading |
-| `![[Meeting notes#^abc123]]` | The paragraph, list item or quote that ends in `^abc123` |
+| `![[Meeting notes#^abc123]]` | The paragraph, list item or quote that ends in `^abc123`; a lone `^abc123` line after a list names the whole list |
 | `![[#Decisions]]` and `![[#^abc123]]` | The same, from the note you are editing |
 | `[[Meeting notes]]` and `[[Meeting notes\|the notes]]` | A plain chip showing the name or the alias |
 
@@ -148,24 +148,44 @@ the end of a path, and `./` or `../` is relative to the note. Wikilinks are not
 percent-decoded: write the space, not `%20`. A Markdown link such as
 `![](images/x.png)` is looked up next to the note first, then across the vault.
 
+A web address in an embed, as in `![[https://example.com/a.png]]`, is a web
+image: it follows **Load web images** in Settings, in the visual pane and in
+exports, and a size after the `|` is ignored. An embed of a section of the note
+you are editing, or of a web address, needs no folder, so it does not raise the
+attachment bar.
+
 Transcluded notes can go three levels deep, and a note never repeats itself
 inside itself, so a loop shows a short notice instead. A section runs from its
 heading to the next heading of the same or a higher level, sub-headings
-included. Front matter is left out. Links inside a transcluded note are shown as
-plain text unless they are web or email addresses.
+included. Front matter is left out, and so are the `^abc123` markers, which belong to the
+source. Links inside a transcluded note are shown as plain text unless they are
+web or email addresses. A note larger than 2 MB is not embedded; the placeholder
+says so.
 
 Inside a table, write the pipe in an embed as a backslash and a pipe, as in the
-rows above, or the table breaks. Pasting never creates a bare pipe.
+rows above, or the table breaks. In the visual pane a chip that holds a bare pipe,
+because it was copied or dragged into a cell or edited with Find and Replace, is
+written to the file with the pipe escaped.
 
 Some things are not embeds, and are left alone: anything in a fenced or indented
-code block, in a code span or in front matter, a token with a backslash in front
-of it, an empty `![[]]`, and a token that runs over a line break.
+code block (also inside a list item or a quote), in a code span (also one that
+wraps over a line break) or in front matter, a token whose opening bracket has a
+backslash in front of it, an empty `![[]]`, and a token that runs over a line
+break. A backslash before the `!` only, as in `\![[a.png]]`, leaves the `!` as
+text and makes the rest a plain wikilink. In the visual pane, turning a paragraph
+into a code block, or putting inline code around a token, changes the chip back
+to its text, so the token is never hidden inside code. Undoing that with the
+opposite action (turning the block back into a paragraph, or removing the inline
+code) makes the token a chip again.
 
 MD Studio has some known gaps. Only top-level headings can be named after the `#`
 in a transclusion, not headings inside a list, a quote or a callout. A token that
 Markdown splits into pieces, such as `![[_name_]]` with emphasis or a bare web
 address inside the name, stays plain text and may gain backslashes if you edit
-that paragraph in the visual pane. Obsidian's `%%comments%%` are not understood.
+that paragraph in the visual pane. The same is true of a token inside the label
+of a Markdown link, as in `[see ![[plan.png]]](https://example.com)`: it is shown
+as text, and editing that paragraph in the visual pane writes the brackets with
+backslashes (edit such a link in the Markdown pane). Obsidian's `%%comments%%` are not understood.
 Clicking a wikilink does nothing yet, and there is no link autocomplete.
 
 ## Lists

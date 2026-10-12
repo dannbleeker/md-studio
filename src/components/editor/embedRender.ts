@@ -2,6 +2,7 @@ import { type EmbedKind, parseWikiRef, splitLinkTarget, type WikiRef } from '@/d
 import { isWebImage } from '@/domain/imagePaths';
 import {
   descend,
+  MAX_LIVE_TRANSCLUSIONS,
   selectNoteContent,
   startChain,
   type TranscludeChain,
@@ -9,6 +10,7 @@ import {
 import { t } from '@/i18n';
 import {
   type DocContext,
+  getVault,
   noteRelativePath,
   peekAttachment,
   peekNoteRead,
@@ -53,6 +55,23 @@ export interface EmbedRenderContext {
 type Pending = () => void | Promise<void>;
 const waiting = new Map<Element, Pending>();
 let observer: IntersectionObserver | null = null;
+/** Loads that have started and not settled, so a print can wait for them as well as the unstarted. */
+const inflight = new Set<Promise<void>>();
+/**
+ * Views whose last answer was "still scanning the vault", with the document each asked about.
+ * They show a loading chip until the scan ends and notifies them, which no load in flight covers.
+ */
+const awaitingScan = new Map<object, DocContext>();
+
+function start(run: Pending): Promise<void> {
+  const loading = Promise.resolve(run());
+  const forget = () => {
+    inflight.delete(loading);
+  };
+  inflight.add(loading);
+  loading.then(forget, forget);
+  return loading;
+}
 
 /**
  * Runs `run` once `el` is near the viewport (one observer for every embed).
@@ -63,7 +82,7 @@ let observer: IntersectionObserver | null = null;
  */
 function whenVisible(el: Element, run: Pending): () => void {
   if (typeof IntersectionObserver === 'undefined') {
-    void run();
+    void start(run);
     return () => {};
   }
   if (!observer) {
@@ -75,13 +94,17 @@ function whenVisible(el: Element, run: Pending): () => void {
           if (!cb) continue;
           waiting.delete(entry.target);
           observer?.unobserve(entry.target);
-          void cb();
+          void start(cb);
         }
       },
       { rootMargin: '400px' }
     );
-    // Print shows the whole pane, but nothing scrolls into view at print time.
-    window.addEventListener('beforeprint', () => void flushPendingEmbeds());
+    // Print shows the whole pane, but nothing scrolls into view at print time. The browser
+    // does not wait for this: the Print command and Ctrl+P await flushPendingEmbeds first.
+    window.addEventListener('beforeprint', () => {
+      makeImagesEager();
+      void flushPendingEmbeds();
+    });
   }
   waiting.set(el, run);
   observer.observe(el);
@@ -98,14 +121,90 @@ function whenVisible(el: Element, run: Pending): () => void {
  * view mode hides, none of which an IntersectionObserver would ever report.
  */
 export async function flushPendingEmbeds(): Promise<void> {
-  const pending = [...waiting];
-  waiting.clear();
-  const loads: Array<void | Promise<void>> = [];
-  for (const [el, run] of pending) {
-    observer?.unobserve(el);
-    loads.push(run());
+  // A transcluded note mounts its own embeds and images while it loads, and those
+  // wait for the viewport too, so go round again until nothing is left. An embed whose
+  // load has started is not in `waiting` but is not done either, and one told that the vault
+  // is still being scanned is redrawn only when the scan ends: wait for both.
+  for (
+    let pass = 0;
+    pass < MAX_FLUSH_PASSES && (waiting.size > 0 || inflight.size > 0 || awaitingScan.size > 0);
+    pass++
+  ) {
+    const pending = [...waiting];
+    waiting.clear();
+    const loads: Array<Promise<void>> = [...inflight];
+    for (const [el, run] of pending) {
+      observer?.unobserve(el);
+      loads.push(start(run));
+    }
+    await Promise.allSettled(loads);
+    if (waiting.size === 0 && inflight.size === 0 && awaitingScan.size > 0) await finishScans();
   }
-  await Promise.allSettled(loads);
+  await decodeImages(makeImagesEager());
+}
+
+/**
+ * Waits for the scan of each vault a view is still waiting on. Its end notifies the views,
+ * which redraw (and re-register) before this resolves; the next pass then picks them up.
+ * Bounded, like the image decode: a huge vault must not hold a printout back for minutes.
+ */
+async function finishScans(): Promise<void> {
+  const docs: DocContext[] = [];
+  for (const doc of awaitingScan.values()) {
+    if (!docs.some((known) => sameDoc(known, doc))) docs.push(doc);
+  }
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<void>((resolve) => {
+    // Past the limit the printout shows what it has.
+    timer = setTimeout(resolve, SCAN_TIMEOUT_MS);
+  });
+  try {
+    await Promise.race([
+      Promise.allSettled(docs.map((doc) => getVault(doc, { complete: true }))),
+      timeout,
+    ]);
+    await Promise.resolve();
+  } finally {
+    clearTimeout(timer);
+    // Views the scan's end redraws have registered again by now if they still wait; any other
+    // entry belongs to a view that is gone, and must not hold later prints back.
+    awaitingScan.clear();
+  }
+}
+
+const MAX_FLUSH_PASSES = 8;
+/** Longest a printout waits for the first scan of a vault. */
+const SCAN_TIMEOUT_MS = 10_000;
+/** Print must not hang on one image that never decodes. */
+const DECODE_TIMEOUT_MS = 5000;
+
+/**
+ * Images are lazy so a long note does not fetch them all, but a lazy image
+ * below the fold is never painted into a printout. Print wants every one.
+ */
+function makeImagesEager(): HTMLImageElement[] {
+  const images = Array.from(document.images);
+  for (const img of images) {
+    if (img.getAttribute('loading') === 'lazy') img.setAttribute('loading', 'eager');
+  }
+  return images;
+}
+
+/** Resolves once each image with a source has decoded (or failed), or the timeout passes. */
+async function decodeImages(images: readonly HTMLImageElement[]): Promise<void> {
+  const decoding = images
+    .filter((img) => img.getAttribute('src') && typeof img.decode === 'function')
+    .map((img) => img.decode());
+  if (decoding.length === 0) return;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, DECODE_TIMEOUT_MS);
+  });
+  try {
+    await Promise.race([Promise.allSettled(decoding), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -121,22 +220,37 @@ const loadNotes = (): Promise<NoteModule> =>
   });
 
 const NO_HANDLE = {};
-const hostPaths = new WeakMap<object, string>();
 
-/** The host note's vault path ('' when it has none), cached per file handle. */
+/**
+ * Embeds in the page that hold a note view, nested ones included. Each takes a slot
+ * before it reads or draws a note and gives it back when destroyed, so the work
+ * is bounded by MAX_LIVE_TRANSCLUSIONS however the notes nest.
+ */
+let liveNotes = 0;
+let hostPaths = new WeakMap<object, string>();
+// A chosen folder or a rescan can move the host in the vault: every view drops what was cached
+// before it redraws (see the subscription in mountEmbed).
+const forgetHostPaths = () => {
+  hostPaths = new WeakMap();
+};
+
+/**
+ * The host note's vault path ('' when it has none), cached per file handle. Only an
+ * answer is cached: "no folder yet" must not stick once one is chosen.
+ */
 async function hostPathOf(doc: DocContext): Promise<string> {
   const key = doc.fileHandle ?? NO_HANDLE;
   const known = hostPaths.get(key);
   if (known !== undefined) return known;
-  const path = (await noteRelativePath(doc)) ?? '';
-  hostPaths.set(key, path);
-  return path;
+  const path = await noteRelativePath(doc);
+  if (path !== null) hostPaths.set(key, path);
+  return path ?? '';
 }
 
 const sameDoc = (a: DocContext, b: DocContext) =>
   a.handleId === b.handleId && a.fileHandle === b.fileHandle;
 
-/** A small stable hash: the live host note has no modified time to key its render on. */
+/** A small stable hash of the shown text: it keys the render of a note, whoever's file it is. */
 function hashText(text: string): string {
   let h = 5381;
   for (let i = 0; i < text.length; i++) h = ((h << 5) + h + text.charCodeAt(i)) | 0;
@@ -186,6 +300,26 @@ export function mountEmbed(
   let stopWeb: (() => void) | null = null;
   let stopLive: (() => void) | null = null;
   let liveTimer: ReturnType<typeof setTimeout> | null = null;
+  let slot = false;
+  /** Identifies this view in awaitingScan. */
+  const scanKey = {};
+
+  /** Takes this embed's slot for a note view (once); false when the page is at its limit. */
+  function claimSlot(): boolean {
+    if (slot) return true;
+    if (liveNotes >= MAX_LIVE_TRANSCLUSIONS) return false;
+    liveNotes++;
+    slot = true;
+    return true;
+  }
+
+  function showLimit(ref: WikiRef): void {
+    setBlock(true);
+    show(
+      `limit|${raw}`,
+      placeholder({ kind: 'limit', label: t('embed.limit', { name: nameOf(ref) }), raw })
+    );
+  }
 
   const stale = (my: number) =>
     destroyed || ctx.signal.cancelled || my !== generation || !seen || !sameDoc(seen, ctx.doc());
@@ -211,14 +345,11 @@ export function mountEmbed(
     const key = `ok|${raw}|${res.kind}|${res.url}|${res.ambiguous}`;
     if (key === shownKey) return;
     let node: HTMLElement;
+    // Several files share the name: say which one is shown, whatever kind it is.
+    const hint = res.ambiguous ? { title: t('embed.ambiguous', { path: res.path }) } : {};
     switch (res.kind) {
       case 'image':
-        node = imageElement({
-          url: res.url,
-          alt: ref.alt ?? res.name,
-          size: ref.size,
-          ...(res.ambiguous ? { title: t('embed.ambiguous', { path: res.path }) } : {}),
-        });
+        node = imageElement({ url: res.url, alt: ref.alt ?? res.name, size: ref.size, ...hint });
         break;
       case 'pdf':
         node = pdfElement({
@@ -227,16 +358,17 @@ export function mountEmbed(
           page: ref.pdf?.page ?? null,
           height: ref.pdf?.height ?? null,
           size: ref.size,
+          ...hint,
         });
         break;
       case 'audio':
-        node = audioElement({ url: res.url, name: res.name });
+        node = audioElement({ url: res.url, name: res.name, ...hint });
         break;
       case 'video':
-        node = videoElement({ url: res.url, name: res.name, size: ref.size });
+        node = videoElement({ url: res.url, name: res.name, size: ref.size, ...hint });
         break;
       default:
-        node = fileChip({ url: res.url, name: res.name });
+        node = fileChip({ url: res.url, name: res.name, ...hint });
     }
     show(key, node);
   }
@@ -246,6 +378,7 @@ export function mountEmbed(
     if (res.state === 'scanning') {
       // A better answer is coming: never Not found while the index is still being built.
       if (!shownKey.startsWith('ok|') && !shownKey.startsWith('note|')) showLoading();
+      awaitingScan.set(scanKey, ctx.doc());
       return;
     }
     setBlock(false);
@@ -255,9 +388,12 @@ export function mountEmbed(
         `missing|${raw}`,
         placeholder({
           kind: 'missing',
-          label: t(isNote ? 'embed.noteMissing' : 'embed.missing', { name }),
+          label: t(
+            res.tooLarge ? 'embed.noteTooLarge' : isNote ? 'embed.noteMissing' : 'embed.missing',
+            { name }
+          ),
           raw,
-          ...(res.rootLooksLikeVault ? {} : { hint: t('embed.missingHint') }),
+          ...(res.rootLooksLikeVault || res.tooLarge ? {} : { hint: t('embed.missingHint') }),
         })
       );
       return;
@@ -324,14 +460,25 @@ export function mountEmbed(
       );
       return true;
     }
-    const live = ref.target === '' && ctx.fromNotePath === undefined;
-    const cacheKey = [
-      read.path,
-      live ? 0 : read.lastModified,
-      live ? hashText(read.text) : read.size,
-      ref.fragment ?? '',
+    if (!claimSlot()) {
+      showLimit(ref);
+      return true;
+    }
+    // Keyed on the text itself: a file date and size say nothing about which vault a note is
+    // from, and two copies of a vault share both while their text differs.
+    const cacheKey = [read.path, hashText(selected.markdown), ref.fragment ?? ''].join('|');
+    // Web images follow the setting, and the embeds inside depend on the chain they were entered with.
+    const webImages = useStore.getState().settings.webImages;
+    const hint = read.ambiguous ? t('embed.ambiguous', { path: read.path }) : undefined;
+    const key = [
+      'note',
+      cacheKey,
+      doc.handleId ?? '',
+      webImages ? 1 : 0,
+      entered.chain.visited.join('\0'),
+      hint ?? '',
     ].join('|');
-    const key = `note|${cacheKey}|${doc.handleId ?? ''}`;
+    watchWeb();
     if (key === shownKey) return true;
     const args = {
       markdown: selected.markdown,
@@ -340,6 +487,7 @@ export function mountEmbed(
       title: [read.path.replace(/^.*\//, '').replace(/\.md$/i, '') || name, ref.fragment]
         .filter((s) => s)
         .join(' > '),
+      ...(hint ? { hint } : {}),
       ctx,
       chain: entered.chain,
       mountEmbed,
@@ -361,6 +509,11 @@ export function mountEmbed(
   }
 
   async function loadNote(my: number, doc: DocContext, ref: WikiRef): Promise<void> {
+    // Before the read: the point is not to touch notes beyond the limit at all.
+    if (!claimSlot()) {
+      showLimit(ref);
+      return;
+    }
     const mod = noteModule ?? (await loadNotes());
     if (stale(my)) return;
     const read = await readNoteText(doc, ref.target, noteOptions());
@@ -376,6 +529,7 @@ export function mountEmbed(
     ctx.fromNotePath === undefined ? undefined : { fromNotePath: ctx.fromNotePath };
 
   async function load(my: number, doc: DocContext, ref: WikiRef): Promise<void> {
+    awaitingScan.delete(scanKey);
     if (ref.kind === 'note') {
       await loadNote(my, doc, ref);
       return;
@@ -479,7 +633,10 @@ export function mountEmbed(
     });
   }
 
-  const unsubscribe = subscribeAttachments(run);
+  const unsubscribe = subscribeAttachments(() => {
+    forgetHostPaths();
+    run();
+  });
   run();
 
   return {
@@ -495,9 +652,14 @@ export function mountEmbed(
       stopWeb?.();
       stopLive?.();
       if (liveTimer !== null) clearTimeout(liveTimer);
+      awaitingScan.delete(scanKey);
       unsubscribe();
       owned?.destroy();
       owned = null;
+      if (slot) {
+        slot = false;
+        liveNotes--;
+      }
     },
   };
 }
@@ -505,6 +667,17 @@ export function mountEmbed(
 // ---------------------------------------------------------------------------
 // Markdown images
 // ---------------------------------------------------------------------------
+
+/**
+ * Whether a resolved file may back an <img>. Notes, PDFs, audio and video get embed
+ * rendering instead; any other extension (ico, jfif, tiff, none at all) stays an image,
+ * since the browser decides what it can draw.
+ */
+const isPlainFile = (hit: { kind: EmbedKind; path: string }): boolean =>
+  hit.kind === 'image' ||
+  hit.kind === 'other' ||
+  // The classifier files an extensionless name under 'note'; only a real .md is one.
+  (hit.kind === 'note' && !/\.md$/i.test(hit.path));
 
 /**
  * Resolves a Markdown image link inside the vault and points `img` at the
@@ -522,6 +695,7 @@ export function mountImageResolver(
   let destroyed = false;
   let seen: DocContext | null = null;
   let stopVisible: (() => void) | null = null;
+  const scanKey = {};
 
   const set = (value: string) => {
     if (img.getAttribute('src') !== value) img.setAttribute('src', value);
@@ -542,15 +716,17 @@ export function mountImageResolver(
       ...(literal !== path ? { alternates: [literal] } : {}),
     };
     const peeked = peekAttachment(doc, path, opts);
-    if (peeked?.state === 'ok' && peeked.kind === 'image') set(peeked.url);
+    if (peeked?.state === 'ok' && isPlainFile(peeked)) set(peeked.url);
     else if (switched) set(src);
     stopVisible = whenVisible(img, () => {
       stopVisible = null;
+      awaitingScan.delete(scanKey);
       return resolveAttachment(doc, path, opts).then((res) => {
         if (destroyed || ctx.signal.cancelled || my !== generation) return;
         if (seen && !sameDoc(seen, ctx.doc())) return;
-        if (res.state === 'ok' && res.kind === 'image') set(res.url);
-        else if (res.state !== 'scanning') set(src);
+        if (res.state === 'ok' && isPlainFile(res)) set(res.url);
+        else if (res.state === 'scanning') awaitingScan.set(scanKey, doc);
+        else set(src);
       });
     });
   }
@@ -568,6 +744,7 @@ export function mountImageResolver(
       destroyed = true;
       generation++;
       stopVisible?.();
+      awaitingScan.delete(scanKey);
       unsubscribe();
     },
   };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ExportImage } from './exportImages';
-import { markdownToHtml } from './html';
+import { imagesLeftOut, markdownToHtml } from './html';
 
 describe('markdownToHtml', () => {
   it('renders Markdown into a standalone themed page', () => {
@@ -118,6 +118,21 @@ describe('markdownToHtml', () => {
         const on = markdownToHtml(`![shot](${src})`, 't', 'light', undefined, true);
         expect(on).toContain(`<img src="${src}"`);
       }
+    });
+
+    it('shows a withheld image as its description in a dashed frame', () => {
+      const html = markdownToHtml('![desc](https://x.dk/a.png)', 't', 'light', undefined, false);
+      expect(html).toMatch(/<span style="[^"]*dashed[^"]*">desc<\/span>/);
+      const bare = markdownToHtml('![](https://x.dk/y.png)', 't', 'light', undefined, false);
+      expect(bare).toMatch(/dashed[^>]*>image: y\.png<\/span>/);
+    });
+
+    it('counts the pictures it leaves out for size', () => {
+      const big = image({ bytes: new Uint8Array(5 * 1024 * 1024 + 1) });
+      markdownToHtml('![a](attachment:b.png)', 't', 'light', new Map([['attachment:b.png', big]]));
+      expect(imagesLeftOut()).toBe(1);
+      markdownToHtml('plain', 't', 'light');
+      expect(imagesLeftOut()).toBe(0);
     });
 
     it('never writes a network-share or scheme-hiding target as an image source', () => {

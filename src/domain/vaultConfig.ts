@@ -9,8 +9,8 @@
  * note, standard Markdown links), so those users see no change.
  */
 import { formatWikiEmbed } from './embedLinks';
-import { type EmbedKind, MEDIA_KINDS } from './embeds';
-import { imageExtension, imageFileName } from './imagePaths';
+import { classifyTarget, type EmbedKind, MEDIA_KINDS } from './embeds';
+import { imageExtension, imageFileName, mimeExtension } from './imagePaths';
 import {
   baseName,
   dirOf,
@@ -126,7 +126,28 @@ export function attachmentFileName(
     if (config === null) return imageFileName(now, imageExtension(file.type), taken);
     return uniqueName(`${PASTED_PREFIX} ${stamp(now)}.${clipboardExtension(file)}`, taken);
   }
-  return uniqueName(sanitizeName(file.name), taken);
+  return uniqueName(withImageExtension(sanitizeName(file.name), file.type), taken);
+}
+
+/** Extensions that name the same bytes as the MIME type's usual one but that nothing shows as an image. */
+const EXTENSION_ALIASES = new Set(['jfif', 'jfi', 'jpe', 'pjpeg', 'pjp', 'apng']);
+
+/**
+ * An image dragged out of a web page often arrives with no extension or an odd
+ * one, and the link kind is read from the name, so it would be inserted as a
+ * plain link instead of an image. The type says what it is: add its
+ * extension, or swap a known alias (.jfif) for it. Types a browser cannot
+ * show (HEIC, TIFF) only get one when the name has none.
+ */
+function withImageExtension(name: string, type: string): string {
+  if (!type.toLowerCase().startsWith('image/') || classifyTarget(name) === 'image') return name;
+  const ext = mimeExtension(type);
+  if (ext === null) return name;
+  const { stem, ext: own } = splitExtension(name);
+  const showable = classifyTarget(`x.${ext}`) === 'image';
+  if (own === '') return truncate(`${name}.${ext}`);
+  if (showable && EXTENSION_ALIASES.has(own.slice(1).toLowerCase())) return `${stem}.${ext}`;
+  return showable ? truncate(`${name}.${ext}`) : name;
 }
 
 /**
@@ -236,11 +257,27 @@ export function formatAttachmentLink(p: {
   const format: NewLinkFormat =
     p.config === null ? (p.style === 'wikilink' ? 'shortest' : 'relative') : p.config.newLinkFormat;
   const text = linkTarget(format, p.index, p.targetPath, p.notePath);
-  if (p.style === 'wikilink') return formatWikiEmbed({ target: text, alt: p.alt ?? null });
+  if (p.style === 'wikilink') {
+    return formatWikiEmbed({
+      target: noteRelativeMark(format, text, p.notePath),
+      alt: p.alt ?? null,
+    });
+  }
   const dest = encodeLinkPath(text);
   // A bang makes a media image; for other files and notes a bang would be wrong.
   if (MEDIA_KINDS.has(p.kind)) return `![${escapeLabel(p.alt ?? '')}](${dest})`;
   return `[${escapeLabel(p.alt ?? baseName(text))}](${dest})`;
+}
+
+/**
+ * A bare wikilink name is looked up from the vault root first, so a root file
+ * of the same name would win over the file beside the note. './' makes the
+ * resolver start at the note. Markdown links already do, and a note in the
+ * root has nothing to confuse.
+ */
+function noteRelativeMark(format: NewLinkFormat, text: string, notePath: string | null): string {
+  if (format !== 'relative' || text.includes('/') || notePath === null) return text;
+  return dirOf(notePath) === '' ? text : `./${text}`;
 }
 
 function linkTarget(

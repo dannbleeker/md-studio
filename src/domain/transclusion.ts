@@ -12,10 +12,17 @@
 import { unescapeMarkdownText } from './embeds';
 import { closesFence, openFence } from './fences';
 import { frontMatterEnd, frontMatterLines } from './frontMatter';
-import { findHeadings, type Heading } from './headings';
+import { findHeadings, type Heading, HTML_BLOCK } from './headings';
 
 /** How deep embeds may nest. The host note is depth 0. */
 export const MAX_TRANSCLUSION_DEPTH = 3;
+
+/**
+ * How many embedded notes the visual pane keeps on screen at once. Depth alone does
+ * not bound the work: ten embeds per note, three levels deep, is a thousand views.
+ * The export has its own, larger limit (it only writes text).
+ */
+export const MAX_LIVE_TRANSCLUSIONS = 200;
 
 export interface TranscludeChain {
   depth: number;
@@ -62,10 +69,11 @@ export function selectNoteContent(
   fragment: string | null
 ): { markdown: string } | null {
   const target = parseTarget(fragment);
-  if (target.kind === 'whole') return { markdown: stripFrontMatterText(markdown) };
+  // Obsidian hides `^id` markers in reading view, so none of them belong in the shown text.
+  if (target.kind === 'whole') return { markdown: hideBlockIds(stripFrontMatterText(markdown)) };
   const doc = analyse(markdown);
   const text = target.kind === 'block' ? blockById(doc, target.id) : sectionText(doc, target.path);
-  return text === null ? null : { markdown: text };
+  return text === null ? null : { markdown: hideBlockIds(text) };
 }
 
 // Internals
@@ -90,6 +98,8 @@ interface Doc {
   fences: Span[];
   /** Per line: index into `fences`, or -1 when the line is outside fenced code. */
   fenceOf: Int32Array;
+  /** Per line: 1 when the line really starts a list item (see markItems). */
+  item: Uint8Array;
 }
 
 const ATX_LINE = /^ {0,3}#{1,6}(?:[ \t]|$)/;
@@ -108,6 +118,8 @@ const BLOCK_ID = /(?:^|\s)\^([A-Za-z0-9-]+)[ \t]*$/;
 /** Longest heading text compared; longer text is cut, which keeps the link patterns cheap. */
 const MAX_HEADING_CHARS = 1000;
 const ONLY_BLOCK_ID = /^[ \t]*\^[A-Za-z0-9-]+[ \t]*$/;
+/** The only list starts that may interrupt a paragraph: with content, and numbered from 1. */
+const INTERRUPTING_ITEM = /^[ \t]*(?:[-*+]|0*1[.)])[ \t]+\S/;
 
 function chainKey(notePath: string, fragment: string | null): string {
   return `${notePath}#${fragment ?? ''}`;
@@ -167,6 +179,66 @@ function stripClosingHashes(text: string): string {
 /** Characters Obsidian drops from a heading link; both sides of a comparison lose them. */
 const LINK_PUNCTUATION = /[#|^:%[\]\\/]/g;
 
+type LinkMatch = { end: number; keep: string } | null | 'stop';
+
+/**
+ * Replaces constructs that begin with `open`, run to the first `]` after it (`close`) and are
+ * completed by what `finish` accepts, in linear time. The first `]` is the same for every
+ * start before it, so after a failure the search resumes past that `]`; `finish` returning
+ * 'stop' says no later start can match either. A regex like `\[([^\]]*)\]\(` retries every
+ * start and rescans to the same `]` each time, which is quadratic on a heading of brackets.
+ */
+function replaceBracketed(
+  text: string,
+  open: string,
+  finish: (at: number, close: number) => LinkMatch
+): string {
+  const parts: string[] = [];
+  let copied = 0;
+  let from = 0;
+  for (;;) {
+    const at = text.indexOf(open, from);
+    if (at < 0) break;
+    const close = text.indexOf(']', at + open.length);
+    if (close < 0) break;
+    const hit = finish(at, close);
+    if (hit === 'stop') break;
+    if (hit === null) {
+      from = Math.max(at + 1, close - open.length + 1);
+      continue;
+    }
+    parts.push(text.slice(copied, at), hit.keep);
+    copied = hit.end;
+    from = hit.end;
+  }
+  return copied === 0 ? text : parts.join('') + text.slice(copied);
+}
+
+/**
+ * Link syntax out of a heading: `![alt](src)` and `[text](url)` become their text,
+ * `[[Note|shown]]` becomes `shown` and `[[Note]]` becomes `Note`.
+ */
+function stripHeadingLinks(text: string): string {
+  const inline = (open: string) => (source: string) =>
+    replaceBracketed(source, open, (at, close) => {
+      if (source[close + 1] !== '(') return null;
+      const end = source.indexOf(')', close + 2);
+      return end < 0 ? 'stop' : { end: end + 1, keep: source.slice(at + open.length, close) };
+    });
+  const aliased = (source: string) =>
+    replaceBracketed(source, '[[', (at, close) => {
+      if (source[close + 1] !== ']') return null;
+      const inner = source.slice(at + 2, close);
+      const bar = inner.indexOf('|');
+      return bar < 0 ? null : { end: close + 2, keep: inner.slice(bar + 1) };
+    });
+  const plain = (source: string) =>
+    replaceBracketed(source, '[[', (at, close) =>
+      source[close + 1] === ']' ? { end: close + 2, keep: source.slice(at + 2, close) } : null
+    );
+  return inline('[')(plain(aliased(inline('![')(text))));
+}
+
 /**
  * Heading text as a reader sees it, for comparing: closing hashes, link and
  * emphasis syntax and block ids dropped, escapes undone, the punctuation
@@ -176,13 +248,10 @@ const LINK_PUNCTUATION = /[#|^:%[\]\\/]/g;
  * matches the `#Sub Colon` autocomplete writes.
  */
 function plainHeading(text: string): string {
-  const linked = stripBlockId(text)
-    .slice(0, MAX_HEADING_CHARS)
-    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(/\[\[([^\]|]*)\|([^\]]*)\]\]/g, '$2')
-    .replace(/\[\[([^\]]*)\]\]/g, '$1')
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(/^#+(?:[ \t]+|$)/, '');
+  const linked = stripHeadingLinks(stripBlockId(text).slice(0, MAX_HEADING_CHARS)).replace(
+    /^#+(?:[ \t]+|$)/,
+    ''
+  );
   const stripped = stripClosingHashes(linked);
   // After the link syntax is gone, so an escaped bracket can't start a link; before the
   // emphasis marks go, so `\*star\*` and `*star*` end up the same.
@@ -231,7 +300,34 @@ function analyse(markdown: string): Doc {
   }
   // An unclosed fence runs to the end of the note, as CommonMark has it.
   if (fence !== null) fences.push({ start: open, end: lines.length - 1 });
-  return { lines, bodyStart, headings: findHeadings(markdown), fences, fenceOf };
+  const item = markItems(lines, bodyStart, fenceOf);
+  return { lines, bodyStart, headings: findHeadings(markdown), fences, fenceOf, item };
+}
+
+/**
+ * Marks the lines that start a list item. A marker right under paragraph text
+ * is a continuation of that paragraph unless it is one CommonMark lets
+ * interrupt it, so `2020. It was great` after a text line is prose.
+ */
+function markItems(lines: string[], bodyStart: number, fenceOf: Int32Array): Uint8Array {
+  const item = new Uint8Array(lines.length);
+  for (let i = bodyStart; i < lines.length; i++) {
+    const text = lines[i] ?? '';
+    if ((fenceOf[i] ?? -1) >= 0 || !isListItem(text)) continue;
+    const above = lines[i - 1] ?? '';
+    // Indented text above belongs to a list item or code, where a marker starts a fresh item.
+    const underParagraph =
+      i > bodyStart &&
+      (fenceOf[i - 1] ?? -1) < 0 &&
+      !isBlank(above) &&
+      indentOf(above) === 0 &&
+      !item[i - 1] &&
+      !ATX_LINE.test(above) &&
+      !THEMATIC_BREAK.test(above) &&
+      !SETEXT_UNDERLINE.test(above);
+    item[i] = !underParagraph || INTERRUPTING_ITEM.test(text) ? 1 : 0;
+  }
+  return item;
 }
 
 const isBlank = (text: string): boolean => text.trim() === '';
@@ -250,13 +346,15 @@ function indentOf(text: string): number {
 const isListItem = (text: string): boolean => LIST_ITEM.test(text) && !THEMATIC_BREAK.test(text);
 
 /** A line that opens a block of its own, so a paragraph can't run into it. */
-function startsBlock(text: string): boolean {
+function startsBlock(doc: Doc, line: number): boolean {
+  const text = doc.lines[line] ?? '';
   return (
     ATX_LINE.test(text) ||
     QUOTE_LINE.test(text) ||
-    isListItem(text) ||
+    doc.item[line] === 1 ||
     THEMATIC_BREAK.test(text) ||
-    openFence(text) !== null
+    openFence(text) !== null ||
+    HTML_BLOCK.test(text)
   );
 }
 
@@ -268,7 +366,10 @@ function fenceAt(doc: Doc, line: number): Span | null {
 function isBoundary(doc: Doc, line: number): boolean {
   const text = doc.lines[line] ?? '';
   return (
-    isBlank(text) || fenceAt(doc, line) !== null || startsBlock(text) || SETEXT_UNDERLINE.test(text)
+    isBlank(text) ||
+    fenceAt(doc, line) !== null ||
+    startsBlock(doc, line) ||
+    SETEXT_UNDERLINE.test(text)
   );
 }
 
@@ -346,20 +447,38 @@ function quoteSpan(doc: Doc, line: number, limit: number): Span {
   for (let next = line + 1; next < limit; next++) {
     const text = doc.lines[next] ?? '';
     if (isBlank(text)) break;
-    if (!QUOTE_LINE.test(text) && startsBlock(text)) break;
+    if (!QUOTE_LINE.test(text) && startsBlock(doc, next)) break;
     end = next;
   }
   return { start, end };
 }
 
-/** A list item and its more-indented continuation lines, nested children included. */
+/**
+ * A plain line right under text, indented or not, that carries on the
+ * paragraph above it (CommonMark's lazy continuation) rather than starting a block.
+ */
+function isLazyLine(doc: Doc, line: number): boolean {
+  const text = doc.lines[line] ?? '';
+  const above = doc.lines[line - 1] ?? '';
+  return (
+    line > doc.bodyStart &&
+    !isBlank(text) &&
+    !isBlank(above) &&
+    fenceAt(doc, line) === null &&
+    fenceAt(doc, line - 1) === null &&
+    !ATX_LINE.test(above) &&
+    !startsBlock(doc, line)
+  );
+}
+
+/** A list item and its more-indented or lazy continuation lines, nested children included. */
 function itemSpan(doc: Doc, start: number, limit: number): Span {
   const indent = indentOf(doc.lines[start] ?? '');
   let end = start;
   for (let next = start + 1; next < limit; next++) {
     const text = doc.lines[next] ?? '';
     if (isBlank(text)) continue;
-    if (indentOf(text) <= indent) break;
+    if (indentOf(text) <= indent && !isLazyLine(doc, next)) break;
     end = next;
   }
   return { start, end };
@@ -371,21 +490,32 @@ function itemSpan(doc: Doc, start: number, limit: number): Span {
  * line. Null for anything else.
  */
 function listOwner(doc: Doc, line: number): number | null {
-  const text = doc.lines[line] ?? '';
-  if (isListItem(text)) return line;
-  if (indentOf(text) === 0) return null;
+  if (doc.item[line] === 1) return line;
+  if (indentOf(doc.lines[line] ?? '') > 0) return indentedOwner(doc, line);
+  // Unindented text under an item is that item's lazy continuation. Walk up the
+  // run rather than recurse: a long paragraph must not cost stack.
+  for (let i = line; i > doc.bodyStart && isLazyLine(doc, i); i--) {
+    if (doc.item[i - 1] === 1) return i - 1;
+    if (indentOf(doc.lines[i - 1] ?? '') > 0) return indentedOwner(doc, i - 1);
+  }
+  return null;
+}
+
+/** The item above that is indented less than `line` and reaches it. */
+function indentedOwner(doc: Doc, line: number): number | null {
+  const indent = indentOf(doc.lines[line] ?? '');
   for (let above = line - 1; above >= doc.bodyStart; above--) {
     const candidate = doc.lines[above] ?? '';
     if (isBlank(candidate)) continue;
     if (
-      isListItem(candidate) &&
-      indentOf(candidate) < indentOf(text) &&
+      doc.item[above] === 1 &&
+      indentOf(candidate) < indent &&
       itemSpan(doc, above, doc.lines.length).end >= line
     ) {
       return above;
     }
     // Unindented text that is not an item ends every list above it.
-    if (indentOf(candidate) === 0 && !isListItem(candidate)) return null;
+    if (indentOf(candidate) === 0 && doc.item[above] !== 1) return null;
   }
   return null;
 }
@@ -428,19 +558,57 @@ function blockAt(doc: Doc, line: number, limit: number): Span | null {
  * names the block before it, past at most one blank line.
  */
 function blockForId(doc: Doc, line: number): Span | null {
-  if (!ONLY_BLOCK_ID.test(doc.lines[line] ?? '')) return blockAt(doc, line, doc.lines.length);
+  const text = doc.lines[line] ?? '';
+  if (!ONLY_BLOCK_ID.test(text)) return blockAt(doc, line, doc.lines.length);
   let above = line - 1;
-  if (above >= doc.bodyStart && isBlank(doc.lines[above] ?? '')) above--;
+  const gap = above >= doc.bodyStart && isBlank(doc.lines[above] ?? '');
+  if (gap) above--;
   if (above < doc.bodyStart || isBlank(doc.lines[above] ?? '')) return null;
+  // Set apart by a blank line, an id names the whole list above it; right under an item it
+  // belongs to that item.
+  if (gap && indentOf(text) === 0) {
+    const list = wholeList(doc, above);
+    if (list) return list;
+  }
   return blockAt(doc, above, line);
 }
 
-/** The lines of a span, with the marker on `idLine` removed and trailing blank lines dropped. */
-function textOf(doc: Doc, span: Span, idLine: number | null): string {
+/** The top-level list that ends at `last`, or null when `last` is not in a list. */
+function wholeList(doc: Doc, last: number): Span | null {
+  const owner = listOwner(doc, last);
+  if (owner === null) return null;
+  let start = owner;
+  for (let i = owner - 1; i >= doc.bodyStart; i--) {
+    const text = doc.lines[i] ?? '';
+    if (isBlank(text)) continue;
+    if (doc.item[i] !== 1 && indentOf(text) === 0) break;
+    start = i;
+  }
+  // Indented lines with no item above them are code or text, not part of the list.
+  while (start < owner && doc.item[start] !== 1) start++;
+  return { start, end: last };
+}
+
+/** `text` without up to `columns` columns of leading blanks; a tab counts as four. */
+function dedentLine(text: string, columns: number): string {
+  let cut = 0;
+  let width = 0;
+  while (width < columns && isSpaceTab(text[cut])) width += text[cut++] === '\t' ? 4 : 1;
+  // A tab that reaches past the cut leaves the excess behind as spaces.
+  return ' '.repeat(Math.max(0, width - columns)) + text.slice(cut);
+}
+
+/**
+ * The lines of a span, with the marker on `idLine` removed and trailing blank lines dropped.
+ * With `dedent` the block's own indent comes off every line: a nested list item shown as a
+ * document of its own would otherwise be an indented code block.
+ */
+function textOf(doc: Doc, span: Span, idLine: number | null, dedent = false): string {
   const out: string[] = [];
+  const columns = dedent ? indentOf(doc.lines[span.start] ?? '') : 0;
   for (let i = span.start; i <= span.end; i++) {
     const text = doc.lines[i] ?? '';
-    out.push(i === idLine ? stripBlockId(text) : text);
+    out.push(dedentLine(i === idLine ? stripBlockId(text) : text, columns));
   }
   while (out.length > 0 && isBlank(out[out.length - 1] ?? '')) out.pop();
   return out.join('\n');
@@ -451,9 +619,71 @@ function blockById(doc: Doc, id: string): string | null {
     if ((doc.fenceOf[line] ?? -1) >= 0) continue;
     if (BLOCK_ID.exec(doc.lines[line] ?? '')?.[1] !== id) continue;
     const span = blockForId(doc, line);
-    if (span) return textOf(doc, span, line);
+    if (span) return textOf(doc, span, line, true);
   }
   return null;
+}
+
+/**
+ * Per line: 1 when `indentedOwner` would find a list item for it, computed in one forward
+ * pass. The walk up the document costs a whole scan per line, which is quadratic when a note
+ * has thousands of indented lines. The stack holds the indents of the items still open
+ * (strictly increasing); a line that is not a lazy continuation closes every item indented as
+ * much as it is, as itemSpan does, and unindented text that is not an item closes them all, as
+ * indentedOwner's walk does.
+ */
+function itemOwned(doc: Doc): Uint8Array {
+  const owned = new Uint8Array(doc.lines.length);
+  const open: number[] = [];
+  for (let i = doc.bodyStart; i < doc.lines.length; i++) {
+    const text = doc.lines[i] ?? '';
+    if (isBlank(text)) continue;
+    const indent = indentOf(text);
+    if (indent === 0 && doc.item[i] !== 1) {
+      open.length = 0;
+      continue;
+    }
+    if (!isLazyLine(doc, i)) {
+      while (open.length > 0 && (open[open.length - 1] ?? 0) >= indent) open.pop();
+    }
+    if (open.length > 0 && (open[0] ?? 0) < indent) owned[i] = 1;
+    if (doc.item[i] === 1) open.push(indent);
+  }
+  return owned;
+}
+
+/**
+ * The text with every trailing `^id` removed (a line holding only one is dropped), outside
+ * fenced and indented code. Obsidian shows no block ids in reading view.
+ */
+function hideBlockIds(text: string): string {
+  if (!text.includes('^')) return text;
+  const doc = analyse(text);
+  const out: string[] = [];
+  let changed = false;
+  let owned: Uint8Array | null = null;
+  for (let i = 0; i < doc.lines.length; i++) {
+    const line = doc.lines[i] ?? '';
+    // The id test comes first so a note without ids pays for none of this.
+    if (!BLOCK_ID.test(line)) {
+      out.push(line);
+      continue;
+    }
+    // Indented code is an indented block after a blank line that no list item holds.
+    let inCode = (doc.fenceOf[i] ?? -1) >= 0;
+    if (!inCode && indentOf(line) >= 4 && (i === 0 || isBlank(doc.lines[i - 1] ?? ''))) {
+      owned ??= itemOwned(doc);
+      inCode = doc.item[i] !== 1 && owned[i] === 0;
+    }
+    if (inCode) {
+      out.push(line);
+      continue;
+    }
+    changed = true;
+    if (!ONLY_BLOCK_ID.test(line)) out.push(stripBlockId(line));
+  }
+  if (!changed) return text;
+  return out.join(text.includes('\r\n') ? '\r\n' : '\n');
 }
 
 /**

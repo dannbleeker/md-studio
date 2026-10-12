@@ -25,7 +25,7 @@ import { liveDocContext, loadingChip, ownsEvent, withEmbedRender } from './embed
  * else null. A path a token cannot hold (`a|b.pdf`, `C%23.pdf`) stays an <img>:
  * nothing could mount it, so the view would sit on its loading chip for good.
  */
-function embedToken(src: string): string | null {
+export function embedToken(src: string): string | null {
   if (!isRelativeUrl(src) || isWebImage(src)) return null;
   const kind = classifyTarget(src.split(/[?#]/)[0] ?? '');
   // An unknown extension stays an <img>: browsers draw formats the embeds table

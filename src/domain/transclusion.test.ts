@@ -229,7 +229,7 @@ describe('block selection', () => {
 
   it('takes the innermost item with its own continuation lines', () => {
     const md = '- a\n  - b ^cb\n    cont\n- c';
-    expect(select(md, '^cb')).toBe('  - b\n    cont');
+    expect(select(md, '^cb')).toBe('- b\n  cont');
   });
 
   it('takes a list item through a more-indented continuation line', () => {
@@ -346,6 +346,34 @@ describe('long lines stay cheap', () => {
     }
   });
 
+  it('looks up a heading past thousands of bracket-heavy headings', () => {
+    // Each heading is cut to 1000 characters, but the link patterns were still quadratic in that.
+    for (const heading of [
+      '['.repeat(990),
+      '[a]('.repeat(240),
+      '[['.repeat(495),
+      '!['.repeat(330),
+    ]) {
+      const md = `${`# ${heading}\n`.repeat(2000)}# Real\n\nreal body\n`;
+      let found: string | null = null;
+      expect(
+        time(() => {
+          found = select(md, 'Real');
+        }),
+        heading.slice(0, 8)
+      ).toBeLessThan(1000);
+      expect(found).toBe('# Real\n\nreal body');
+    }
+  });
+
+  it('keeps stripping links from headings', () => {
+    const md = (h: string) => `# ${h}\n\nbody\n`;
+    expect(select(md('A [link](http://x/y) b'), 'A link b')).not.toBeNull();
+    expect(select(md('![alt text](a.png) pic'), 'alt text pic')).not.toBeNull();
+    expect(select(md('See [[Note|shown]] now'), 'See shown now')).not.toBeNull();
+    expect(select(md('See [[Note]] now'), 'See Note now')).not.toBeNull();
+  });
+
   it('looks up a block id past a line of blanks and a table-like line', () => {
     const md = `${' '.repeat(N)}x\n\n${' '.repeat(N)}\n\nPara one\nmore ^id\n\n${' '.repeat(N)}-x`;
     let found: string | null = null;
@@ -359,7 +387,8 @@ describe('long lines stay cheap', () => {
   });
 
   it('still drops closing hashes and a trailing block id from a heading', () => {
-    expect(select('## Title ## ^id\n\nbody', 'Title')).toBe('## Title ## ^id\n\nbody');
+    // The id only matches the heading; the shown text no longer carries it.
+    expect(select('## Title ## ^id\n\nbody', 'Title')).toBe('## Title ##\n\nbody');
     expect(select('## Title ##\n\nbody', 'Title')).toBe('## Title ##\n\nbody');
     expect(select('## Title #x\n\nbody', 'Title')).toBeNull();
     expect(select('## C#\n\nbody', 'C')).toBe('## C#\n\nbody');
@@ -369,5 +398,143 @@ describe('long lines stay cheap', () => {
   it('still finds a table by the block id on its last row', () => {
     const md = '| a | b |\n| --- | --- |\n| 1 | 2 | ^t\n\nAfter';
     expect(select(md, '^t')).toBe('| a | b |\n| --- | --- |\n| 1 | 2 |');
+  });
+});
+
+describe('nested list items lose their indent', () => {
+  it('dedents an item nested four columns deep, which would be code otherwise', () => {
+    expect(select('- a\n  - b\n    - c ^abc\n', '^abc')).toBe('- c');
+  });
+
+  it('counts a tab as four columns and keeps the item relative structure', () => {
+    expect(select('- a\n\t- b\n\t\t- c ^abc\n\t\t\t- d\n', '^abc')).toBe('- c\n\t- d');
+  });
+
+  it('dedents continuation lines by no more than they have', () => {
+    expect(select('- a\n  - b\n    - c ^abc\n      more\n', '^abc')).toBe('- c\n  more');
+    expect(select('- a\n  - b\n    - c ^abc\n lazy\n', '^abc')).toBe('- c\nlazy');
+  });
+});
+
+describe('a standalone id after a list', () => {
+  it('names the whole list, not its last item', () => {
+    expect(select('- a\n- b\n- c\n\n^lst\n\nafter\n', '^lst')).toBe('- a\n- b\n- c');
+    expect(select('1. a\n2. b\n\n^lst', '^lst')).toBe('1. a\n2. b');
+  });
+
+  it('takes nested items and blank lines between items along', () => {
+    expect(select('- a\n  - a1\n\n- b\n\n^lst', '^lst')).toBe('- a\n  - a1\n\n- b');
+  });
+
+  it('stops at the paragraph above the list', () => {
+    expect(select('intro\n\n- a\n- b\n\n^lst', '^lst')).toBe('- a\n- b');
+  });
+
+  it('keeps naming the item when the id sits right under it, or ends the item line', () => {
+    expect(select('- a\n- b\n^lst', '^lst')).toBe('- b');
+    expect(select('- a\n- b ^x\n- c', '^x')).toBe('- b');
+  });
+});
+
+describe('paragraph boundaries follow CommonMark', () => {
+  it('does not let a number other than 1 start a list inside a paragraph', () => {
+    expect(select('Released in the year\n2020. It was great ^yr\n', '^yr')).toBe(
+      'Released in the year\n2020. It was great'
+    );
+  });
+
+  it('lets 1. interrupt a paragraph, and a list start after a blank line needs no 1', () => {
+    expect(select('para ^p\n1. one\n', '^p')).toBe('para');
+    expect(select('para\n\n2020. item ^i\n', '^i')).toBe('2020. item');
+  });
+
+  it('does not let an empty list marker interrupt a paragraph', () => {
+    expect(select('one\ntwo ^p\n*\nthree\n', '^p')).toBe('one\ntwo\n*\nthree');
+  });
+
+  it('ends a paragraph at an HTML block start', () => {
+    expect(select('one\ntwo ^p1\n<div>raw</div>\n', '^p1')).toBe('one\ntwo');
+  });
+
+  it('takes a lazy continuation line as part of the list item above it', () => {
+    expect(select('- first\ncontinued ^li\n- second\n', '^li')).toBe('- first\ncontinued');
+    expect(select('- first ^li\ncontinued\n- second\n', '^li')).toBe('- first\ncontinued');
+  });
+});
+
+describe('block id markers in a bigger embed', () => {
+  it('hides trailing ids in a whole-note embed and drops a line that is only an id', () => {
+    const md = 'Para one ^abc123\n\n- item ^li1\n\n> quote ^qid\n\ntable text\n\n^lone\n\nend';
+    expect(select(md, null)).toBe('Para one\n\n- item\n\n> quote\n\ntable text\n\n\nend');
+  });
+
+  it('hides ids in a heading section and keeps the heading text clean', () => {
+    expect(select('# A ^h\n\ntext ^t\n\n# B\n', 'A')).toBe('# A\n\ntext');
+  });
+
+  it('hides ids on nested lines of a block embed', () => {
+    expect(select('- a ^top\n  - b ^inner\n', '^top')).toBe('- a\n  - b');
+  });
+
+  it('keeps ids inside fenced code, and carets that are not ids', () => {
+    const md = '```\ncode ^keep\n```\n\nx^2 and 2 ^ 3 ^\n';
+    expect(select(md, null)).toBe(md);
+  });
+
+  it('keeps CRLF line endings', () => {
+    expect(select('a ^x\r\nb\r\n', null)).toBe('a\r\nb\r\n');
+  });
+});
+
+describe('hiding block ids stays linear', () => {
+  const time = (fn: () => void): number => {
+    const t0 = performance.now();
+    fn();
+    return performance.now() - t0;
+  };
+
+  it('does not walk the document for every indented line that carries an id', () => {
+    // Each id line used to look for its list owner by walking up to the top of the note.
+    const code = '\n    x ^a\n'.repeat(20_000);
+    let shown: string | null = null;
+    expect(
+      time(() => {
+        shown = select(code, null);
+      })
+    ).toBeLessThan(1000);
+    // Indented code keeps its caret text.
+    expect(shown).toBe(code);
+    const list = `- item\n${'\n      x ^a\n'.repeat(20_000)}`;
+    let hidden: string | null = null;
+    expect(
+      time(() => {
+        hidden = select(list, null);
+      })
+    ).toBeLessThan(1000);
+    expect(hidden).not.toContain('^a');
+    const deep = `${'          - deep\n'.repeat(10_000)}${'\n    x ^a\n'.repeat(10_000)}`;
+    expect(time(() => select(deep, null))).toBeLessThan(1000);
+  });
+
+  it('hides an id only where Obsidian shows no code', () => {
+    expect(select('Para\n\n    code ^a\n', null)).toBe('Para\n\n    code ^a\n');
+    expect(select('- item\n\n    more ^a\n', null)).toBe('- item\n\n    more\n');
+    expect(select('- item\n  - sub\n\n      deep ^a\n', null)).toBe(
+      '- item\n  - sub\n\n      deep\n'
+    );
+    // Unindented text under an item ends the list, so the indented line after it is code.
+    expect(select('- item\nlazy\n\n    code ^a\n', null)).toBe('- item\nlazy\n\n    code ^a\n');
+    expect(select('    - item ^a\n', null)).toBe('    - item\n');
+  });
+
+  it('does not walk the document for every indented line without an id', () => {
+    // A caret anywhere (here x^2) switches the id pass on. 8000 indented code
+    // paragraphs took seconds when each one searched for its list owner.
+    const md = `x^2 and ${'    code line\n\n'.repeat(8000)}`;
+    const t0 = performance.now();
+    const result = selectNoteContent(md, null);
+    const ms = performance.now() - t0;
+    expect(result?.markdown.startsWith('x^2 and')).toBe(true);
+    expect(ms).toBeLessThan(1000);
   });
 });

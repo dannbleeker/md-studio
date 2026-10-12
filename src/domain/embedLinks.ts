@@ -3,10 +3,10 @@
  * from the core scanner in embeds.ts so the eager bundle does not carry it.
  */
 
+import { codeRanges, inCode } from './codeRegions';
 import { type EmbedSize, formatSize, parseAltSize } from './embeds';
-import { closesFence, openFence } from './fences';
-import { codeLines } from './footnotes';
 import { frontMatterEnd } from './frontMatter';
+import { isRelativeUrl } from './imagePaths';
 
 export interface MarkdownImageRef {
   start: number;
@@ -24,21 +24,46 @@ export interface MarkdownImageRef {
 
 // Caps keep a line full of unclosed `![` from rescanning to its end each time.
 const MAX_SPAN = 2048;
+// The span cap alone still lets every start rescan up to 2048 characters of destination or
+// title, so a long line of `![a](` cost 2048 times its length. A line also gets a total budget
+// for those scans; once it is spent the rest of that line is left alone. Short lines never
+// reach it.
+const BUDGET_PER_CHAR = 16;
+const MIN_BUDGET = 8192;
 
-/** The first index of `[`-balanced `]` from `from`, or -1. Backslash escapes the next character. */
-function altEnd(line: string, from: number): number {
-  const limit = Math.min(line.length, from + MAX_SPAN);
-  let depth = 0;
-  for (let i = from; i < limit; i++) {
+/** Characters one line may still be scanned for. */
+interface Budget {
+  left: number;
+}
+
+/** The end of a scan from `from`: the span cap, the line and what is left of the budget. */
+function scanLimit(line: string, from: number, budget: Budget): number {
+  return Math.min(line.length, from + MAX_SPAN, from + budget.left);
+}
+
+/** Charge the characters a scan from `from` covered up to `to`. */
+function spend(budget: Budget, from: number, to: number): void {
+  budget.left -= Math.max(1, to - from);
+}
+
+/**
+ * For every `[` that follows a `!`, the index of its balanced `]` (a backslash escapes the next
+ * character); `[` without a partner is left out. One pass with a stack, so a line of unclosed
+ * `![` costs its length and not its length times the scan cap.
+ */
+function altCloses(line: string): Map<number, number> {
+  const closes = new Map<number, number>();
+  const open: number[] = [];
+  for (let i = 0; i < line.length; i++) {
     const ch = line[i];
     if (ch === '\\') i++;
-    else if (ch === '[') depth++;
+    else if (ch === '[') open.push(i);
     else if (ch === ']') {
-      if (depth === 0) return i;
-      depth--;
+      const start = open.pop();
+      if (start !== undefined && line[start - 1] === '!') closes.set(start, i);
     }
   }
-  return -1;
+  return closes;
 }
 
 const BLANKS = /[ \t]*/y;
@@ -52,60 +77,77 @@ function skipBlanks(line: string, from: number): number {
 /** Reads a destination at `from`: `<...>` (spaces allowed) or bare with balanced parentheses. */
 function readDestination(
   line: string,
-  from: number
+  from: number,
+  budget: Budget
 ): { dest: string; angle: boolean; next: number } | null {
-  const limit = Math.min(line.length, from + MAX_SPAN);
-  if (line[from] === '<') {
-    for (let i = from + 1; i < limit; i++) {
+  const limit = scanLimit(line, from, budget);
+  let i = from;
+  try {
+    if (line[from] === '<') {
+      for (i = from + 1; i < limit; i++) {
+        const ch = line[i];
+        if (ch === '\\') i++;
+        else if (ch === '<') return null;
+        else if (ch === '>') return { dest: line.slice(from + 1, i), angle: true, next: i + 1 };
+      }
+      return null;
+    }
+    let depth = 0;
+    for (; i < limit; i++) {
       const ch = line[i];
       if (ch === '\\') i++;
-      else if (ch === '<') return null;
-      else if (ch === '>') return { dest: line.slice(from + 1, i), angle: true, next: i + 1 };
+      else if (ch === '(') depth++;
+      else if (ch === ')') {
+        if (depth === 0) break;
+        depth--;
+      } else if (ch === ' ' || ch === '\t') break;
     }
-    return null;
+    if (i >= limit || depth !== 0) return null;
+    return { dest: line.slice(from, i), angle: false, next: i };
+  } finally {
+    spend(budget, from, i);
   }
-  let depth = 0;
-  let i = from;
-  for (; i < limit; i++) {
-    const ch = line[i];
-    if (ch === '\\') i++;
-    else if (ch === '(') depth++;
-    else if (ch === ')') {
-      if (depth === 0) break;
-      depth--;
-    } else if (ch === ' ' || ch === '\t') break;
-  }
-  if (i >= limit || depth !== 0) return null;
-  return { dest: line.slice(from, i), angle: false, next: i };
 }
 
-function readTitle(line: string, from: number): { title: string; next: number } | null {
+function readTitle(
+  line: string,
+  from: number,
+  budget: Budget
+): { title: string; next: number } | null {
   const open = line[from];
   const close = open === '(' ? ')' : open;
   if (open !== '"' && open !== "'" && open !== '(') return null;
-  const limit = Math.min(line.length, from + MAX_SPAN);
-  for (let i = from + 1; i < limit; i++) {
-    const ch = line[i];
-    if (ch === '\\') i++;
-    else if (ch === close) return { title: line.slice(from + 1, i), next: i + 1 };
+  const limit = scanLimit(line, from, budget);
+  let i = from + 1;
+  try {
+    for (; i < limit; i++) {
+      const ch = line[i];
+      if (ch === '\\') i++;
+      else if (ch === close) return { title: line.slice(from + 1, i), next: i + 1 };
+    }
+    return null;
+  } finally {
+    spend(budget, from, i);
   }
-  return null;
 }
 
 /** Parses `![alt](dest "title")` starting at the `!` at `at`; returns the end offset in the line. */
 function parseImage(
   line: string,
-  at: number
+  at: number,
+  closes: ReadonlyMap<number, number>,
+  budget: Budget
 ): (Omit<MarkdownImageRef, 'start' | 'end' | 'raw'> & { next: number }) | null {
-  const close = altEnd(line, at + 2);
-  if (close < 0 || line[close + 1] !== '(') return null;
+  const close = closes.get(at + 1) ?? -1;
+  // Nothing past the span cap counts, as before.
+  if (close < 0 || close >= at + 2 + MAX_SPAN || line[close + 1] !== '(') return null;
   const destStart = skipBlanks(line, close + 2);
-  const dest = readDestination(line, destStart);
+  const dest = readDestination(line, destStart, budget);
   if (!dest) return null;
   let i = skipBlanks(line, dest.next);
   let title: string | null = null;
   if (i > dest.next) {
-    const read = readTitle(line, i);
+    const read = readTitle(line, i, budget);
     if (read) {
       title = read.title;
       i = skipBlanks(line, read.next);
@@ -123,29 +165,6 @@ function escaped(line: string, at: number): boolean {
   return n % 2 === 1;
 }
 
-/** Inline code spans: a backtick run closes at the next run of exactly its length. */
-function codeSpans(line: string): [number, number][] {
-  const runs = [...line.matchAll(/`+/g)].map((m) => ({ pos: m.index, len: m[0].length }));
-  const spans: [number, number][] = [];
-  const next = new Map<number, number>();
-  const closer: number[] = [];
-  // Backwards, so each run knows the next run of its own length in O(1).
-  for (let i = runs.length - 1; i >= 0; i--) {
-    const len = runs[i]?.len ?? 0;
-    closer[i] = next.get(len) ?? -1;
-    next.set(len, i);
-  }
-  for (let i = 0; i < runs.length; i++) {
-    const open = runs[i];
-    const c = closer[i] ?? -1;
-    const end = runs[c];
-    if (!open || !end) continue;
-    spans.push([open.pos, end.pos + end.len]);
-    i = c;
-  }
-  return spans;
-}
-
 export function findMarkdownImages(
   text: string,
   opts: { code?: 'skip' | 'ignore' } = {}
@@ -153,57 +172,50 @@ export function findMarkdownImages(
   if (!text.includes('![')) return [];
   const skipCode = (opts.code ?? 'skip') === 'skip';
   const fmEnd = skipCode ? frontMatterEnd(text) : -1;
-  const lines = text.split('\n');
-  const starts: number[] = [];
-  let offset = 0;
-  for (const [i, l] of lines.entries()) {
-    starts.push(offset);
-    offset += l.length + 1;
-    lines[i] = l.endsWith('\r') ? l.slice(0, -1) : l;
-  }
-  const skip = lines.map((_, i) => fmEnd >= 0 && (starts[i] ?? 0) <= fmEnd);
-  if (skipCode) {
-    let fence: string | null = null;
-    lines.forEach((line, i) => {
-      if (skip[i]) return;
-      if (fence) {
-        skip[i] = true;
-        if (closesFence(line, fence)) fence = null;
-      } else {
-        fence = openFence(line);
-        if (fence) skip[i] = true;
-      }
-    });
-  }
-  const indented = skipCode
-    ? codeLines(lines.map((l, i) => (skip[i] ? '' : l.replace(/^( *)([`~])/, '$1x$2'))))
-    : [];
   const out: MarkdownImageRef[] = [];
-  lines.forEach((line, i) => {
-    if (skip[i] || indented[i] || !line.includes('![')) return;
-    const spans = skipCode ? codeSpans(line) : [];
+  for (let pos = 0; pos <= text.length; ) {
+    const nl = text.indexOf('\n', pos);
+    const lineEnd = nl < 0 ? text.length : nl;
+    const lineStart = pos;
+    pos = lineEnd + 1;
+    if (lineStart <= fmEnd) continue;
+    const line = text.slice(
+      lineStart,
+      text[lineEnd - 1] === '\r' && lineEnd > lineStart ? lineEnd - 1 : lineEnd
+    );
+    if (!line.includes('![')) continue;
+    const budget: Budget = { left: Math.max(MIN_BUDGET, line.length * BUDGET_PER_CHAR) };
+    const closes = altCloses(line);
     for (let at = line.indexOf('!['); at >= 0; at = line.indexOf('![', at + 1)) {
+      if (budget.left <= 0) break;
       if (line[at + 2] === '[' || escaped(line, at)) continue;
-      if (spans.some(([s, e]) => at >= s && at < e)) continue;
-      const parsed = parseImage(line, at);
+      const parsed = parseImage(line, at, closes, budget);
       if (!parsed) continue;
       const { next, ...rest } = parsed;
       out.push({
         ...rest,
-        start: (starts[i] ?? 0) + at,
-        end: (starts[i] ?? 0) + next,
+        start: lineStart + at,
+        end: lineStart + next,
         raw: line.slice(at, next),
       });
       at = next - 1;
     }
-  });
-  return out;
+  }
+  if (!skipCode || out.length === 0) return out;
+  const code = codeRanges(text, fmEnd < 0 ? 0 : fmEnd + 1);
+  return out.filter((ref) => !inCode(code, ref.start));
 }
 
+/**
+ * Whether a destination names a file next to the note or in the vault. Only
+ * what the image view and the resolver can serve counts: a root-absolute
+ * path, a backslash or UNC form, an anchor and an empty destination are not
+ * files they would ever load, so choosing a folder cannot make them show.
+ */
 export function isLocalTarget(dest: string): boolean {
   let s = dest.trim();
   if (s.startsWith('<') && s.endsWith('>')) s = s.slice(1, -1).trim();
-  return !(s.startsWith('//') || /^[a-z][a-z0-9+.-]*:/i.test(s));
+  return isRelativeUrl(s);
 }
 
 export function formatWikiEmbed(p: {

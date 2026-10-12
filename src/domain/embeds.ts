@@ -1,12 +1,11 @@
 /**
  * Obsidian-style wiki tokens: `[[Note]]`, `![[image.png|300]]`. This is the
  * core scanner only (it lands in the eager bundle), so it keeps to string
- * work and imports nothing but the front matter and fence helpers. Targets
+ * work and imports nothing but the front matter and code-region helpers. Targets
  * are not resolved here: that is the vault index's job.
  */
 
-import { closesFence, openFence } from './fences';
-import { codeLines } from './footnotes';
+import { codeRanges, inCode } from './codeRegions';
 import { frontMatterEnd } from './frontMatter';
 
 export const EMBED_NODE_NAME = 'embed';
@@ -88,7 +87,10 @@ export function parseAltSize(alt: string): { alt: string; size: EmbedSize | null
   const bar = alt.lastIndexOf('|');
   if (bar < 0) return { alt, size: null };
   const size = parseSize(alt.slice(bar + 1).trim());
-  return size ? { alt: alt.slice(0, bar).trimEnd(), size } : { alt, size: null };
+  if (!size) return { alt, size: null };
+  // A table cell spells the separator `\|`; the backslash belongs to it, not to the alt.
+  const cut = alt[bar - 1] === '\\' && !escaped(alt, bar - 1) ? bar - 1 : bar;
+  return { alt: alt.slice(0, cut).trimEnd(), size };
 }
 
 /**
@@ -169,52 +171,6 @@ function escaped(line: string, at: number): boolean {
   return n % 2 === 1;
 }
 
-/**
- * Inline code spans on one line by the CommonMark rule: a backtick run of
- * length n closes at the next run of exactly n, otherwise it is literal.
- * Runs are bucketed by length so pairing stays linear on huge lines.
- */
-function codeSpans(line: string): [number, number][] {
-  if (!line.includes('`')) return [];
-  const runs: { pos: number; len: number }[] = [];
-  for (let i = 0; i < line.length; i++) {
-    if (line[i] !== '`') continue;
-    let j = i;
-    while (line[j] === '`') j++;
-    runs.push({ pos: i, len: j - i });
-    i = j - 1;
-  }
-  const byLength = new Map<number, number[]>();
-  runs.forEach((run, idx) => {
-    const list = byLength.get(run.len);
-    if (list) list.push(idx);
-    else byLength.set(run.len, [idx]);
-  });
-  const spans: [number, number][] = [];
-  for (let i = 0; i < runs.length; i++) {
-    const open = runs[i];
-    if (!open) continue;
-    // A backslash makes the first backtick of an opener literal.
-    const esc = escaped(line, open.pos);
-    const n = open.len - (esc ? 1 : 0);
-    if (n < 1) continue;
-    const list = byLength.get(n) ?? [];
-    let lo = 0;
-    let hi = list.length;
-    while (lo < hi) {
-      const mid = (lo + hi) >> 1;
-      if ((list[mid] ?? 0) > i) hi = mid;
-      else lo = mid + 1;
-    }
-    const closeIdx = list[lo];
-    const close = closeIdx === undefined ? undefined : runs[closeIdx];
-    if (!close || closeIdx === undefined) continue;
-    spans.push([open.pos + (esc ? 1 : 0), close.pos + close.len]);
-    i = closeIdx;
-  }
-  return spans;
-}
-
 export function findWikiRefs(
   text: string,
   opts: { code?: 'skip' | 'ignore'; frontMatter?: 'skip' | 'ignore' } = {}
@@ -222,57 +178,38 @@ export function findWikiRefs(
   if (!text.includes('[[')) return [];
   const skipCode = (opts.code ?? 'skip') === 'skip';
   const fmEnd = (opts.frontMatter ?? 'skip') === 'skip' ? frontMatterEnd(text) : -1;
-  const lines: string[] = [];
-  const starts: number[] = [];
+  const refs: WikiRef[] = [];
   for (let pos = 0; pos <= text.length; ) {
     const nl = text.indexOf('\n', pos);
-    const end = nl < 0 ? text.length : nl;
-    starts.push(pos);
-    lines.push(text.slice(pos, text[end - 1] === '\r' && end > pos ? end - 1 : end));
-    pos = end + 1;
-  }
-  // Skipped lines are blanked for the indented-code pass, and a fence lookalike that
-  // openFence rejected (inline code) is defused so footnotes.ts cannot open a fence on it.
-  const skip = lines.map((_, i) => fmEnd >= 0 && (starts[i] ?? 0) <= fmEnd);
-  if (skipCode) {
-    let fence: string | null = null;
-    lines.forEach((line, i) => {
-      if (skip[i]) return;
-      if (fence) {
-        skip[i] = true;
-        if (closesFence(line, fence)) fence = null;
-      } else {
-        fence = openFence(line);
-        if (fence) skip[i] = true;
-      }
-    });
-  }
-  const indented = skipCode
-    ? codeLines(lines.map((l, i) => (skip[i] ? '' : l.replace(/^( *)([`~])/, '$1x$2'))))
-    : [];
-  const refs: WikiRef[] = [];
-  lines.forEach((line, i) => {
-    if (skip[i] || indented[i] || !line.includes('[[')) return;
-    const spans = skipCode ? codeSpans(line) : [];
-    let span = 0;
+    const lineEnd = nl < 0 ? text.length : nl;
+    const lineStart = pos;
+    pos = lineEnd + 1;
+    if (lineStart <= fmEnd) continue;
+    const line = text.slice(
+      lineStart,
+      text[lineEnd - 1] === '\r' && lineEnd > lineStart ? lineEnd - 1 : lineEnd
+    );
     for (let at = line.indexOf('[['); at >= 0; at = line.indexOf('[[', at + 1)) {
-      while (spans[span] && (spans[span]?.[1] ?? 0) <= at) span++;
-      const current = spans[span];
-      if (current && current[0] <= at) continue;
       if (escaped(line, at)) continue;
-      const embed = line[at - 1] === '!';
-      if (embed && escaped(line, at - 1)) continue;
       const end = tokenEnd(line, at + 2);
       if (end < 0) continue;
+      // A bang that is itself escaped is a literal character before a plain link.
+      const embed = line[at - 1] === '!' && !escaped(line, at - 1);
       const begin = embed ? at - 1 : at;
-      const raw = line.slice(begin, end);
-      const ref = build(raw, embed, (starts[i] ?? 0) + begin, line.slice(at + 2, end - 2));
+      const ref = build(
+        line.slice(begin, end),
+        embed,
+        lineStart + begin,
+        line.slice(at + 2, end - 2)
+      );
       if (!ref) continue;
       refs.push(ref);
       at = end - 1;
     }
-  });
-  return refs;
+  }
+  if (!skipCode || refs.length === 0) return refs;
+  const code = codeRanges(text, fmEnd < 0 ? 0 : fmEnd + 1);
+  return refs.filter((ref) => !inCode(code, ref.start));
 }
 
 const UNESCAPE = /\\([!-/:-@[-`{-~])|&(?:(amp|lt|gt|quot)|#(\d{1,7})|#[xX]([0-9a-fA-F]{1,6}));/g;

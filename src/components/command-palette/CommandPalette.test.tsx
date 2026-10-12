@@ -2,23 +2,35 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocument } from '@/domain/document';
 import { resetStoreForTest, useStore } from '@/store';
-import { useUiStore } from '@/store/ui';
+import { resetDialogsForTest, useUiStore } from '@/store/ui';
 import { CommandPalette } from './CommandPalette';
 
 const attachments = vi.hoisted(() => ({
   ctx: { fileHandle: null, handleId: 'h1' },
   chooseAttachmentFolder: vi.fn(async () => true),
   refreshAttachments: vi.fn(async () => {}),
+  attachmentStatus: vi.fn(
+    async (): Promise<unknown> => ({
+      kind: 'ready',
+      folderName: 'V',
+      isVaultRoot: true,
+      misses: 0,
+      scanning: false,
+    })
+  ),
 }));
 vi.mock('@/services/attachments', () => ({
   currentDocContext: () => attachments.ctx,
   chooseAttachmentFolder: attachments.chooseAttachmentFolder,
   refreshAttachments: attachments.refreshAttachments,
+  attachmentStatus: attachments.attachmentStatus,
 }));
 
 describe('CommandPalette', () => {
   beforeEach(() => {
     resetStoreForTest();
+    resetDialogsForTest();
+    useUiStore.setState({ toasts: [] });
     useStore.getState().setScreen('editor');
     useUiStore.getState().setPaletteOpen(true);
   });
@@ -128,6 +140,55 @@ describe('CommandPalette', () => {
       expect(useUiStore.getState().toasts.map((x) => x.message)).toContain('Attachments rescanned.')
     );
     expect(attachments.refreshAttachments).toHaveBeenCalledWith(attachments.ctx);
+  });
+
+  it.each([
+    [{ kind: 'unsupported' }, 'cannot read folders'],
+    [{ kind: 'no-note-file' }, 'Save this document to disk'],
+    [{ kind: 'no-folder' }, 'No attachment folder is chosen'],
+    [{ kind: 'needs-permission', folderName: 'Vault' }, 'Attachments in Vault need permission'],
+  ])('does not claim a rescan when it cannot run (%j)', async (status, message) => {
+    attachments.attachmentStatus.mockResolvedValueOnce(status);
+    attachments.refreshAttachments.mockClear();
+    render(<CommandPalette />);
+    const input = screen.getByRole('combobox', { name: 'Commands' });
+    fireEvent.change(input, { target: { value: 'rescan' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await vi.waitFor(() =>
+      expect(useUiStore.getState().toasts.map((x) => x.message)).toEqual([
+        expect.stringContaining(message),
+      ])
+    );
+    expect(attachments.refreshAttachments).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [{ kind: 'unsupported' }, 'cannot read folders'],
+    [{ kind: 'no-note-file' }, 'Save this document to disk'],
+  ])('says why choosing a folder cannot run (%j)', async (status, message) => {
+    attachments.chooseAttachmentFolder.mockResolvedValueOnce(false);
+    attachments.attachmentStatus.mockResolvedValueOnce(status);
+    render(<CommandPalette />);
+    const input = screen.getByRole('combobox', { name: 'Commands' });
+    fireEvent.change(input, { target: { value: 'choose attachment' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await vi.waitFor(() =>
+      expect(useUiStore.getState().toasts.map((x) => x.message)).toEqual([
+        expect.stringContaining(message),
+      ])
+    );
+  });
+
+  it('stays quiet when the folder picker is cancelled', async () => {
+    attachments.chooseAttachmentFolder.mockResolvedValueOnce(false);
+    attachments.attachmentStatus.mockResolvedValueOnce({ kind: 'no-folder' });
+    render(<CommandPalette />);
+    const input = screen.getByRole('combobox', { name: 'Commands' });
+    fireEvent.change(input, { target: { value: 'choose attachment' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await vi.waitFor(() => expect(attachments.attachmentStatus).toHaveBeenCalled());
+    await Promise.resolve();
+    expect(useUiStore.getState().toasts).toEqual([]);
   });
 
   it('hides the attachment commands on the start screen', () => {

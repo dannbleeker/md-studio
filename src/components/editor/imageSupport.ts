@@ -7,6 +7,7 @@ import { EMBED_NODE_NAME, MEDIA_KINDS } from '@/domain/embeds';
 import { t } from '@/i18n';
 import type { PlacedAttachment } from '@/services/images';
 import { showToast } from '@/store/ui';
+import { embedMarks } from './embedNode';
 
 /** The attachment service loads on first use: most sessions never paste a file. */
 const images = () => import('@/services/images');
@@ -112,10 +113,19 @@ export function visualPaneImagePlugin(getEditor: () => Editor | null): Plugin {
         return;
       }
       const embed = state.schema.nodes[EMBED_NODE_NAME];
-      // The token is text inside a code block, where nodes cannot go.
+      const { $from } = state.selection;
+      const marks = state.storedMarks ?? $from.marks();
+      // The token is text inside code, where nodes cannot go: a code block, or
+      // an inline code span (an embed there would be written as empty backticks).
+      const inCode = $from.parent.type.spec.code || marks.some((m) => m.type.spec.code);
+      // No inherited marks: a link would swallow the token (the scanner never
+      // reads one in link text); only the ones Markdown can write around it stay.
       view.dispatch(
-        (embed && !state.selection.$from.parent.type.spec.code
-          ? state.tr.replaceSelectionWith(embed.create({ raw: p.raw }))
+        (embed && !inCode
+          ? state.tr.replaceSelectionWith(
+              embed.create({ raw: p.raw }, null, embedMarks(marks)),
+              false
+            )
           : state.tr.insertText(p.raw)
         ).scrollIntoView()
       );

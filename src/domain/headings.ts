@@ -25,7 +25,7 @@ const SETEXT_2 = /^ {0,3}-+[ \t]*$/;
 /** Starts a list item or block quote: headings inside those aren't top-level. */
 const CONTAINER = /^ {0,3}(?:(?:[*+-]|\d{1,9}[.)])(?:[ \t]|$)|>)/;
 /** Starts an HTML block (CommonMark types 1, 2 and 6): its lines aren't Markdown. */
-const HTML_BLOCK =
+export const HTML_BLOCK =
   /^ {0,3}<(?:!--|\/?(?:address|article|aside|blockquote|details|dialog|div|dl|fieldset|figcaption|figure|footer|form|h[1-6]|header|hr|li|main|nav|ol|p|pre|script|section|style|summary|table|tbody|td|tfoot|th|thead|tr|ul)(?:[\s/>]|$))/i;
 /**
  * Lines that can't start a paragraph, once containers, fences, HTML and ATX

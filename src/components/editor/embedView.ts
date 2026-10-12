@@ -4,6 +4,7 @@ import { parseWikiRef } from '@/domain/embeds';
 import { t } from '@/i18n';
 import type { DocContext } from '@/services/attachments';
 import { useStore } from '@/store';
+import { prepareForPrint } from '@/store/flush';
 
 /**
  * The eager part of the embed views: a loading chip and the node view's
@@ -44,6 +45,18 @@ export function withEmbedRender(use: (m: Render) => void): void {
 export async function loadAllEmbeds(): Promise<void> {
   const render = loaded ?? (await loading?.catch(() => null));
   await render?.flushPendingEmbeds();
+}
+
+/**
+ * Prints the document with every embed drawn. The Print command and Ctrl+P both come
+ * here: the browser's own `beforeprint` cannot wait for an embed, so a printout started
+ * from the menu would show loading chips for whatever was off screen.
+ */
+export async function printDocument(): Promise<void> {
+  // First, so the embeds of the document being printed are the ones loaded.
+  prepareForPrint();
+  await loadAllEmbeds();
+  window.print();
 }
 
 /** The open document, read at every render so a tab switch is noticed. */

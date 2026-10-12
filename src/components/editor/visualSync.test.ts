@@ -191,6 +191,23 @@ describe('visual sync', () => {
     expect(s.shown()).toBe('other tab');
   });
 
+  it('catches up for printing even in text-only view, after edits and after a tab switch', async () => {
+    const s = setup('TAB A');
+    await s.settle();
+    s.change({ viewMode: 'text' });
+    s.type('TAB A edited');
+    s.sync.prepareForPrint();
+    expect(s.shown()).toBe('TAB A edited');
+
+    s.change({ markdown: 'TAB B', source: 'load', loadId: 1 });
+    expect(s.shown()).toBe('TAB A edited');
+    s.sync.prepareForPrint();
+    expect(s.shown()).toBe('TAB B');
+    // Nothing left to do for the next focus or view change.
+    s.change({ viewMode: 'split' });
+    expect(s.shown()).toBe('TAB B');
+  });
+
   it('rebuilds the editor empty and inert when the parser fails, then recovers', async () => {
     const s = setup('a');
     await s.settle();

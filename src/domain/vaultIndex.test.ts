@@ -340,4 +340,17 @@ describe('large vaults', () => {
       });
     }
   });
+
+  it('picks the nearest file out of a big same-name bucket without sorting it', () => {
+    // Timing bounds are generous: the old copy-and-sort took ~200 ms per
+    // resolve at this size, the single pass takes a few.
+    const paths = Array.from({ length: 30000 }, (_, i) => `d${i % 300}/s${i}/image.png`);
+    paths.push('d1/s1/n.md');
+    const idx = buildVaultIndex(paths);
+    const started = performance.now();
+    let last = null;
+    for (let i = 0; i < 10; i += 1) last = resolveTarget(idx, 'IMAGE.png', 'd1/s1/n.md');
+    expect(performance.now() - started).toBeLessThan(1000);
+    expect(last).toEqual({ path: 'd1/s1/image.png', ambiguous: true, candidates: 30000 });
+  });
 });

@@ -1,13 +1,20 @@
 import { markdown } from '@codemirror/lang-markdown';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
-import { Editor, editorViewCtx, rootCtx, serializerCtx } from '@milkdown/kit/core';
+import {
+  defaultValueCtx,
+  Editor,
+  editorViewCtx,
+  remarkPluginsCtx,
+  rootCtx,
+  serializerCtx,
+} from '@milkdown/kit/core';
 import { commonmark } from '@milkdown/kit/preset/commonmark';
 import { Schema } from '@milkdown/kit/prose/model';
 import { EditorState as PmState, TextSelection } from '@milkdown/kit/prose/state';
 import { EditorView as PmView } from '@milkdown/kit/prose/view';
 import { basicSetup } from 'codemirror';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PlacedAttachment } from '@/services/images';
 
 const placeFiles = vi.fn();
@@ -19,6 +26,7 @@ vi.mock('@/services/images', () => ({
 const showToast = vi.fn();
 vi.mock('@/store/ui', () => ({ showToast: (...a: unknown[]) => showToast(...a) }));
 
+import { embeds, remarkEmbeds } from './embedNode';
 import { textPaneImageHandlers, visualPaneImagePlugin } from './imageSupport';
 
 const png = () => new File(['x'], 'a.png', { type: 'image/png' });
@@ -269,5 +277,64 @@ describe('visual pane plugin with the real schema', () => {
     ['pdf', 'pdf'],
   ] as const)('still writes an image for a %s', async (kind, ext) => {
     expect(await placeAndSerialize(placed(kind, ext))).toBe(`![data](Attachments/data.${ext})`);
+  });
+});
+
+describe('visual pane plugin with embeds in marked text', () => {
+  let editor: Editor;
+  // jsdom has no layout; scrollIntoView measures the caret through a Range.
+  const range = Range.prototype as unknown as Record<string, unknown>;
+  beforeAll(() => {
+    range.getClientRects = () => [];
+    range.getBoundingClientRect = () => new DOMRect();
+  });
+  afterAll(() => {
+    range.getClientRects = undefined;
+    range.getBoundingClientRect = undefined;
+  });
+  const open = async (md: string) => {
+    const root = document.createElement('div');
+    document.body.append(root);
+    editor = await Editor.make()
+      .config((ctx) => {
+        ctx.set(rootCtx, root);
+        ctx.set(defaultValueCtx, md);
+        ctx.update(remarkPluginsCtx, (plugins) => [...plugins, remarkEmbeds]);
+      })
+      .use(commonmark)
+      .use(embeds)
+      .create();
+    return editor.action((ctx) => ctx.get(editorViewCtx));
+  };
+  afterEach(async () => {
+    await editor.destroy();
+    document.body.replaceChildren();
+  });
+
+  /** Pastes a file with the caret at `pos` and returns the document as Markdown. */
+  const pasteAt = async (md: string, pos: number): Promise<string> => {
+    const pm = await open(md);
+    pm.dispatch(pm.state.tr.setSelection(TextSelection.create(pm.state.doc, pos)));
+    placeFiles.mockImplementation(async (_f, _o, insert: (x: PlacedAttachment) => void) =>
+      insert(wiki('![[pic.png]]'))
+    );
+    const plugin = visualPaneImagePlugin(() => editor);
+    plugin.props.handlePaste?.call(plugin, pm, clip([png()]), null as never);
+    await flush();
+    return editor.action((ctx) => ctx.get(serializerCtx)(pm.state.doc));
+  };
+
+  it('writes the token as text inside an inline code span, not as empty backticks', async () => {
+    expect(await pasteAt('a `code` b\n', 5)).toBe('a `co![[pic.png]]de` b\n');
+  });
+
+  it('puts the token beside a link, not in its label', async () => {
+    const out = await pasteAt('[link text](http://e.com)\n', 4);
+    expect(out).toContain('![[pic.png]]');
+    expect(out).not.toMatch(/\[[^\]]*!\[\[pic/);
+  });
+
+  it('keeps the bold of the text around the caret', async () => {
+    expect(await pasteAt('a **bold** b\n', 5)).toBe('a **bo![[pic.png]]ld** b\n');
   });
 });

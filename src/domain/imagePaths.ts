@@ -15,6 +15,34 @@ export function imageExtension(mimeType: string): string {
   return EXT_BY_TYPE[mimeType] ?? 'png';
 }
 
+/** Types browsers name differently from the extension files of that type usually carry. */
+const EXT_ALIASES: Record<string, string> = {
+  apng: 'png',
+  'x-png': 'png',
+  pjpeg: 'jpg',
+  jpg: 'jpg',
+  'x-icon': 'ico',
+  'vnd.microsoft.icon': 'ico',
+};
+
+/**
+ * File extension for an image MIME type, or null when it names none that is
+ * safe to use in a file name. Unlike imageExtension this does not pretend an
+ * unknown type is a PNG: HEIC, TIFF and the like get their own extension.
+ */
+export function mimeExtension(mimeType: string): string | null {
+  const type = mimeType.toLowerCase();
+  const known = EXT_BY_TYPE[type];
+  if (known !== undefined) return known;
+  const m = /^image\/([a-z0-9][a-z0-9.+-]*)$/.exec(type);
+  const sub = m?.[1];
+  if (sub === undefined) return null;
+  const alias = EXT_ALIASES[sub];
+  if (alias !== undefined) return alias;
+  const ext = (sub.split('+')[0] ?? '').replace(/^x-/, '');
+  return /^[a-z0-9]{1,8}$/.test(ext) ? ext : null;
+}
+
 /** "image-20261002-171530.png", with "-2", "-3"… appended when the name is taken. */
 export function imageFileName(when: Date, ext: string, taken: (name: string) => boolean): string {
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -72,6 +100,23 @@ function hasControlCharacter(src: string): boolean {
   return false;
 }
 
+const INERT_SCHEME = /^(?:data|blob):/i;
+const PREFIX = 64;
+
+/**
+ * Pasted images are `data:` URLs of megabytes, and the checks below run on
+ * every view update. Those never need the whole string: a `data:` or `blob:`
+ * scheme loads nothing from a server unless `//` follows it right away. So the
+ * answer comes from a short prefix, read the way a browser does. Returns
+ * null when the prefix cannot settle it (another scheme, or too much leading
+ * junk to see past), and the caller does the full read.
+ */
+function inertSchemeIsWeb(src: string): boolean | null {
+  const head = asBrowserReads(src.slice(0, PREFIX));
+  if (!INERT_SCHEME.test(head) || head.length < 7) return null;
+  return head.startsWith('//', 5);
+}
+
 /**
  * True for an image on another server (`https://…`, `//host/…`): loading
  * it tells that server the document was opened. Pasted (`data:`) and local
@@ -79,6 +124,8 @@ function hasControlCharacter(src: string): boolean {
  * too: a browser reads both as `http://host/a.png`.
  */
 export function isWebImage(src: string): boolean {
+  const inert = inertSchemeIsWeb(src);
+  if (inert !== null) return inert;
   const read = asBrowserReads(src);
   return /^(?:[a-z][a-z0-9+.-]*:)?\/\//i.test(read) || /^https?:/i.test(read);
 }
@@ -97,6 +144,8 @@ export function isRasterDataUrl(src: string): boolean {
  * character in it, a leading backslash) is not one.
  */
 export function isRelativeUrl(src: string): boolean {
+  // data: and blob: are schemes, whatever else the string holds.
+  if (inertSchemeIsWeb(src) !== null) return false;
   return (
     src !== '' &&
     !hasControlCharacter(src) &&

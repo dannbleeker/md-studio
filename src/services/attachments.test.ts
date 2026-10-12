@@ -929,6 +929,18 @@ describe('readNoteText', () => {
     expect(await readNoteText(ctx, '', { fromNotePath: null })).toMatchObject({ state: 'missing' });
   });
 
+  it('flags a note whose name two files share, from the read and from the cache', async () => {
+    const { ctx } = setup({ 'A/dup.md': 'far', 'Notes/Daily/dup.md': 'near' });
+    await complete(ctx);
+    expect(await readNoteText(ctx, 'dup')).toMatchObject({
+      path: 'Notes/Daily/dup.md',
+      text: 'near',
+      ambiguous: true,
+    });
+    expect(peekNoteRead(ctx, 'dup')).toMatchObject({ path: 'Notes/Daily/dup.md', ambiguous: true });
+    expect(await readNoteText(ctx, 'Other')).not.toHaveProperty('ambiguous');
+  });
+
   it('reads a named note with the file size and modified time', async () => {
     const { ctx } = setup({ 'Other.md': 'other text' });
     await complete(ctx);
@@ -1262,5 +1274,460 @@ describe('module hygiene', () => {
     const scans = scanCounter(vault.root);
     await Promise.all([complete(ctx), complete(other)]);
     expect(scans).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Review fixes: lifecycle, caches, failure handling
+// ---------------------------------------------------------------------------
+
+type Listing = { values(): AsyncIterable<FileSystemHandle> };
+
+/** Makes one folder's listing wait for the returned release function. */
+function holdDir(dir: FileSystemDirectoryHandle): () => void {
+  let release: () => void = () => undefined;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const holder = dir as unknown as Listing;
+  const original = holder.values;
+  holder.values = async function* () {
+    await gate;
+    yield* original.call(dir);
+  };
+  return release;
+}
+
+/** Makes one folder's listing throw, until the returned function restores it. */
+function breakDir(dir: FileSystemDirectoryHandle, name = 'NotAllowedError'): () => void {
+  const holder = dir as unknown as Listing;
+  const original = holder.values;
+  holder.values = () => ({
+    [Symbol.asyncIterator]: () => ({
+      next: async () => {
+        throw new DOMException('refused', name);
+      },
+    }),
+  });
+  return () => {
+    holder.values = original;
+  };
+}
+
+async function addFile(root: FileSystemDirectoryHandle, path: string, data = 'x'): Promise<void> {
+  const segments = path.split('/');
+  const name = segments.pop() as string;
+  let dir = root;
+  for (const segment of segments) dir = await dir.getDirectoryHandle(segment, { create: true });
+  const writable = await (await dir.getFileHandle(name, { create: true })).createWritable();
+  await writable.write(data);
+  await writable.close();
+}
+
+const attConfig = (folder: string) => ({
+  '.obsidian/app.json': JSON.stringify({ attachmentFolderPath: folder }),
+});
+
+describe('a file saved while a rescan runs', () => {
+  it('is still in the index when that rescan finishes', async () => {
+    const { vault, ctx } = setup({ ...attConfig('Att'), 'Att/old.png': '', 'Z/z.md': '' });
+    await complete(ctx);
+    const z = await vault.root.getDirectoryHandle('Z');
+    const release = holdDir(z);
+    const rescan = refreshAttachments(ctx);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect((await saveAttachment(ctx, png('new.png'), 'drop')).ok).toBe(true);
+    release();
+    await rescan;
+    expect(await resolveAttachment(ctx, 'new.png')).toMatchObject({
+      state: 'ok',
+      path: 'Att/new.png',
+    });
+  });
+});
+
+describe('cached lookups and rescans', () => {
+  it('a rescan lets a nearer same-named file win over the cached path', async () => {
+    const { vault, ctx } = setup({ 'img/a.png': 'x' });
+    await complete(ctx);
+    expect(await resolveAttachment(ctx, 'a.png')).toMatchObject({ path: 'img/a.png' });
+    await addFile(vault.root, 'Notes/Daily/a.png');
+    await refreshAttachments(ctx);
+    expect(await resolveAttachment(ctx, 'a.png')).toMatchObject({ path: 'Notes/Daily/a.png' });
+  });
+
+  it('a rescan flags a later duplicate as ambiguous', async () => {
+    const { vault, ctx } = setup({ 'img/a.png': 'x' });
+    await complete(ctx);
+    expect(await resolveAttachment(ctx, 'a.png')).toMatchObject({ ambiguous: false });
+    await addFile(vault.root, 'zzz/a.png');
+    await refreshAttachments(ctx);
+    expect(await resolveAttachment(ctx, 'a.png')).toMatchObject({ ambiguous: true });
+  });
+
+  it('a bare name picked while the first scan runs agrees with the finished index', async () => {
+    const { vault, ctx } = setup(
+      { 'x.png': '1', 'Notes/x.png': '2', ...OBSIDIAN },
+      { note: 'Notes/n.md' }
+    );
+    const release = holdScan(vault.root);
+    expect(await resolveAttachment(ctx, 'x.png')).toMatchObject({ path: 'Notes/x.png' });
+    release();
+    await complete(ctx);
+    const settled = await resolveAttachment(ctx, 'x.png');
+    // A fresh session resolving after the scan gives this very answer.
+    resetAttachmentsForTest();
+    await complete(ctx);
+    expect(await resolveAttachment(ctx, 'x.png')).toMatchObject({
+      path: (settled as { path: string }).path,
+    });
+  });
+});
+
+describe('links written before the index is complete', () => {
+  it('never writes a bare name that is not unique in the vault', async () => {
+    const { ctx } = setup({ ...attConfig('attachments'), 'Notes/Daily/photo.png': 'other' });
+    const result = await saveAttachment(ctx, png('photo.png'), 'drop');
+    expect(result).toMatchObject({
+      ok: true,
+      saved: { path: 'attachments/photo.png', markdown: '![[attachments/photo.png]]' },
+    });
+    await complete(ctx);
+    expect(await resolveAttachment(ctx, 'attachments/photo.png')).toMatchObject({
+      path: 'attachments/photo.png',
+    });
+  });
+
+  it('falls back to the full path when the first scan is too slow to wait for', async () => {
+    vi.useFakeTimers();
+    const { vault, ctx } = setup({ ...attConfig('attachments'), 'Elsewhere/photo.png': 'other' });
+    holdScan(vault.root);
+    const saving = saveAttachment(ctx, png('photo.png'), 'drop');
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(await saving).toMatchObject({
+      ok: true,
+      saved: { markdown: '![[attachments/photo.png]]' },
+    });
+  });
+
+  it('still uses the shortest name once the index says it is unique', async () => {
+    const { ctx } = setup(attConfig('attachments'));
+    const result = await saveAttachment(ctx, png('only.png'), 'drop');
+    expect(result).toMatchObject({ ok: true, saved: { markdown: '![[only.png]]' } });
+  });
+});
+
+describe('notes over the size limit', () => {
+  it('say so instead of looking missing', async () => {
+    const { ctx } = setup({ 'Big.md': 'x'.repeat(2 * 1024 * 1024 + 1), 'Small.md': 'ok' });
+    await complete(ctx);
+    expect(await readNoteText(ctx, 'Big')).toMatchObject({ state: 'missing', tooLarge: true });
+    expect(await readNoteText(ctx, 'Nope')).not.toHaveProperty('tooLarge');
+  });
+});
+
+describe('writing a file that fails half way', () => {
+  function failingHandle(
+    vault: ReturnType<typeof setup>['vault'],
+    patch: (handle: FileSystemFileHandle) => void
+  ) {
+    const original = vault.root.getFileHandle.bind(vault.root);
+    vi.spyOn(vault.root, 'getFileHandle').mockImplementation(async (name, options) => {
+      const handle = await original(name, options);
+      if (options?.create) patch(handle);
+      return handle;
+    });
+  }
+
+  it('removes the empty file when createWritable throws', async () => {
+    const { vault, ctx } = setup(OBSIDIAN);
+    failingHandle(vault, (handle) => {
+      handle.createWritable = (async () => {
+        throw new DOMException('locked', 'NoModificationAllowedError');
+      }) as unknown as typeof handle.createWritable;
+    });
+    expect(await saveAttachment(ctx, png('a.png'), 'drop')).toEqual({
+      ok: false,
+      reason: 'failed',
+    });
+    await expect(vault.root.getFileHandle('a.png')).rejects.toMatchObject({
+      name: 'NotFoundError',
+    });
+  });
+
+  it('removes the empty file when close throws', async () => {
+    const { vault, ctx } = setup(OBSIDIAN);
+    const abort = vi.fn(async () => undefined);
+    failingHandle(vault, (handle) => {
+      handle.createWritable = (async () => ({
+        write: async () => undefined,
+        close: async () => {
+          throw new DOMException('full', 'QuotaExceededError');
+        },
+        abort,
+      })) as unknown as typeof handle.createWritable;
+    });
+    expect(await saveAttachment(ctx, png('a.png'), 'drop')).toEqual({
+      ok: false,
+      reason: 'failed',
+    });
+    expect(abort).toHaveBeenCalled();
+    await expect(vault.root.getFileHandle('a.png')).rejects.toMatchObject({
+      name: 'NotFoundError',
+    });
+  });
+});
+
+describe('a folder that cannot be listed during a scan', () => {
+  it('keeps what a rescan knew about it', async () => {
+    const { vault, ctx } = setup({ 'Other/b.png': '' });
+    await complete(ctx);
+    const other = await vault.root.getDirectoryHandle('Other');
+    const restore = breakDir(other);
+    await refreshAttachments(ctx);
+    expect((await complete(ctx))?.index.paths).toContain('Other/b.png');
+    expect(await resolveAttachment(ctx, 'b.png')).toMatchObject({ state: 'ok' });
+    restore();
+  });
+
+  it('retries after a refocus instead of treating the gap as final', async () => {
+    vi.useFakeTimers();
+    const { vault, ctx } = setup({ 'Other/b.png': '' });
+    await complete(ctx);
+    const restore = breakDir(await vault.root.getDirectoryHandle('Other'));
+    await refreshAttachments(ctx);
+    restore();
+    await vi.advanceTimersByTimeAsync(11_000);
+    await resolveAttachment(ctx, 'b.png');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(await resolveAttachment(ctx, 'b.png')).toMatchObject({ state: 'ok' });
+  });
+
+  it('grantAttachmentAccess rescans a folder whose first listing failed', async () => {
+    const { vault, ctx } = setup({ 'img/a.png': '' });
+    const restore = breakDir(vault.root);
+    expect((await complete(ctx))?.index.paths).toEqual([]);
+    restore();
+    expect(await grantAttachmentAccess(ctx)).toBe(true);
+    await vi.waitFor(async () =>
+      expect(await resolveAttachment(ctx, 'a.png')).toMatchObject({ state: 'ok' })
+    );
+  });
+});
+
+describe('a lapsed permission during a refocus', () => {
+  it('does not scan, and a later grant brings the index back', async () => {
+    vi.useFakeTimers();
+    const { vault, ctx } = setup({ 'img/a.png': '', 'img/b.png': '' });
+    useStore.getState().loadDocument(createDocument('# n', 'n.md'), ctx.fileHandle, 'h1');
+    await complete(ctx);
+    subscribeAttachments(() => undefined);
+    await resolveAttachment(ctx, 'a.png');
+    const restore = breakDir(vault.root);
+    vault.setPermission('prompt');
+    await vi.advanceTimersByTimeAsync(60_000);
+    window.dispatchEvent(new Event('focus'));
+    await vi.advanceTimersByTimeAsync(0);
+    vault.setPermission('granted');
+    restore();
+    expect(await grantAttachmentAccess(ctx)).toBe(true);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(await resolveAttachment(ctx, 'b.png')).toMatchObject({ state: 'ok' });
+  });
+
+  it('keeps the old index while the refocus is skipped', async () => {
+    vi.useFakeTimers();
+    const { vault, ctx } = setup({ 'img/a.png': '' });
+    useStore.getState().loadDocument(createDocument('# n', 'n.md'), ctx.fileHandle, 'h1');
+    await complete(ctx);
+    subscribeAttachments(() => undefined);
+    const scans = scanCounter(vault.root);
+    vault.setPermission('prompt');
+    await vi.advanceTimersByTimeAsync(60_000);
+    window.dispatchEvent(new Event('focus'));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(scans).not.toHaveBeenCalled();
+  });
+});
+
+describe('Save As onto a document that already has a folder', () => {
+  it('keeps that document’s own choice', async () => {
+    const { vault } = setup({ 'Sub/b.md': '' });
+    const sub = await vault.root.getDirectoryHandle('Sub');
+    stored.set('dir:a', sub);
+    stored.set('dir:b', vault.root);
+    await adoptAttachmentFolder('a', 'b', vault.file('Sub/b.md'));
+    expect(stored.get('dir:b')).toBe(vault.root);
+  });
+});
+
+describe('the truncated-index toast', () => {
+  it('shows once per folder, not after every scan', async () => {
+    const files: Record<string, string> = {};
+    for (let i = 0; i < 50_050; i++) files[`d${i % 40}/f${i}.png`] = '';
+    const { ctx } = setup(files);
+    await complete(ctx);
+    await refreshAttachments(ctx);
+    await refreshAttachments(ctx);
+    expect(messages().filter((m) => m.includes('50000'))).toHaveLength(1);
+  }, 60_000);
+});
+
+describe('vault configuration that cannot be read', () => {
+  it('is not cached as "not a vault"', async () => {
+    const { vault, ctx } = setup(attConfig('Att'));
+    const original = vault.root.getDirectoryHandle.bind(vault.root);
+    let failures = 1;
+    vi.spyOn(vault.root, 'getDirectoryHandle').mockImplementation(async (name, options) => {
+      if (name === '.obsidian' && failures-- > 0) {
+        throw new DOMException('denied', 'NotAllowedError');
+      }
+      return original(name, options);
+    });
+    expect(await attachmentStatus(ctx)).toMatchObject({ isVaultRoot: false });
+    expect(await attachmentStatus(ctx)).toMatchObject({ isVaultRoot: true });
+  });
+
+  it('does not save into the legacy folder when the vault rules cannot be read', async () => {
+    const { vault, ctx } = setup(attConfig('Att'));
+    const original = vault.root.getDirectoryHandle.bind(vault.root);
+    let failures = 1;
+    vi.spyOn(vault.root, 'getDirectoryHandle').mockImplementation(async (name, options) => {
+      if (name === '.obsidian' && failures-- > 0) {
+        throw new DOMException('denied', 'NotAllowedError');
+      }
+      return original(name, options);
+    });
+    expect(await saveAttachment(ctx, png('p.png'), 'drop')).toEqual({
+      ok: false,
+      reason: 'failed',
+    });
+    expect(vault.written.size).toBe(0);
+    expect(await saveAttachment(ctx, png('p.png'), 'drop')).toMatchObject({
+      ok: true,
+      saved: { path: 'Att/p.png' },
+    });
+  });
+});
+
+describe('object URLs of a document on screen', () => {
+  const many = (n: number) => {
+    const files: Record<string, string> = {};
+    for (let i = 0; i < n; i++) files[`p${i}.png`] = '';
+    return files;
+  };
+
+  it('are not revoked for the active document, even past 500', async () => {
+    const { ctx } = setup(many(510));
+    useStore.getState().loadDocument(createDocument('# n', 'n.md'), ctx.fileHandle, 'h1');
+    await complete(ctx);
+    for (let i = 0; i < 510; i++) await resolveAttachment(ctx, `p${i}.png`);
+    expect(urls.revoke).not.toHaveBeenCalled();
+  }, 30_000);
+
+  it('are evicted from other documents first', async () => {
+    const { vault, ctx } = setup(many(503));
+    stored.set('dir:h2', vault.root);
+    const other = { fileHandle: ctx.fileHandle, handleId: 'h2' };
+    await complete(ctx);
+    for (let i = 0; i < 3; i++) await resolveAttachment(other, `p${i}.png`);
+    useStore.getState().loadDocument(createDocument('# n', 'n.md'), ctx.fileHandle, 'h1');
+    for (let i = 3; i < 503; i++) await resolveAttachment(ctx, `p${i}.png`);
+    expect(urls.revoke).toHaveBeenCalledTimes(3);
+    expect(urls.revoke).toHaveBeenCalledWith('blob:fake/1');
+  }, 30_000);
+});
+
+describe('the miss count behind the banner', () => {
+  it('belongs to the document that missed', async () => {
+    const { vault, ctx } = setup({ 'other.md': '' });
+    stored.set('dir:h2', vault.root);
+    const other = { fileHandle: vault.file('other.md'), handleId: 'h2' };
+    await complete(ctx);
+    await resolveAttachment(ctx, 'missing.png');
+    expect(await attachmentStatus(ctx)).toMatchObject({ misses: 1 });
+    expect(await attachmentStatus(other)).toMatchObject({ misses: 0 });
+  });
+
+  it('drops a miss once the same target resolves', async () => {
+    const { vault, ctx } = setup();
+    await complete(ctx);
+    const listener = vi.fn();
+    subscribeAttachments(listener);
+    expect(await resolveAttachment(ctx, 'late.png', { markdown: true })).toMatchObject({
+      state: 'missing',
+    });
+    expect(await attachmentStatus(ctx)).toMatchObject({ misses: 1 });
+    await addFile(vault.root, 'Notes/Daily/late.png');
+    listener.mockClear();
+    expect(await resolveAttachment(ctx, 'late.png', { markdown: true })).toMatchObject({
+      state: 'ok',
+    });
+    expect(await attachmentStatus(ctx)).toMatchObject({ misses: 0 });
+    await vi.waitFor(() => expect(listener).toHaveBeenCalled());
+  });
+
+  describe('when the text of the open note changes', () => {
+    /** Opens the note with this text and has a view miss the given target. */
+    async function missed(markdown: string, target: string) {
+      const { vault, ctx } = setup({ 'Notes/Daily/photo.png': 'x' });
+      useStore.getState().loadDocument(createDocument(markdown, 'n.md'), ctx.fileHandle, 'h1');
+      await complete(ctx);
+      const listener = vi.fn();
+      subscribeAttachments(listener);
+      await resolveAttachment(ctx, target);
+      expect(await attachmentStatus(ctx)).toMatchObject({ misses: 1 });
+      listener.mockClear();
+      return { vault, ctx, listener };
+    }
+
+    it('drops a miss for a target that was edited into another one', async () => {
+      const { ctx, listener } = await missed('![[typo.png]]', 'typo.png');
+      useStore.getState().setMarkdown('![[photo.png]]', 'text');
+      await resolveAttachment(ctx, 'photo.png');
+      await vi.waitFor(async () =>
+        expect(await attachmentStatus(ctx)).toMatchObject({ misses: 0 })
+      );
+      expect(listener).toHaveBeenCalled();
+    });
+
+    it('drops a miss when its embed is deleted', async () => {
+      const { ctx } = await missed('![[typo.png]]', 'typo.png');
+      useStore.getState().setMarkdown('nothing here', 'text');
+      await vi.waitFor(async () =>
+        expect(await attachmentStatus(ctx)).toMatchObject({ misses: 0 })
+      );
+    });
+
+    it('keeps a miss whose embed is still there, however its path is spelled', async () => {
+      const { ctx } = await missed('![](my%20pic.png)', 'my pic.png');
+      useStore.getState().setMarkdown('![](my%20pic.png)\n\nmore', 'text');
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      expect(await attachmentStatus(ctx)).toMatchObject({ misses: 1 });
+    });
+
+    it('leaves the misses of an embedded note alone', async () => {
+      const { vault, ctx } = setup({ 'other.md': '![[gone.png]]' });
+      useStore.getState().loadDocument(createDocument('![[other]]', 'n.md'), ctx.fileHandle, 'h1');
+      await complete(ctx);
+      subscribeAttachments(() => undefined);
+      await resolveAttachment(ctx, 'gone.png', { fromNotePath: 'other.md' });
+      expect(await attachmentStatus(ctx)).toMatchObject({ misses: 1 });
+      useStore.getState().setMarkdown('![[other]] edited', 'text');
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      expect(await attachmentStatus(ctx)).toMatchObject({ misses: 1 });
+      expect(vault).toBeDefined();
+    });
+  });
+
+  it('starts again when the document is loaded again', async () => {
+    const { ctx } = setup();
+    useStore.getState().loadDocument(createDocument('# n', 'n.md'), ctx.fileHandle, 'h1');
+    await complete(ctx);
+    subscribeAttachments(() => undefined);
+    await resolveAttachment(ctx, 'missing.png');
+    expect(await attachmentStatus(ctx)).toMatchObject({ misses: 1 });
+    useStore.getState().loadDocument(createDocument('# n2', 'n.md'), ctx.fileHandle, 'h1');
+    expect(await attachmentStatus(ctx)).toMatchObject({ misses: 0 });
   });
 });

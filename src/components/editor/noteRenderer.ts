@@ -3,13 +3,16 @@ import { commonmark } from '@milkdown/kit/preset/commonmark';
 import { gfm } from '@milkdown/kit/preset/gfm';
 import { DOMSerializer, type Node as PmNode } from '@milkdown/kit/prose/model';
 import type { RemarkPlugin } from '@milkdown/kit/transformer';
+import { parseAltSize } from '@/domain/embeds';
 import { isRelativeUrl, isWebImage } from '@/domain/imagePaths';
 import { tooDeeplyNested } from '@/domain/nesting';
+import { tooCostlyToRender } from '@/domain/renderCost';
 import type { TranscludeChain } from '@/domain/transclusion';
 import { useStore } from '@/store';
 import { embeds, remarkEmbeds } from './embedNode';
 import type { EmbedRenderContext } from './embedRender';
 import { imageTitleFix } from './imageTitleFix';
+import { embedToken } from './imageView';
 
 /**
  * Renders another note's Markdown for a transclusion, read-only, inside an
@@ -22,7 +25,10 @@ import { imageTitleFix } from './imageTitleFix';
  * HTML never reaches the page unfiltered.
  */
 
-const MAX_RENDER_CHARS = 200_000;
+// The parser runs on the main thread and takes about 30 microseconds a character, so a note
+// that is only embedded must stay small enough not to freeze the page. A longer note shows its
+// opening part and a notice.
+const MAX_RENDER_CHARS = 50_000;
 const CACHE_ENTRIES = 50;
 
 type Parse = (markdown: string) => PmNode | null | undefined;
@@ -119,6 +125,7 @@ const ALLOWED_TAGS = new Set([
   'img',
   'span',
   'div',
+  'sup',
 ]);
 /** Dropped with everything inside; any other unknown element keeps its text. */
 const DROPPED_TAGS = new Set([
@@ -149,6 +156,34 @@ const DROPPED_TAGS = new Set([
 const COPIED_ATTRS = ['class', 'title', 'colspan', 'rowspan', 'data-raw', 'data-md-embed'];
 const HEADING = /^h([1-6])$/;
 const SAFE_HREF = /^(?:https?:|mailto:)/i;
+/** Footnote definitions come out of the serializer as a definition list; it is shown as a labelled block. */
+const FOOTNOTE_TAGS = new Map<string, { tag: string; className?: string }>([
+  ['dl', { tag: 'div', className: 'md-transcluded-footnote' }],
+  ['dt', { tag: 'sup' }],
+  ['dd', { tag: 'div', className: 'md-transcluded-footnote-body' }],
+]);
+
+/**
+ * Attributes that carry content rather than style, copied one by one with a
+ * check on the value: the list start, task state and column alignment.
+ */
+function copyContentAttrs(from: Element, to: Element, tag: string): void {
+  const get = (name: string) => from.getAttribute(name)?.trim() ?? null;
+  if (tag === 'ol') {
+    const start = get('start');
+    if (start !== null && /^\d{1,9}$/.test(start)) to.setAttribute('start', start);
+  } else if (tag === 'li') {
+    // The visual pane's own task styling reads these two.
+    const checked = get('data-checked');
+    if (get('data-item-type') === 'task' && (checked === 'true' || checked === 'false')) {
+      to.setAttribute('data-item-type', 'task');
+      to.setAttribute('data-checked', checked);
+    }
+  } else if (tag === 'th' || tag === 'td') {
+    const align = /^text-align:\s*(left|center|right);?$/i.exec(get('style') ?? '')?.[1];
+    if (align) to.setAttribute('style', `text-align: ${align.toLowerCase()};`);
+  }
+}
 
 function copyAttrs(from: Element, to: Element): void {
   for (const name of COPIED_ATTRS) {
@@ -157,13 +192,33 @@ function copyAttrs(from: Element, to: Element): void {
   }
 }
 
-function cleanImage(from: Element, webImages: boolean): HTMLImageElement {
-  const img = document.createElement('img');
+/**
+ * `owner` is the inert document the output is built in: an element made in
+ * the page's own document would start loading its `src` the moment one is set.
+ */
+function cleanImage(from: Element, webImages: boolean, owner: Document): Element {
+  const src = (from.getAttribute('src') ?? '').trim();
+  // A link to a PDF, audio or video file is drawn like the wiki embed of that path.
+  const token = embedToken(src);
+  if (token !== null) {
+    const span = owner.createElement('span');
+    span.className = 'md-embed';
+    span.setAttribute('data-md-embed', '');
+    span.setAttribute('data-raw', token);
+    // A Markdown link: its path is tried next to the note first.
+    span.setAttribute('data-md-markdown', '');
+    return span;
+  }
+  const img = owner.createElement('img');
   copyAttrs(from, img);
   // Only the vault path set below may reach the resolver, never a value carried in the HTML.
   img.removeAttribute('data-raw');
-  img.setAttribute('alt', from.getAttribute('alt') ?? '');
-  const src = (from.getAttribute('src') ?? '').trim();
+  const { alt, size } = parseAltSize(from.getAttribute('alt') ?? '');
+  img.setAttribute('alt', alt);
+  if (size) {
+    img.setAttribute('width', String(size.width));
+    if (size.height !== null) img.setAttribute('height', String(size.height));
+  }
   if (/^data:image\//i.test(src) || /^blob:/i.test(src)) {
     img.setAttribute('src', src);
   } else if (/^https?:\/\//i.test(src)) {
@@ -177,9 +232,10 @@ function cleanImage(from: Element, webImages: boolean): HTMLImageElement {
 }
 
 function clean(from: Node, into: Node, webImages: boolean): void {
+  const owner = into.ownerDocument ?? document;
   for (const child of Array.from(from.childNodes)) {
     if (child.nodeType === Node.TEXT_NODE) {
-      into.appendChild(document.createTextNode(child.nodeValue ?? ''));
+      into.appendChild(owner.createTextNode(child.nodeValue ?? ''));
       continue;
     }
     if (child.nodeType !== Node.ELEMENT_NODE) continue;
@@ -187,31 +243,36 @@ function clean(from: Node, into: Node, webImages: boolean): void {
     const tag = el.localName;
     if (DROPPED_TAGS.has(tag)) continue;
     const level = HEADING.exec(tag)?.[1];
+    const footnote = FOOTNOTE_TAGS.get(tag);
     let out: Element;
     if (level) {
       // A transcluded heading must not join the host's outline or scroll map.
-      out = document.createElement('div');
+      out = owner.createElement('div');
       out.className = 'md-transcluded-heading';
       out.setAttribute('role', 'heading');
       out.setAttribute('aria-level', level);
     } else if (tag === 'img') {
-      into.appendChild(cleanImage(el, webImages));
+      into.appendChild(cleanImage(el, webImages, owner));
       continue;
     } else if (tag === 'a') {
       const href = (el.getAttribute('href') ?? '').trim();
       if (SAFE_HREF.test(href)) {
-        out = document.createElement('a');
+        out = owner.createElement('a');
         out.setAttribute('href', href);
         out.setAttribute('target', '_blank');
         out.setAttribute('rel', 'noopener noreferrer');
         copyAttrs(el, out);
       } else {
         // A relative or script link could navigate the app: plain text instead.
-        out = document.createElement('span');
+        out = owner.createElement('span');
       }
+    } else if (footnote) {
+      out = owner.createElement(footnote.tag);
+      if (footnote.className) out.className = footnote.className;
     } else if (ALLOWED_TAGS.has(tag)) {
-      out = document.createElement(tag);
+      out = owner.createElement(tag);
       copyAttrs(el, out);
+      copyContentAttrs(el, out, tag);
     } else {
       clean(el, into, webImages);
       continue;
@@ -266,14 +327,18 @@ async function build(markdown: string, webImages: boolean): Promise<Rendered> {
   const tools = await createParserEditor();
   const { text, truncated } = limited(markdown);
   // The host pane never parses such a document either: far-too-deep nesting can freeze
-  // the page or overflow the stack, and a transcluded note may come from anywhere.
-  if (tooDeeplyNested([text])) return plainPlaceholder(text);
+  // the page or overflow the stack, and a transcluded note may come from anywhere. The same
+  // goes for input the parser takes quadratic time on (see renderCost.ts).
+  if (tooDeeplyNested([text]) || tooCostlyToRender(text)) return plainPlaceholder(text);
   try {
     const doc = tools.parse(text);
     const template = document.createElement('template');
     if (doc) {
-      const rendered = document.createElement('div');
-      rendered.append(tools.serializer.serializeFragment(doc.content));
+      // An inert document: images the serializer makes there are never fetched, so a
+      // remote or relative one the sanitiser blocks costs no request.
+      const inert = document.implementation.createHTMLDocument('');
+      const rendered = inert.createElement('div');
+      rendered.append(tools.serializer.serializeFragment(doc.content, { document: inert }));
       clean(rendered, template.content, webImages);
     }
     return { template, truncated };
@@ -301,11 +366,13 @@ type MountImage = (
 export interface NoteBlockArgs {
   /** The text to show: a whole note or the selected section. */
   markdown: string;
-  /** path|lastModified|size|fragment, so an edited note renders afresh. */
+  /** Changes whenever the shown text does (a hash of it, not a file date), so a note renders afresh. */
   cacheKey: string;
   notePath: string;
   /** Note name and fragment for the header. */
   title: string;
+  /** Tooltip for the whole block, e.g. which file was picked among same-named ones. */
+  hint?: string;
   /** The embedding view's context; its document and signal are shared. */
   ctx: EmbedRenderContext;
   /** The chain after entering this note, handed to the embeds inside it. */
@@ -320,11 +387,14 @@ export interface NoteBlock {
 }
 
 const LINK_ALLOWED = (a: Element) => SAFE_HREF.test((a.getAttribute('href') ?? '').trim());
+const isEmbedOpenLink = (a: Element) =>
+  a.matches('.md-embed-open') && a.closest('.md-embed-host') !== null;
 
 function instantiate(rendered: Rendered, args: NoteBlockArgs): NoteBlock {
   const root = document.createElement('div');
   root.className = 'md-transclusion';
   root.contentEditable = 'false';
+  if (args.hint) root.title = args.hint;
   const header = document.createElement('div');
   header.className = 'md-transclusion-header';
   header.textContent = args.title;
@@ -351,6 +421,7 @@ function instantiate(rendered: Rendered, args: NoteBlockArgs): NoteBlock {
   }
   for (const span of Array.from(body.querySelectorAll<HTMLElement>('span[data-md-embed]'))) {
     const raw = span.getAttribute('data-raw') ?? '';
+    const markdown = span.hasAttribute('data-md-markdown');
     span.textContent = '';
     span.className = 'md-embed-host';
     handles.push(
@@ -359,14 +430,16 @@ function instantiate(rendered: Rendered, args: NoteBlockArgs): NoteBlock {
         chain: args.chain,
         fromNotePath: args.notePath,
         signal: ctx.signal,
+        ...(markdown ? { markdown: true } : {}),
       })
     );
   }
   // Links stay inert unless they are the few that are safe to open; the
-  // note's own relative links must never navigate the app.
+  // note's own relative links must never navigate the app. The Open links the
+  // embeds add are the app's own (blob: URLs) and must keep working.
   const onClick = (event: Event) => {
     const target = event.target instanceof Element ? event.target.closest('a') : null;
-    if (target && !LINK_ALLOWED(target)) event.preventDefault();
+    if (target && !LINK_ALLOWED(target) && !isEmbedOpenLink(target)) event.preventDefault();
   };
   root.addEventListener('click', onClick);
   return {

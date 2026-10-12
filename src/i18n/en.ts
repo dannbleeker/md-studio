@@ -4,7 +4,6 @@
  */
 export const en = {
   appName: 'MD Studio',
-  untitled: 'Untitled.md',
   'start.tagline': 'Local-first Markdown, visual and raw side by side.',
   'start.new': 'New document',
   'start.open': 'Open file…',
@@ -20,7 +19,6 @@ export const en = {
   'start.dashboard': 'Project dashboard',
   'start.guide': 'User guide',
   'start.guidePdf': 'User guide (PDF)',
-  'toolbar.home': 'Home',
   'toolbar.new': 'New',
   'toolbar.open': 'Open',
   'toolbar.save': 'Save',
@@ -118,6 +116,7 @@ export const en = {
   'export.embedUnavailable': 'Attachment not included: {name}',
   'export.embedCycle': 'Embed of {name} left out to avoid a loop.',
   'export.embedDepth': 'Embed of {name} left out: nested too deeply.',
+  'export.embedLimit': 'Embed of {name} left out: the embedded notes add up to too much text.',
   'export.embedKind': '{kind}: {name}',
   'export.attachmentsUnavailable':
     'Some attachments could not be included. They appear as labelled text instead.',
@@ -186,17 +185,20 @@ export const en = {
   'attachment.saveUnsupported':
     'This browser cannot save files to a folder, so the file was not added.',
   'attachment.noFolder':
-    'No attachment folder is chosen for this document yet. Paste an image to choose one, then add the file again.',
+    'No attachment folder is chosen for this document yet. Use Choose attachment folder in the command palette (or paste an image), then add the file again.',
   'attachment.noNoteFile': 'Save this document to disk first, then add the file again.',
   'attachment.needsPermission':
     'Allow access to the attachment folder (see the bar above the editor) to save this file.',
-  'attachment.imageFallback':
-    'Image embedded in the file instead of saved to the folder ({reason}).',
+  'attachment.imageFallbackPermission':
+    'Image embedded in the file because the attachment folder needs permission. Use Allow access in the bar above the editor to save images there.',
+  'attachment.imageFallbackFailed':
+    'Image embedded in the file because it could not be saved to the attachment folder.',
   'attachment.saveFailed': 'Could not save {name} to the attachment folder.',
   'attachment.indexTruncated':
     'The attachment folder has more than {count} files, so some attachments may show as not found.',
   'attachment.rescanned': 'Attachments rescanned.',
-  'attachment.folderRoot': 'the vault root',
+  'attachment.rescanNoFolder':
+    'No attachment folder is chosen for this document yet. Use Choose attachment folder first.',
   'embed.loading': 'Loading…',
   'embed.missing': 'Not found: {name}',
   'embed.missingHint':
@@ -204,9 +206,11 @@ export const en = {
   'embed.ambiguous': 'Several files share this name. Showing {path}.',
   'embed.unavailable': 'Cannot show {name} yet. See the attachment notice above the editor.',
   'embed.noteMissing': 'Note not found: {name}',
+  'embed.noteTooLarge': 'Note too large to embed (limit 2 MB): {name}',
   'embed.sectionMissing': 'Section not found in {name}',
   'embed.cycle': '{name} is already shown above, so it is not repeated here.',
   'embed.depth': '{name} is nested too deeply to show.',
+  'embed.limit': '{name} is not shown: too many notes are embedded on this page.',
   'embed.pdf': 'PDF: {name}',
   'embed.audio': 'Audio: {name}',
   'embed.video': 'Video: {name}',
@@ -238,6 +242,8 @@ export const en = {
   'toast.opened': 'Opened {name}',
   'toast.exported': 'Exported {name}',
   'toast.exportFailed': 'Could not export the document.',
+  'toast.htmlImagesLeftOut':
+    'Some images were left out of the page: a picture over 5 MB, or past 25 MB of pictures in all, is not embedded. Word and PDF exports keep them.',
   'toast.pdfMissingCharacters':
     'Some characters (such as Greek, Chinese, Arabic or emoji) can’t be shown in a PDF and were left out. Word and HTML exports keep them.',
   'toast.recentUnavailable':

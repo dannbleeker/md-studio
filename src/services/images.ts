@@ -154,9 +154,9 @@ export async function placeFiles(
       if (!stillHere()) return;
       insert({ via: 'data', src, alt, kind: 'image', text: `![${escapeAlt(alt)}](${src})` });
       if (src.length > LARGE_EMBED) showToast(t('image.largeEmbed'));
-      if (reason === 'needs-permission' || reason === 'failed') {
-        showToast(t('attachment.imageFallback', { reason }));
-      }
+      // Say what to do, not the internal reason code.
+      if (reason === 'needs-permission') showToast(t('attachment.imageFallbackPermission'));
+      else if (reason === 'failed') showToast(t('attachment.imageFallbackFailed'));
     } catch {
       showToast(t('image.failed'));
     }

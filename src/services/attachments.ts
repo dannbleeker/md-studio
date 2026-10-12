@@ -60,6 +60,10 @@ const FOCUS_RESCAN_MS = 10_000;
 const MISS_RESCAN_MS = 30_000;
 const MISS_NOTIFY_MS = 250;
 const MAX_URLS = 500;
+/** Past MAX_URLS only the open document's URLs are kept, up to this many: they may be on screen. */
+const MAX_URLS_ACTIVE = 4_000;
+/** How long a save waits for the first scan before it links by full path instead. */
+const LINK_SCAN_WAIT_MS = 2_000;
 const MAX_LOOKUPS = 2_000;
 const FILE_CONCURRENCY = 8;
 const MAX_NOTE_BYTES = 2 * 1024 * 1024;
@@ -107,7 +111,7 @@ export interface VaultSnapshot {
 export type ResolvedAttachment =
   | { state: 'ok'; path: string; name: string; kind: EmbedKind; url: string; ambiguous: boolean }
   | { state: 'scanning' }
-  | { state: 'missing'; rootLooksLikeVault: boolean }
+  | { state: 'missing'; rootLooksLikeVault: boolean; tooLarge?: true }
   | { state: 'unavailable'; reason: AttachmentUnavailable };
 
 export interface ResolveOptions {
@@ -119,9 +123,18 @@ export interface ResolveOptions {
 }
 
 export type NoteRead =
-  | { state: 'ok'; path: string; text: string; lastModified: number; size: number }
+  | {
+      state: 'ok';
+      path: string;
+      text: string;
+      lastModified: number;
+      size: number;
+      /** Several files share the name; the nearest was read. */
+      ambiguous?: true;
+    }
   | { state: 'scanning' }
-  | { state: 'missing'; rootLooksLikeVault: boolean }
+  // tooLarge: the note exists but is over the embed size limit, which is not the same as not found.
+  | { state: 'missing'; rootLooksLikeVault: boolean; tooLarge?: true }
   | { state: 'unavailable'; reason: AttachmentUnavailable };
 
 export interface SavedAttachment {
@@ -145,6 +158,8 @@ export type SaveResult =
 interface RootInfo {
   hasObsidian: boolean;
   config: VaultConfig | null;
+  /** The vault rules could not be read (not merely absent): a stand-in answer that is never cached. */
+  transient?: true;
 }
 
 /** Everything known about one folder; shared by every document whose folder is the same entry. */
@@ -160,13 +175,30 @@ interface RootState {
   info: Promise<RootInfo> | null;
   /** Files saved while a scan was running, which that scan may have walked past. */
   added: string[];
-  misses: Set<string>;
+  /** True from the first step of a scan to its last, with no await in between. */
+  walking: boolean;
+  /** Counts finished scans: a lookup cached in an earlier one is not trusted. */
+  epoch: number;
+  truncatedNotified: boolean;
+  /**
+   * Every embed that was not found, keyed `${handleId}\0${from}\0${target}`.
+   * `own` marks those written in the open note itself, as opposed to inside a
+   * note it embeds, so only they can be checked against the note's text.
+   */
+  misses: Map<string, { target: string; own: boolean }>;
 }
 
 interface Located {
   path: string;
   handle: FileHandle;
   ambiguous: boolean;
+}
+
+interface Lookup {
+  path: string;
+  ambiguous: boolean;
+  /** RootState.epoch when it was found. */
+  epoch: number;
 }
 
 interface UrlEntry {
@@ -188,7 +220,7 @@ const rootStates: RootState[] = [];
 let stateByRoot = new WeakMap<Dir, Promise<RootState>>();
 /** Per document: the note handle the path was computed for, so a Save As recomputes it. */
 const noteCache = new Map<string, { root: Dir; note: FileHandle; path: string | null }>();
-const lookups = new Map<string, { path: string; ambiguous: boolean }>();
+const lookups = new Map<string, Lookup>();
 const urls = new Map<string, UrlEntry>();
 const noteTexts = new Map<string, NoteEntry>();
 const adopting = new Map<string, Promise<boolean>>();
@@ -196,6 +228,7 @@ const listeners = new Set<() => void>();
 
 let notifyQueued = false;
 let missTimer: ReturnType<typeof setTimeout> | null = null;
+let pruneTimer: ReturnType<typeof setTimeout> | null = null;
 let storeSubscribed = false;
 let windowListening = false;
 
@@ -213,6 +246,8 @@ export function resetAttachmentsForTest(): void {
   listeners.clear();
   if (missTimer !== null) clearTimeout(missTimer);
   missTimer = null;
+  if (pruneTimer !== null) clearTimeout(pruneTimer);
+  pruneTimer = null;
   notifyQueued = false;
 }
 
@@ -251,8 +286,14 @@ export function subscribeAttachments(listener: () => void): () => void {
         state.loadId !== prev.loadId ||
         state.fileHandle !== prev.fileHandle
       ) {
+        // The new render records what is still missing; counts from before the load are history.
+        if (state.handleId !== prev.handleId || state.loadId !== prev.loadId) {
+          clearMisses(state.handleId);
+        }
         notify();
       }
+      // A typo fixed or an embed deleted: the file it missed is no longer asked for.
+      if (state.doc.markdown !== prev.doc.markdown) schedulePrune();
     });
   }
   installWindowListeners();
@@ -270,7 +311,11 @@ function installWindowListeners(): void {
     const id = useStore.getState().handleId;
     const root = id ? rootByHandle.get(id) : undefined;
     const pending = root ? stateByRoot.get(root) : undefined;
-    void pending?.then((state) => ensureScan(state));
+    // No permission gate has run here, and a lapsed one would make the walk
+    // see nothing and replace a good index with an empty one.
+    void pending?.then(async (state) => {
+      if ((await permissionOf(state.root, 'read')) === 'granted') await ensureScan(state);
+    });
   };
   window.addEventListener('focus', onReturn);
   document.addEventListener('visibilitychange', () => {
@@ -377,7 +422,10 @@ function newState(root: Dir): RootState {
     scanning: null,
     info: null,
     added: [],
-    misses: new Set(),
+    walking: false,
+    epoch: 0,
+    truncatedNotified: false,
+    misses: new Map(),
   };
 }
 
@@ -452,7 +500,7 @@ export async function attachmentStatus(ctx: DocContext): Promise<AttachmentStatu
     kind: 'ready',
     folderName: g.root.name,
     isVaultRoot: info.hasObsidian,
-    misses: g.rs.misses.size,
+    misses: missesOf(g.rs, g.handleId),
     scanning: g.rs.scanning !== null,
   };
 }
@@ -506,7 +554,8 @@ export async function grantAttachmentAccess(ctx: DocContext): Promise<boolean> {
   if (!ctx.handleId) return false;
   const root = rootByHandle.get(ctx.handleId) ?? (await storedRoot(ctx.handleId));
   if (!root || !(await ensurePermission(root, 'readwrite'))) return false;
-  void ensureScan(await rootStateFor(root));
+  // Forced: a scan that ran without permission left an empty index that the throttles would keep.
+  void ensureScan(await rootStateFor(root), true);
   notify();
   return true;
 }
@@ -569,6 +618,10 @@ export async function adoptAttachmentFolder(
   try {
     const root = await storedRoot(fromHandleId);
     if (!root || !(await root.resolve(noteHandle))) return;
+    // Save As onto a file that is already known keeps the folder it chose for itself.
+    const own = await storedRoot(toHandleId);
+    if (own && (await own.resolve(noteHandle))) return;
+    invalidateAttachmentIndex(toHandleId, true);
     await putHandleAt(imageFolderKey(toHandleId), root);
     rootByHandle.set(toHandleId, root);
     noteCache.delete(toHandleId);
@@ -598,9 +651,21 @@ export function invalidateAttachmentIndex(handleId: string, revokeUrls = false):
 // ---------------------------------------------------------------------------
 
 function rootInfo(rs: RootState): Promise<RootInfo> {
-  rs.info ??= loadInfo(rs.root);
+  if (!rs.info) {
+    const loading = loadInfo(rs.root);
+    rs.info = loading;
+    // A failed read is no answer: ask again next time instead of caching "not a vault".
+    void loading.then((info) => {
+      if (info.transient && rs.info === loading) rs.info = null;
+    });
+  }
   return rs.info;
 }
+
+/** Only these say the thing is not there; anything else (denied, locked, I/O) may pass. */
+const isAbsent = (error: unknown): boolean =>
+  error instanceof DOMException &&
+  (error.name === 'NotFoundError' || error.name === 'TypeMismatchError');
 
 /**
  * No .obsidian directory means a plain folder (the legacy behaviour, null
@@ -611,8 +676,9 @@ async function loadInfo(root: Dir): Promise<RootInfo> {
   let obsidian: Dir;
   try {
     obsidian = await root.getDirectoryHandle('.obsidian');
-  } catch {
-    return { hasObsidian: false, config: null };
+  } catch (error) {
+    if (isAbsent(error)) return { hasObsidian: false, config: null };
+    return { hasObsidian: false, config: null, transient: true };
   }
   try {
     const file = await (await obsidian.getFileHandle('app.json')).getFile();
@@ -620,14 +686,17 @@ async function loadInfo(root: Dir): Promise<RootInfo> {
       hasObsidian: true,
       config: parseVaultConfig(await file.text()) ?? DEFAULT_VAULT_CONFIG,
     };
-  } catch {
-    return { hasObsidian: true, config: DEFAULT_VAULT_CONFIG };
+  } catch (error) {
+    if (isAbsent(error)) return { hasObsidian: true, config: DEFAULT_VAULT_CONFIG };
+    return { hasObsidian: true, config: DEFAULT_VAULT_CONFIG, transient: true };
   }
 }
 
+const imagesRule = () => useStore.getState().settings.attachmentRules === 'images';
+
 /** The images-folder rule opts out of vault behaviour even inside a vault. */
 async function configFor(rs: RootState): Promise<VaultConfig | null> {
-  if (useStore.getState().settings.attachmentRules === 'images') return null;
+  if (imagesRule()) return null;
   return (await rootInfo(rs)).config;
 }
 
@@ -662,8 +731,11 @@ function rescanAfterMiss(rs: RootState): void {
 async function scan(rs: RootState): Promise<void> {
   const rescan = rs.completedAt !== null;
   rs.stale = false;
+  rs.walking = true;
   if (rescan) rs.info = null; // app.json may have changed
   const found: string[] = [];
+  /** Folders that could not be listed; a rescan keeps what it knew under them. */
+  const unlisted: string[] = [];
   let truncated = false;
   let seen = 0;
   const queue: Array<{ dir: Dir; prefix: string; depth: number }> = [
@@ -696,18 +768,32 @@ async function scan(rs: RootState): Promise<void> {
           rs.index = buildVaultIndex([...found, ...rs.added]);
         }
       }
-    } catch {
+    } catch (error) {
       // Unreadable folder: index the files seen in it and go on with the next one.
+      // A folder that is simply gone has nothing to keep.
+      if (!(error instanceof DOMException && error.name === 'NotFoundError')) unlisted.push(prefix);
     }
   }
-  rs.index = buildVaultIndex([...found, ...rs.added]);
+  // A partial walk must not shrink a good index: keep its entries under the folders it missed.
+  const kept =
+    unlisted.length === 0
+      ? []
+      : (rs.index?.paths ?? []).filter((p) => unlisted.some((prefix) => p.startsWith(prefix)));
+  rs.index = buildVaultIndex([...found, ...kept, ...rs.added]);
   rs.added = [];
   rs.truncated = truncated;
   rs.complete = true;
   rs.completedAt = Date.now();
+  // Retry on the next look once the throttle allows, instead of treating the gap as final.
+  rs.stale = unlisted.length > 0;
+  rs.walking = false;
+  rs.epoch += 1;
   // Targets that were missing may exist now; views re-resolve and record what is still missing.
   rs.misses.clear();
-  if (truncated) showToast(t('attachment.indexTruncated', { count: String(MAX_SCAN_FILES) }));
+  if (truncated && !rs.truncatedNotified) {
+    rs.truncatedNotified = true;
+    showToast(t('attachment.indexTruncated', { count: String(MAX_SCAN_FILES) }));
+  }
   notify();
 }
 
@@ -742,15 +828,79 @@ export async function refreshAttachments(ctx: DocContext): Promise<void> {
   await ensureScan(g.rs, true);
 }
 
-function recordMiss(rs: RootState, key: string): void {
-  if (rs.misses.has(key)) return;
-  rs.misses.add(key);
+function scheduleMissNotify(): void {
   if (missTimer !== null) return;
   // Debounced: a note full of broken embeds reports once, not once per embed.
   missTimer = setTimeout(() => {
     missTimer = null;
     notify();
   }, MISS_NOTIFY_MS);
+}
+
+function recordMiss(rs: RootState, key: string, target: string, own: boolean): void {
+  if (rs.misses.has(key)) return;
+  rs.misses.set(key, { target, own });
+  scheduleMissNotify();
+}
+
+/**
+ * A view only reports what it asks for, never what it stopped asking for, so
+ * a miss would outlive the embed that caused it. The note's own text is the
+ * authority: a miss whose target no longer appears in it is history.
+ */
+function schedulePrune(): void {
+  if (pruneTimer !== null) return;
+  // Not reset by each keystroke: a long burst of typing still gets checked.
+  pruneTimer = setTimeout(() => {
+    pruneTimer = null;
+    pruneMisses();
+  }, MISS_NOTIFY_MS * 2);
+}
+
+/** Markdown unescaped and lower-cased, so a path is found however the source spells it. */
+const searchable = (markdown: string): string =>
+  markdown.replace(/\\([!-/:-@[-`{-~])/g, '$1').toLowerCase();
+
+/**
+ * Whether the text could still hold this target. Deliberately generous (a
+ * substring, raw or percent-encoded): keeping a stale miss costs a banner
+ * that clears on the next scan, dropping a live one hides a real problem.
+ */
+function mentions(text: string, target: string): boolean {
+  return text.includes(target.toLowerCase()) || text.includes(encodeURI(target).toLowerCase());
+}
+
+function pruneMisses(): void {
+  const { handleId, doc } = useStore.getState();
+  if (handleId === null) return;
+  const prefix = `${handleId}\0`;
+  let text: string | null = null;
+  let removed = false;
+  for (const rs of rootStates) {
+    for (const [key, miss] of rs.misses) {
+      if (!miss.own || !key.startsWith(prefix)) continue;
+      text ??= searchable(doc.markdown);
+      if (mentions(text, miss.target)) continue;
+      rs.misses.delete(key);
+      removed = true;
+    }
+  }
+  if (removed) notify();
+}
+
+function missesOf(rs: RootState, handleId: string): number {
+  const prefix = `${handleId}\0`;
+  let count = 0;
+  for (const key of rs.misses.keys()) if (key.startsWith(prefix)) count += 1;
+  return count;
+}
+
+function clearMisses(handleId: string | null): void {
+  if (handleId === null) return;
+  const prefix = `${handleId}\0`;
+  for (const rs of rootStates) {
+    for (const key of [...rs.misses.keys()]) if (key.startsWith(prefix)) rs.misses.delete(key);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -875,9 +1025,9 @@ function lookupKey(
   ].join('\0');
 }
 
-function remember(key: string, located: Located): void {
+function remember(key: string, located: Located, epoch: number): void {
   lookups.delete(key);
-  lookups.set(key, { path: located.path, ambiguous: located.ambiguous });
+  lookups.set(key, { path: located.path, ambiguous: located.ambiguous, epoch });
   if (lookups.size > MAX_LOOKUPS) {
     const oldest = lookups.keys().next().value;
     if (oldest !== undefined) lookups.delete(oldest);
@@ -891,22 +1041,30 @@ async function find(ctx: DocContext, target: string, o: LocateOptions): Promise<
   void ensureScan(g.rs);
   const from = o.fromNotePath === undefined ? g.notePath : o.fromNotePath;
   const key = lookupKey(g.handleId, target, from, o);
+  const missKey = `${g.handleId}\0${from ?? ''}\0${target}`;
+  const found = (located: Located): Found => {
+    // A target that resolves again no longer counts against the banner.
+    if (g.rs.misses.delete(missKey)) scheduleMissNotify();
+    return { kind: 'found', g, located, key };
+  };
   const cached = lookups.get(key);
   if (cached) {
-    const handle = await fileAt(g.root, cached.path);
+    // An answer from before the last scan may be outdated: a nearer file or a duplicate can have appeared.
+    const handle = cached.epoch === g.rs.epoch ? await fileAt(g.root, cached.path) : null;
     if (handle) {
-      return { kind: 'found', g, located: { ...cached, handle }, key };
+      return found({ path: cached.path, ambiguous: cached.ambiguous, handle });
     }
     lookups.delete(key);
   }
+  const epoch = g.rs.epoch;
   const located = await locate(g, target, from, o);
   if (located) {
-    remember(key, located);
-    return { kind: 'found', g, located, key };
+    remember(key, located, epoch);
+    return found(located);
   }
   // The index may not have reached this file yet.
   if (!g.rs.complete) return { kind: 'scanning' };
-  recordMiss(g.rs, `${from ?? ''}\0${target}`);
+  recordMiss(g.rs, missKey, target, from === g.notePath);
   rescanAfterMiss(g.rs);
   return { kind: 'missing', rootLooksLikeVault: (await rootInfo(g.rs)).hasObsidian };
 }
@@ -933,14 +1091,31 @@ async function urlFor(handleId: string, located: Located): Promise<string | null
   if (cached) revoke(cached.url);
   const url = URL.createObjectURL(file);
   urls.set(key, { url, lastModified: file.lastModified, size: file.size, handleId });
-  if (urls.size > MAX_URLS) {
-    const oldest = urls.entries().next().value;
-    if (oldest) {
-      revoke(oldest[1].url);
-      urls.delete(oldest[0]);
-    }
-  }
+  evictUrls(key);
   return url;
+}
+
+/**
+ * Keeps the number of live object URLs bounded without breaking what is on
+ * screen. Other documents' URLs go first, oldest first; the open document
+ * keeps its own up to a much higher ceiling, because revoking one of those
+ * blanks an image that is showing.
+ */
+function evictUrls(newest: string): void {
+  if (urls.size <= MAX_URLS) return;
+  const active = useStore.getState().handleId;
+  for (const [key, entry] of urls) {
+    if (urls.size <= MAX_URLS) return;
+    if (key === newest || entry.handleId === active) continue;
+    revoke(entry.url);
+    urls.delete(key);
+  }
+  for (const [key, entry] of urls) {
+    if (urls.size <= MAX_URLS_ACTIVE) return;
+    if (key === newest) continue;
+    revoke(entry.url);
+    urls.delete(key);
+  }
 }
 
 /**
@@ -1020,16 +1195,21 @@ function storeNote(key: string, entry: NoteEntry): void {
   }
 }
 
-const noteOk = (e: NoteEntry): NoteRead => ({ state: 'ok', ...e });
+const noteOk = (e: NoteEntry, ambiguous = false): NoteRead => ({
+  state: 'ok',
+  ...e,
+  ...(ambiguous ? { ambiguous: true as const } : {}),
+});
 
 async function readFound(
   handleId: string,
   located: Located,
   g: { rs: RootState }
 ): Promise<NoteRead> {
-  const missing = async (): Promise<NoteRead> => ({
+  const missing = async (tooLarge = false): Promise<NoteRead> => ({
     state: 'missing',
     rootLooksLikeVault: (await rootInfo(g.rs)).hasObsidian,
+    ...(tooLarge ? { tooLarge: true as const } : {}),
   });
   let file: File;
   try {
@@ -1037,12 +1217,12 @@ async function readFound(
   } catch {
     return missing();
   }
-  if (file.size > MAX_NOTE_BYTES) return missing();
+  if (file.size > MAX_NOTE_BYTES) return missing(true);
   const key = `${handleId}\0${located.path}`;
   const cached = noteTexts.get(key);
   if (cached && cached.lastModified === file.lastModified && cached.size === file.size) {
     storeNote(key, cached);
-    return noteOk(cached);
+    return noteOk(cached, located.ambiguous);
   }
   try {
     const entry = {
@@ -1052,7 +1232,7 @@ async function readFound(
       size: file.size,
     };
     storeNote(key, entry);
-    return noteOk(entry);
+    return noteOk(entry, located.ambiguous);
   } catch {
     return missing();
   }
@@ -1114,18 +1294,21 @@ export function peekNoteRead(
   }
   if (hostPath === undefined || !ctx.handleId) return undefined;
   let path: string | undefined;
+  let ambiguous = false;
   if (target === '') path = from ?? undefined;
   else {
     const hostRelative = from === undefined ? hostPath : from;
-    path = lookups.get(
+    const hit = lookups.get(
       lookupKey(ctx.handleId, target, hostRelative, {
         note: true,
         ...(from === undefined ? {} : { fromNotePath: from }),
       })
-    )?.path;
+    );
+    path = hit?.path;
+    ambiguous = hit?.ambiguous ?? false;
   }
   const entry = path === undefined ? undefined : noteTexts.get(`${ctx.handleId}\0${path}`);
-  return entry ? noteOk(entry) : undefined;
+  return entry ? noteOk(entry, ambiguous) : undefined;
 }
 
 const MIME_BY_EXTENSION: Record<string, string> = {
@@ -1200,22 +1383,41 @@ async function exists(dir: Dir, name: string): Promise<boolean> {
   }
 }
 
+/**
+ * Writes a file the caller has just found to be absent, so every failure
+ * removes what this call created: an empty entry left in the user's vault
+ * would be a broken file and would take the name from the next paste.
+ */
 async function writeFile(dir: Dir, name: string, file: File): Promise<void> {
   const target = await dir.getFileHandle(name, { create: true });
-  const writable = await target.createWritable();
-  let written = false;
+  let writable: FileSystemWritableFileStream | undefined;
   try {
+    writable = await target.createWritable();
     await writable.write(file);
-    written = true;
-  } finally {
-    // Closing commits what was written, so after a failed write the stream is
-    // aborted instead; an empty leftover is removed below.
-    if (written) await writable.close();
-    else {
-      await writable.abort?.().catch(() => undefined);
-      await dir.removeEntry(name).catch(() => undefined);
-    }
+    await writable.close();
+  } catch (error) {
+    // Closing commits what was written, so a failed stream is aborted instead.
+    await writable?.abort?.().catch(() => undefined);
+    await dir.removeEntry(name).catch(() => undefined);
+    throw error;
   }
+}
+
+/**
+ * Whether the index is complete enough to judge a name's uniqueness. Waits for
+ * a scan under way, but not for long: a huge vault must not hold up a paste.
+ */
+async function settleIndex(rs: RootState): Promise<boolean> {
+  if (rs.complete) return true;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  await Promise.race([
+    ensureScan(rs),
+    new Promise<void>((resolve) => {
+      timer = setTimeout(resolve, LINK_SCAN_WAIT_MS);
+    }),
+  ]);
+  clearTimeout(timer);
+  return rs.complete;
 }
 
 /**
@@ -1253,7 +1455,10 @@ async function write(
   file: File,
   origin: AttachmentOrigin
 ): Promise<SaveResult> {
-  const config = await configFor(g.rs);
+  const info = await rootInfo(g.rs);
+  // Not knowing the rules is no licence to guess: the legacy folder would be the wrong place in a vault.
+  if (info.transient && !imagesRule()) throw new Error('vault rules could not be read');
+  const config = imagesRule() ? null : info.config;
   const folder = attachmentDirectory(config, g.notePath);
   let dir = g.root;
   for (const segment of folder.split('/').filter((s) => s !== '')) {
@@ -1292,18 +1497,27 @@ async function write(
   }
 
   const path = folder === '' ? name : `${folder}/${name}`;
+  // A scan under way may already have walked past the folder, so it gets told.
+  if (g.rs.walking || !g.rs.complete) g.rs.added.push(path);
+  const settled = await settleIndex(g.rs);
   const index = addToIndex(g.rs.index ?? buildVaultIndex([]), path);
   g.rs.index = index;
-  if (!g.rs.complete) g.rs.added.push(path);
   const kind = classifyTarget(path);
   const style = effectiveLinkStyle(useStore.getState().settings.linkStyle, config);
   // Without a vault the alt text stays the file's base name, as it always was.
   // Wikilinks never get one: a numeric name would read as a size.
   const legacyAlt = config === null && style === 'markdown';
   const alt = legacyAlt ? file.name.replace(/\.[^.]+$/, '') || 'image' : undefined;
+  // A bare name is only right if no other file in the vault shares it, which an unfinished index cannot say.
+  const shortest =
+    (config?.newLinkFormat ?? (style === 'wikilink' ? 'shortest' : 'relative')) === 'shortest';
+  const linkConfig =
+    settled || !shortest
+      ? config
+      : { ...(config ?? DEFAULT_VAULT_CONFIG), newLinkFormat: 'absolute' as const };
   const markdown = formatAttachmentLink({
     style,
-    config,
+    config: linkConfig,
     index,
     targetPath: path,
     notePath: g.notePath,

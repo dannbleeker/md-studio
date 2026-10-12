@@ -217,10 +217,44 @@ describe('findWikiRefs', () => {
   });
 
   it('honours escapes', () => {
-    expect(raws('\\![[a.png]]')).toEqual([]);
+    expect(raws('\\![[a.png]]')).toEqual(['[[a.png]]']);
     expect(raws('!\\[[a.png]]')).toEqual([]);
     expect(raws('\\[[a]]')).toEqual([]);
     expect(raws('\\\\![[a.png]]')).toEqual(['![[a.png]]']);
+  });
+
+  it('reads an escaped bang before [[ as a plain link after a literal bang', () => {
+    const text = 'x \\![[Note]] y';
+    const [ref] = findWikiRefs(text);
+    expect(ref).toMatchObject({ embed: false, raw: '[[Note]]', start: 4, end: 12 });
+    expect(text.slice(ref?.start, ref?.end)).toBe('[[Note]]');
+    expect(raws('\\![[Note]] \\\\![[a.png]]')).toEqual(['[[Note]]', '![[a.png]]']);
+  });
+
+  it('closes a fence opened on a bullet line at its own indent (embeds after it count)', () => {
+    expect(raws('- ```\n  a\n  ```\n\n![[y.png]]')).toEqual(['![[y.png]]']);
+    expect(raws('- ```\n  a\n  ```\n  ![[x.png]]')).toEqual(['![[x.png]]']);
+    expect(raws('1. ```\n   a\n   ```\n\n![[y.png]]')).toEqual(['![[y.png]]']);
+    expect(raws('- ```\n  ![[a.png]]\n  ```\n![[b.png]]')).toEqual(['![[b.png]]']);
+  });
+
+  it('skips fences and indented code nested in list items and quotes', () => {
+    expect(raws('- a\n    ```\n    ![[t.png]]\n    ```')).toEqual([]);
+    expect(raws('> ```\n> ![[t.png]]\n> ```')).toEqual([]);
+    expect(raws('1. a\n\n    ```\n    ![[t.png]]\n    ```')).toEqual([]);
+    expect(raws('>     ![[t.png]]')).toEqual([]);
+    expect(raws('# H\n    ![[t.png]]')).toEqual([]);
+    expect(raws('> ```\n> ![[t.png]]\n\n![[u.png]]')).toEqual(['![[u.png]]']);
+  });
+
+  it('skips a code span that wraps over a line break', () => {
+    expect(raws('`a\n![[x.png]]`')).toEqual([]);
+    expect(raws('para `a\n![[x.png|300]]` tail ![[y.png]]')).toEqual(['![[y.png]]']);
+    expect(raws('``\n![[x.png]]\n``')).toEqual([]);
+    expect(raws('para\n    ```\n![[x.png]]\n    ```')).toEqual([]);
+    // A blank line or another block ends the paragraph, so the backtick stays literal.
+    expect(raws('`a\n\n![[x.png]]`')).toEqual(['![[x.png]]']);
+    expect(raws('`a\n# ![[x.png]]`')).toEqual(['![[x.png]]']);
   });
 
   it('keeps an escaped pipe in a table cell and reads the size', () => {
@@ -290,6 +324,17 @@ describe('alt sizes', () => {
     expect(parseAltSize('a|300')).toEqual({ alt: 'a', size: { width: 300, height: null } });
     expect(parseAltSize('|300')).toEqual({ alt: '', size: { width: 300, height: null } });
     expect(parseAltSize('a|b|300').alt).toBe('a|b');
+  });
+
+  it('drops the backslash of a table-escaped pipe with the size', () => {
+    expect(parseAltSize('al\\|300')).toEqual({ alt: 'al', size: { width: 300, height: null } });
+    expect(parseAltSize('a\\|b\\|300x20')).toEqual({
+      alt: 'a\\|b',
+      size: { width: 300, height: 20 },
+    });
+    // An escaped backslash is a literal one, and the pipe is a plain separator.
+    expect(parseAltSize('a\\\\|300')).toEqual({ alt: 'a\\\\', size: { width: 300, height: null } });
+    expect(parseAltSize('a\\|b')).toEqual({ alt: 'a\\|b', size: null });
   });
 
   it('leaves other alts unchanged', () => {

@@ -84,6 +84,32 @@ describe('findMarkdownImages', () => {
     expect(dests('```\n![a](1.png)\n```', { code: 'ignore' })).toEqual(['1.png']);
   });
 
+  it('reads an image after an escaped backtick as an image', () => {
+    expect(dests('\\`![a|300](x.png)`')).toEqual(['x.png']);
+    expect(dests('![b|3](y.png)\\``![b|3](y.png)``')).toEqual(['y.png', 'y.png']);
+    // The escaped backtick leaves a run of one, which the closing run of two does not match.
+    expect(dests('\\``![a](x.png)``')).toEqual(['x.png']);
+    expect(dests('\\``![a](x.png)`')).toEqual([]);
+  });
+
+  it('skips images in fences nested in list items and quotes, and after a bullet fence', () => {
+    expect(dests('- ```\n  a\n  ```\n\n![a](y.png)')).toEqual(['y.png']);
+    expect(dests('- ```\n  ![a](x.png)\n  ```')).toEqual([]);
+    expect(dests('> ```\n> ![a](x.png)\n> ```')).toEqual([]);
+    expect(dests('- a\n    ```\n    ![a](x.png)\n    ```')).toEqual([]);
+    expect(dests('# H\n    ![a](x.png)')).toEqual([]);
+  });
+
+  it('skips an image inside a code span that wraps over a line break', () => {
+    expect(dests('`a\n![x|300](x.png)`')).toEqual([]);
+    expect(dests('para `a\n![x](x.png)` ![y](y.png)')).toEqual(['y.png']);
+  });
+
+  it('strips a table-escaped size separator from the alt text', () => {
+    const [img] = findMarkdownImages('| a |\n| - |\n| ![al\\|300](https://e.com/x.png) |');
+    expect(img).toMatchObject({ altText: 'al', size: { width: 300, height: null } });
+  });
+
   it('copes with CRLF and unclosed or nested openers', () => {
     const text = '![a](1.png)\r\n![b](2.png)\r\n';
     const refs = findMarkdownImages(text);
@@ -97,6 +123,42 @@ describe('findMarkdownImages', () => {
 
   it('finds the Markdown image of the Obsidian sample only', () => {
     expect(dests(OBSIDIAN_SAMPLE)).toEqual(['my file.png']);
+  });
+});
+
+describe('findMarkdownImages work bound', () => {
+  // Each unclosed `![` used to rescan 2048 characters, so a long line cost 2048 times its length.
+  const SLOW_MS = 1500;
+  function timed(text: string): number {
+    const started = performance.now();
+    findMarkdownImages(text);
+    return performance.now() - started;
+  }
+
+  it('stays fast on a line of unclosed image starts', () => {
+    expect(timed('![ '.repeat(400_000))).toBeLessThan(SLOW_MS);
+    expect(timed('!['.repeat(500_000))).toBeLessThan(SLOW_MS);
+  });
+
+  it('stays fast on a line of image starts with endless destinations', () => {
+    expect(timed('![a]('.repeat(200_000))).toBeLessThan(SLOW_MS);
+    expect(timed('![a](x '.repeat(200_000))).toBeLessThan(SLOW_MS);
+    expect(timed('![a](<'.repeat(200_000))).toBeLessThan(SLOW_MS);
+  });
+
+  it('still finds every image on an ordinary long line', () => {
+    const line = Array.from({ length: 2000 }, (_, i) => `![a${i}](p${i}.png)`).join(' ');
+    expect(findMarkdownImages(line)).toHaveLength(2000);
+  });
+
+  it('still finds an image after a few broken starts on a short line', () => {
+    const line = `${'![ '.repeat(20)}![ok](a.png)`;
+    expect(findMarkdownImages(line).map((r) => r.dest)).toEqual(['a.png']);
+  });
+
+  it('keeps finding images on lines after a pathological one', () => {
+    const text = `${'!['.repeat(100_000)}\n\n![ok](a.png)`;
+    expect(findMarkdownImages(text).map((r) => r.dest)).toEqual(['a.png']);
   });
 });
 
@@ -116,17 +178,23 @@ describe('isLocalTarget', () => {
     }
   });
 
-  it('accepts relative and absolute paths', () => {
-    for (const d of [
-      'a.png',
-      './a.png',
-      '../a.png',
-      '/a.png',
-      'dir/a:b.png',
-      '<my file.png>',
-      '#top',
-    ]) {
+  it('accepts relative paths', () => {
+    for (const d of ['a.png', './a.png', '../a.png', 'dir/a:b.png', '<my file.png>']) {
       expect(isLocalTarget(d)).toBe(true);
+    }
+  });
+
+  it('rejects what the image view and the resolver never serve', () => {
+    for (const d of [
+      '/img/x.png',
+      '<//host/x.png>',
+      '\\\\host\\a.png',
+      '\\a.png',
+      '#top',
+      '',
+      '<>',
+    ]) {
+      expect(isLocalTarget(d)).toBe(false);
     }
   });
 });

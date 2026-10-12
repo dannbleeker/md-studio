@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { startChain } from '@/domain/transclusion';
+import { MAX_LIVE_TRANSCLUSIONS, startChain } from '@/domain/transclusion';
 import type { DocContext, NoteRead, ResolvedAttachment } from '@/services/attachments';
 import { resetStoreForTest, useStore } from '@/store';
 import { stubObjectUrls } from '../../../test/fakeFs';
@@ -69,8 +69,16 @@ const context = (over: Partial<EmbedRenderContext> = {}): EmbedRenderContext => 
   ...over,
 });
 
+// Note views are counted across the page; a test that leaves one mounted must not use up
+// the slots of the next.
+const mounted: Array<{ destroy(): void }> = [];
+const track = <T extends { destroy(): void }>(view: T): T => {
+  mounted.push(view);
+  return view;
+};
+
 const mount = (raw: string, over: Partial<EmbedRenderContext> = {}) =>
-  mountEmbed(host, raw, context(over));
+  track(mountEmbed(host, raw, context(over)));
 
 const deferred = <T>() => {
   let resolve!: (value: T) => void;
@@ -96,6 +104,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  for (const view of mounted.splice(0)) view.destroy();
   document.body.replaceChildren();
 });
 
@@ -112,7 +121,8 @@ describe('placeholders and states', () => {
     expect(img?.alt).toBe('nice');
     expect(img?.width).toBe(300);
     expect(img?.height).toBe(200);
-    expect(img?.loading).toBe('lazy');
+    // The embed itself is deferred until visible; a lazy image would be blank in a printout.
+    expect(img?.loading).not.toBe('lazy');
     // The target is passed on exactly as written.
     expect(mocks.resolveAttachment).toHaveBeenCalledWith(current, 'a b.png', {});
   });
@@ -177,6 +187,28 @@ describe('placeholders and states', () => {
     expect(host.querySelector('img')?.title).toBe(
       'Several files share this name. Showing img/a.png.'
     );
+  });
+
+  it.each([
+    ['![[x.pdf]]', 'pdf', '.md-embed-pdf'],
+    ['![[x.mp3]]', 'audio', 'audio'],
+    ['![[x.webm]]', 'video', 'video'],
+    ['![[x.zip]]', 'other', '.md-embed-file'],
+  ] as const)('puts the ambiguity tooltip on %s too', async (raw, kind, selector) => {
+    const path = raw.slice(3, -2);
+    mocks.resolveAttachment.mockResolvedValue(
+      ok({ path: `sub/${path}`, name: path, kind, url: 'blob:x', ambiguous: true })
+    );
+    mount(raw);
+    await vi.waitFor(() => expect(host.querySelector(selector)).not.toBeNull());
+    const shown = host.querySelector<HTMLElement>(selector);
+    expect(shown?.title).toContain(`Several files share this name. Showing sub/${path}.`);
+  });
+
+  it('keeps a remote image lazy, since nothing else defers its request', () => {
+    useStore.getState().updateSettings({ webImages: true });
+    mount('![[https://example.com/a.png]]');
+    expect(host.querySelector('img')?.loading).toBe('lazy');
   });
 
   it('draws a plain wikilink as an inert chip with the alias', () => {
@@ -454,4 +486,44 @@ describe('notes', () => {
     expect(host.textContent).not.toContain('else');
     expect(mocks.readNoteText).toHaveBeenCalledWith(current, '', undefined);
   });
+});
+
+describe('fan-out', () => {
+  it('stops mounting notes once the live limit is reached, whatever the nesting', async () => {
+    // Eight embeds per level and three levels: 8^3 + 8^2 + 8 + 1 = 585 notes without a limit.
+    const many = (name: string) => Array.from({ length: 8 }, () => `![[${name}]]`).join('\n\n');
+    const texts: Record<string, string> = {
+      a: many('b'),
+      b: many('c'),
+      c: many('d'),
+      d: 'leaf',
+    };
+    mocks.readNoteText.mockImplementation(async (_doc: DocContext, target: string) =>
+      noteOk({ path: `${target}.md`, text: texts[target] ?? '' })
+    );
+    mount('![[a]]');
+    await vi.waitFor(() => expect(host.querySelector('.md-transclusion')).not.toBeNull());
+    let before = -1;
+    while (before !== mocks.readNoteText.mock.calls.length) {
+      before = mocks.readNoteText.mock.calls.length;
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    }
+    expect(mocks.readNoteText.mock.calls.length).toBeLessThanOrEqual(MAX_LIVE_TRANSCLUSIONS);
+    expect(host.querySelector('.md-embed-limit')?.textContent).toMatch(/too many notes/);
+  }, 30000);
+
+  it('hands the slots back when the views are destroyed', async () => {
+    mocks.readNoteText.mockResolvedValue(noteOk({ text: 'Body.\n' }));
+    for (let round = 0; round < 3; round++) {
+      const views = Array.from({ length: MAX_LIVE_TRANSCLUSIONS }, () => {
+        const el = document.createElement('span');
+        document.body.append(el);
+        return { el, view: mountEmbed(el, '![[Note]]', context()) };
+      });
+      await vi.waitFor(() =>
+        expect(views.every((m) => m.el.querySelector('.md-transclusion'))).toBe(true)
+      );
+      for (const m of views) m.view.destroy();
+    }
+  }, 30000);
 });

@@ -127,8 +127,11 @@ You rarely need to type image links by hand. Paste an image with **Ctrl+V** into
 either pane, or drag a file from your desktop onto one. What happens next
 depends on where the document lives.
 
-In Edge or Chrome, with the document saved on disk, the first file you add
-brings up a question: *Save images next to the document?* Choose **Choose
+In Edge or Chrome, with the document saved on disk, the first image you add
+brings up a question: *Save images next to the document?* (Any other kind of
+file, such as a PDF, does not ask. Until a folder is chosen it shows a notice
+and inserts nothing, so choose one first with **Choose attachment folder…** in
+the command palette, or paste an image to be asked.) Choose **Choose
 folder…** and pick the folder the document is in (the folder picker opens
 there). If the document belongs to an Obsidian vault, pick the vault's top folder
 instead; it contains the note, and MD Studio then follows the vault's own

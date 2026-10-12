@@ -192,7 +192,8 @@ describe('placeFiles', () => {
       await placeFiles([png()], 'drop', insert);
       expect(inserted[0]).toMatchObject({ via: 'data' });
       expect(vault.written.size).toBe(0);
-      expect(messages()).toEqual([expect.stringContaining('needs-permission')]);
+      expect(messages()).toEqual([expect.stringContaining('Allow access in the bar above')]);
+      expect(messages()[0]).not.toContain('needs-permission');
     });
 
     it('inserts nothing for another file and points at the notice', async () => {
@@ -216,7 +217,8 @@ describe('placeFiles', () => {
       vi.spyOn(vault.root, 'getFileHandle').mockRejectedValue(new Error('read-only disk'));
       await placeFiles([png()], 'drop', insert);
       expect(inserted[0]).toMatchObject({ via: 'data' });
-      expect(messages().some((m) => m.includes('(failed)'))).toBe(true);
+      expect(messages().some((m) => m.includes('could not be saved'))).toBe(true);
+      expect(messages().some((m) => m.includes('(failed)'))).toBe(false);
     });
 
     it('tells the user to choose a folder when a saved note has none yet', async () => {
@@ -224,7 +226,7 @@ describe('placeFiles', () => {
       window.showDirectoryPicker = vi.fn();
       await placeFiles([pdf()], 'drop', insert);
       expect(inserted).toEqual([]);
-      expect(messages()).toEqual([expect.stringContaining('No attachment folder is chosen')]);
+      expect(messages()).toEqual([expect.stringContaining('Choose attachment folder')]);
       expect(messages()[0]).not.toMatch(/browser/);
     });
 

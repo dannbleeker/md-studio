@@ -16,3 +16,19 @@ export function registerFlush(flush: () => void): () => void {
 export function flushEditors(): void {
   for (const flush of flushers) flush();
 }
+
+/**
+ * Printing shows the visual pane even in text-only view, where it skips
+ * updates, so it is brought up to date first. Separate from `flushEditors`
+ * (which moves edits toward the store): this moves the store toward a pane.
+ */
+const printPreparers = new Set<() => void>();
+
+export function registerPrepareForPrint(prepare: () => void): () => void {
+  printPreparers.add(prepare);
+  return () => printPreparers.delete(prepare);
+}
+
+export function prepareForPrint(): void {
+  for (const prepare of printPreparers) prepare();
+}

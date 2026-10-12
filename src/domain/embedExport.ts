@@ -8,10 +8,12 @@
  * nothing here touches the DOM, services or translations.
  */
 
+import { codeRanges, inCode } from './codeRegions';
 import { findMarkdownImages, isLocalTarget, type MarkdownImageRef } from './embedLinks';
 import { type EmbedKind, findWikiRefs, splitLinkTarget, type WikiRef } from './embeds';
-import { closesFence, openFence } from './fences';
+import { inlineFootnotes } from './footnotes';
 import { frontMatterEnd } from './frontMatter';
+import { isWebImage } from './imagePaths';
 import { descend, selectNoteContent, startChain, type TranscludeChain } from './transclusion';
 import { encodeLinkPath } from './vaultConfig';
 import { baseName, dirOf, relativePath } from './vaultIndex';
@@ -35,6 +37,7 @@ export interface ExpandEnv {
       | 'unavailable'
       | 'cycle'
       | 'depth'
+      | 'limit'
       | 'pdf'
       | 'audio'
       | 'video'
@@ -67,10 +70,12 @@ export function parseSizeFragment(href: string): {
 /**
  * Depth alone does not bound the work: fan-out multiplies, so a few KB of
  * notes embedding each other many times over could expand to gigabytes. Past
- * either cap a note embed collapses to the labelled form.
+ * either cap a note embed collapses to the labelled form. The text cap is
+ * what the exporters have to chew through (a PDF of 15 MB took a minute), so
+ * it sits near the size of a long book, not far above it.
  */
 export const MAX_EXPANSIONS = 500;
-export const MAX_EXPANDED_CHARS = 5_000_000;
+export const MAX_EXPANDED_CHARS = 1_000_000;
 
 interface Run {
   env: ExpandEnv;
@@ -107,7 +112,8 @@ export async function expandEmbeds(
 
 const QUOTE = /^ {0,3}> ?/;
 const ITEM = /^ *(?:[-*+]|\d{1,9}[.)]) +/;
-const DELIMITER = /^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?\s*$/;
+// Matched on a trimmed line: the edge whitespace is what made the old form backtrack.
+const DELIMITER = /^\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?$/;
 
 interface Lines {
   text: string[];
@@ -138,50 +144,61 @@ function lineIndexAt(starts: readonly number[], offset: number): number {
   return lo;
 }
 
+/**
+ * Containers nested deeper than this are not read (as in `codeRegions.ts`). Real documents
+ * stay far below it; a crafted line of thousands of markers would otherwise be rescanned
+ * for every token on it.
+ */
+const MAX_DEPTH = 64;
+/**
+ * The longest container prefix a note embed is quoted under. The prefix is copied onto
+ * every line of the embedded note, so its length multiplies the output.
+ */
+const MAX_PREFIX = 64;
+
 /** A line with its quote markers and list markers taken off. */
 function stripContainers(line: string): { rest: string; contained: boolean } {
   let rest = line;
   let contained = false;
-  for (;;) {
+  for (let depth = 0; depth < MAX_DEPTH; depth++) {
     const m = QUOTE.exec(rest) ?? ITEM.exec(rest);
-    if (!m) return { rest, contained };
+    if (!m) break;
     rest = rest.slice(m[0].length);
     contained = true;
   }
+  return { rest, contained };
 }
 
 /**
- * Lines that sit inside a fenced block, however deeply it is quoted or
- * listed. findWikiRefs only sees fences at the top level, so a token inside
- * a fence inside a quote or list must be filtered out here.
+ * Lines that belong to a code block, from the shared scanner so a fence left
+ * open in a quote or list item ends with its container here too. Only the
+ * block boundaries need it: the token scanners already skip code themselves.
  */
-function fencedLines(lines: readonly string[]): boolean[] {
-  const mask: boolean[] = [];
-  let fence: string | null = null;
-  let listed = false;
-  for (const line of lines) {
-    const { rest, contained } = stripContainers(line);
-    const blank = line.trim() === '';
-    listed = contained || (listed && (blank || /^\s/.test(line)));
-    // Inside a list item the fence may be indented past the three spaces a top-level one allows.
-    const candidate = listed ? rest.trimStart() : rest;
-    if (fence) {
-      mask.push(true);
-      if (closesFence(candidate, fence)) fence = null;
-    } else {
-      fence = openFence(candidate);
-      mask.push(fence !== null);
-    }
+function codeBlockLines(text: string, lines: Lines): boolean[] {
+  const mask: boolean[] = new Array<boolean>(lines.text.length).fill(false);
+  for (const range of codeRanges(text)) {
+    if (!range.block) continue;
+    const to = lineIndexAt(lines.starts, Math.max(range.start, range.end - 1));
+    mask.fill(true, lineIndexAt(lines.starts, range.start), to + 1);
   }
   return mask;
 }
 
+interface Prefix {
+  prefix: string;
+  item: boolean;
+  odd: boolean;
+  /** Too deep or too long to quote under: an embed here keeps its label. */
+  deep: boolean;
+}
+
 /** The text before an embed that belongs to its container, with list markers as spaces. */
-function containerPrefix(line: string): { prefix: string; item: boolean; odd: boolean } {
+function containerPrefix(line: string): Prefix {
   let rest = line;
   let prefix = '';
   let item = false;
-  for (;;) {
+  let deep = false;
+  for (let depth = 0; ; depth++) {
     const quote = QUOTE.exec(rest);
     const marker = quote ? null : ITEM.exec(rest);
     const indent = quote || marker ? null : /^ +/.exec(rest);
@@ -190,8 +207,12 @@ function containerPrefix(line: string): { prefix: string; item: boolean; odd: bo
     prefix += marker ? ' '.repeat(m[0].length) : m[0];
     if (marker) item = true;
     rest = rest.slice(m[0].length);
+    if (depth + 1 >= MAX_DEPTH || prefix.length > MAX_PREFIX) {
+      deep = true;
+      break;
+    }
   }
-  return { prefix, item, odd: /^[ >]*\t/.test(line) };
+  return { prefix, item, odd: /^[ >]*\t/.test(line), deep };
 }
 
 /** A line with nothing but quote markers and spaces. */
@@ -222,16 +243,30 @@ function opensOwnBlock(line: string | undefined, fenced: boolean) {
   return fenced || ATX.test(rest) || (BREAK.test(rest) && !DASHES.test(rest));
 }
 
-/** True when the line is a row of a GFM table: a run of pipe lines around it holds the delimiter row. */
-function inTable(lines: readonly string[], index: number): boolean {
-  const cell = (i: number) => stripContainers(lines[i] ?? '').rest;
-  if (!cell(index).includes('|')) return false;
-  for (const step of [-1, 1]) {
-    for (let i = index; i >= 0 && i < lines.length && cell(i).includes('|'); i += step) {
-      if (DELIMITER.test(cell(i))) return true;
+/**
+ * Which lines are rows of a GFM table: a run of pipe lines holding a delimiter
+ * row. One pass, so a table with an embed per row stays linear.
+ */
+function tableRows(lines: readonly string[]): boolean[] {
+  const mask: boolean[] = new Array<boolean>(lines.length).fill(false);
+  let from = -1;
+  let delimited = false;
+  const close = (to: number) => {
+    if (from >= 0 && delimited) mask.fill(true, from, to);
+    from = -1;
+    delimited = false;
+  };
+  lines.forEach((line, i) => {
+    const { rest } = stripContainers(line);
+    if (!rest.includes('|')) {
+      close(i);
+      return;
     }
-  }
-  return false;
+    if (from < 0) from = i;
+    if (DELIMITER.test(rest.trim())) delimited = true;
+  });
+  close(lines.length);
+  return mask;
 }
 
 function startsItem(line: string): boolean {
@@ -251,15 +286,15 @@ interface Token {
   image?: MarkdownImageRef;
 }
 
-function findTokens(text: string, lines: Lines, fenced: readonly boolean[]): Token[] {
+function findTokens(text: string, plainImages: boolean): Token[] {
   const fm = frontMatterEnd(text);
-  const usable = (start: number) => start > fm && !fenced[lineIndexAt(lines.starts, start)];
+  const usable = (start: number) => start > fm;
   const tokens: Token[] = [
     ...findWikiRefs(text)
       .filter((ref) => usable(ref.start))
       .map((wiki) => ({ start: wiki.start, end: wiki.end, wiki })),
     ...findMarkdownImages(text)
-      .filter((image) => image.size !== null && usable(image.start))
+      .filter((image) => (plainImages || image.size !== null) && usable(image.start))
       .map((image) => ({ start: image.start, end: image.end, image })),
   ];
   tokens.sort((a, b) => a.start - b.start);
@@ -277,7 +312,34 @@ function findTokens(text: string, lines: Lines, fenced: readonly boolean[]): Tok
 // ---------------------------------------------------------------------------
 
 /** Plain text that must not turn into formatting or HTML. */
-const escapeText = (s: string): string => s.replace(/\s+/g, ' ').replace(/[\\`*_[\]<>]/g, '\\$&');
+const escapeText = (s: string): string =>
+  s
+    .replace(/\s+/g, ' ')
+    .replace(/[\\`*_[\]<>#~&]/g, '\\$&')
+    // A list marker, setext underline or numbered item at the start would open a block.
+    .replace(/^[-+=]/, '\\$&')
+    .replace(/^(\d+)([.)])/, '$1\\$2');
+
+/**
+ * Whether the `]]` ending at `to` closes the label of a link: `[[1]](url)`,
+ * `[[1]][ref]`, or `[see [[1]]](url)`. The visual pane leaves such labels
+ * alone, so export does too. Bounded so a long line of tokens stays linear.
+ */
+function isLinkLabel(line: string, to: number): boolean {
+  if (line[to] === '(' || line[to] === '[') return true;
+  const limit = Math.min(line.length, to + 512);
+  let depth = 0;
+  for (let i = to; i < limit; i++) {
+    const ch = line[i];
+    if (ch === '\\') i++;
+    else if (ch === '[') depth++;
+    else if (ch === ']') {
+      if (depth === 0) return line[i + 1] === '(' || line[i + 1] === '[';
+      depth--;
+    }
+  }
+  return false;
+}
 
 const escapeAlt = (s: string): string =>
   s
@@ -287,6 +349,72 @@ const escapeAlt = (s: string): string =>
 
 const sizeFragment = (size: { width: number; height: number | null } | null): string =>
   size ? `#size=${size.width}${size.height === null ? '' : `x${size.height}`}` : '';
+
+/** A relative link target; a colon in its first segment would read as a URL scheme. */
+function linkTarget(hostPath: string | null, path: string): string {
+  const href = encodeLinkPath(relativePath(dirOf(hostPath ?? ''), path));
+  return /^[^/]*:/.test(href) ? `./${href}` : href;
+}
+
+/** A web address named by a wikilink embed, as a Markdown image. */
+function webImage(ref: WikiRef): string {
+  const last = ref.target.split(/[?#]/)[0]?.split('/').pop() ?? '';
+  let name = last;
+  try {
+    name = decodeURIComponent(last);
+  } catch {
+    // A malformed escape: the name stays as written.
+  }
+  const alt = escapeAlt(ref.alt ?? name) || 'image';
+  return `![${alt}](<${ref.target.replace(/[<>\s]/g, encodeURIComponent)}>)`;
+}
+
+const REF_DEFINITION =
+  /^ {0,3}\[([^\]\n^][^\]\n]*)\]:[ \t]*(<[^>\n]*>|\S+)(?:[ \t]+("[^"\n]*"|'[^'\n]*'|\([^)\n]*\)))?[ \t]*$/;
+const REF_USE = /(!?)\[((?:[^[\]\\]|\\.)*)\](?:\[((?:[^[\]\\]|\\.)*)\])?/g;
+const refLabel = (s: string): string => s.trim().replace(/\s+/g, ' ').toLowerCase();
+
+/**
+ * Link reference definitions of an embedded note, written into its links. The
+ * note lands inside the host's text, where a definition of the same label
+ * would win and the note's own would print as a paragraph.
+ */
+function inlineReferenceLinks(text: string): string {
+  if (!/^ {0,3}\[[^\]\n^][^\]\n]*\]:/m.test(text)) return text;
+  const code = codeRanges(text);
+  const definitions = new Map<string, string>();
+  const kept: string[] = [];
+  let pos = 0;
+  for (const line of text.split('\n')) {
+    const m = inCode(code, pos) ? null : REF_DEFINITION.exec(line.replace(/\r$/, ''));
+    pos += line.length + 1;
+    if (!m?.[1] || !m[2]) {
+      kept.push(line);
+      continue;
+    }
+    const label = refLabel(m[1]);
+    const dest = m[2].startsWith('<') || !/[()]/.test(m[2]) ? m[2] : `<${m[2]}>`;
+    if (!definitions.has(label)) definitions.set(label, m[3] ? `${dest} ${m[3]}` : dest);
+  }
+  if (definitions.size === 0) return text;
+  const body = kept.join('\n');
+  const bodyCode = codeRanges(body);
+  return body.replace(
+    REF_USE,
+    (whole: string, bang: string, label: string, ref: string | undefined, at: number) => {
+      const next = body[at + whole.length];
+      // A footnote, a wikilink, an inline link or something in code stays as written.
+      if (label.startsWith('^') || body[at - 1] === '[' || next === ']' || inCode(bodyCode, at))
+        return whole;
+      if (ref === undefined && next === '(') return whole;
+      const target = definitions.get(refLabel(ref ? ref : label));
+      return target === undefined ? whole : `${bang}[${label}](${target})`;
+    }
+  );
+}
+
+/** What an embedded note brings in: its own links and footnotes, kept apart from the host's. */
+const isolateNote = (text: string): string => inlineFootnotes(inlineReferenceLinks(text));
 
 interface Site {
   /** The token's line, container prefix and whether it fills the line. */
@@ -299,19 +427,30 @@ async function expand(level: Level, run: Run): Promise<string> {
   const { text } = level;
   if (!text.includes('[[') && !text.includes('![')) return text;
   const lines = splitLines(text);
-  const fenced = fencedLines(lines.text);
-  const tokens = findTokens(text, lines, fenced);
+  // In an embedded note a plain image must be read from that note's folder too.
+  const tokens = findTokens(text, level.notePath !== run.hostPath);
   if (tokens.length === 0) return text;
+  const fenced = codeBlockLines(text, lines);
+  const tables = tableRows(lines.text);
   const fm = frontMatterEnd(text);
   const eol = text.includes('\r\n') ? '\r\n' : '\n';
   const pieces: string[] = [];
+  // Many tokens on one line share its prefix: read it once.
+  const prefixes = new Map<number, Prefix>();
   let cursor = 0;
   for (const token of tokens) {
     const index = lineIndexAt(lines.starts, token.start);
     const line = lines.text[index] ?? '';
     const lineStart = lines.starts[index] ?? 0;
-    const { prefix, item, odd } = containerPrefix(line);
-    const table = inTable(lines.text, index);
+    // The label of a Markdown link is not a wikilink, whatever its brackets look like.
+    if (token.wiki && isLinkLabel(line, token.end - lineStart)) continue;
+    let found = prefixes.get(index);
+    if (!found) {
+      found = containerPrefix(line);
+      prefixes.set(index, found);
+    }
+    const { prefix, item, odd, deep } = found;
+    const table = tables[index] === true;
     const fills =
       token.start - lineStart === prefix.length &&
       line.slice(token.end - lineStart).trim() === '' &&
@@ -330,7 +469,7 @@ async function expand(level: Level, run: Run): Promise<string> {
       opensOwnBlock(nextRest, fenced[index + 1] === true);
     const site: Site = {
       prefix,
-      alone: fills && startsBlock && endsBlock && !table && !odd,
+      alone: fills && startsBlock && endsBlock && !table && !odd && !deep,
       table,
     };
     const replacement = await replaceToken(token, site, level, run, eol);
@@ -372,11 +511,15 @@ async function replaceWiki(
     return escapeText(ref.alt ?? (ref.target || ref.fragment || ref.raw.slice(2, -2)));
   const name = ref.target || ref.fragment || ref.raw.slice(3, -2);
   if (ref.target === '') return noteEmbed(ref, level.notePath ?? '', true, site, level, run, eol);
+  // A web address needs no vault: the exporters decide whether web images are shown.
+  if (isWebImage(ref.target)) return webImage(ref);
   if (env.unavailable) return escapeText(env.label('unavailable', name));
   const resolved = await env.resolve(ref.target, level.notePath, {
     note: ref.kind === 'note' || ref.kind === 'other',
   });
-  if (!resolved) return escapeText(env.label('missing', name));
+  if (!resolved) {
+    return escapeText(env.label(ref.kind === 'note' ? 'note-missing' : 'missing', name));
+  }
   switch (resolved.kind) {
     case 'image': {
       const alt = escapeAlt(ref.alt ?? baseName(resolved.path)) || baseName(resolved.path);
@@ -386,8 +529,7 @@ async function replaceWiki(
       return noteEmbed(ref, resolved.path, false, site, level, run, eol);
     default: {
       const file = baseName(resolved.path);
-      const href = encodeLinkPath(relativePath(dirOf(run.hostPath ?? ''), resolved.path));
-      return `[${escapeText(env.label(resolved.kind, file))}](${href})`;
+      return `[${escapeText(env.label(resolved.kind, file))}](${linkTarget(run.hostPath, resolved.path)})`;
     }
   }
 }
@@ -410,7 +552,7 @@ async function noteEmbed(
     return escapeText(env.label(entered.ok ? 'depth' : entered.reason, name));
   }
   if (run.expansions >= MAX_EXPANSIONS || run.chars >= MAX_EXPANDED_CHARS) {
-    return escapeText(env.label('depth', name));
+    return escapeText(env.label('limit', name));
   }
   run.expansions++;
   // The host is never read from disk: its live text is what is being exported.
@@ -423,7 +565,12 @@ async function noteEmbed(
   if (!selected) return escapeText(env.label('note-missing', name));
   run.chars += selected.markdown.length;
   const inner = await expand(
-    { notePath: path, text: selected.markdown, source: source ?? '', chain: entered.chain },
+    {
+      notePath: path,
+      text: isolateNote(selected.markdown),
+      source: source ?? '',
+      chain: entered.chain,
+    },
     run
   );
   const body = inner
@@ -437,6 +584,8 @@ async function noteEmbed(
     if (i === 0) return q;
     return `${site.prefix}${q}`;
   });
+  // The prefix is copied onto every line, so it is output the exporters have to handle too.
+  run.chars += site.prefix.length * (body.length - 1);
   return quoted.join(eol);
 }
 
@@ -447,16 +596,18 @@ async function replaceImage(ref: MarkdownImageRef, level: Level, run: Run): Prom
     ? `![${ref.altText}]${ref.raw.slice(ref.alt.length + 3)}`
     : null;
   if (stripped === null) return null;
-  if (!isLocalTarget(ref.dest) || env.unavailable) return stripped;
+  // A plain image is only rewritten when it resolves; the size is what made the others change.
+  const unchanged = ref.size === null ? null : stripped;
+  if (!isLocalTarget(ref.dest) || env.unavailable) return unchanged;
   const { path, literal } = splitLinkTarget(ref.dest);
   const opts = { note: false, markdown: true } as const;
   const resolved =
     (await env.resolve(path, level.notePath, opts)) ??
     (literal === path ? null : await env.resolve(literal, level.notePath, opts));
-  if (!resolved) return stripped;
+  if (!resolved) return unchanged;
   if (resolved.kind !== 'image') {
-    const href = encodeLinkPath(relativePath(dirOf(run.hostPath ?? ''), resolved.path));
-    return `[${escapeText(env.label(resolved.kind, baseName(resolved.path)))}](${href})`;
+    const label = escapeText(env.label(resolved.kind, baseName(resolved.path)));
+    return `[${label}](${linkTarget(run.hostPath, resolved.path)})`;
   }
   const alt = escapeAlt(ref.altText) || baseName(resolved.path);
   return `![${alt}](${ATTACHMENT_SCHEME}${encodeLinkPath(resolved.path)}${sizeFragment(ref.size)})`;

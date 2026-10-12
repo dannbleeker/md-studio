@@ -84,6 +84,10 @@
   border-radius: 4px;
   padding: 0.1em 0.3em;
 }
+.format-btn code {
+  font-size: 0.8rem;
+  background: none;
+}
 .visual-doc pre {
   background: var(--surface-2);
   border: 1px solid var(--border);
@@ -315,10 +319,6 @@
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
-.format-btn code {
-  font-size: 0.8rem;
-  background: none;
-}
 .format-block {
   font: inherit;
   font-size: 0.9rem;
@@ -403,7 +403,8 @@
   border-style: dashed;
 }
 .visual-doc .md-embed-cycle,
-.visual-doc .md-embed-depth {
+.visual-doc .md-embed-depth,
+.visual-doc .md-embed-limit {
   border-style: dotted;
 }
 .visual-doc .md-embed-open {
@@ -478,4 +479,13 @@
 }
 .visual-doc .md-transclusion img {
   max-width: 100%;
+}
+/* A footnote definition inside a transcluded note: its label, then the text. */
+.visual-doc .md-transcluded-footnote {
+  display: flex;
+  gap: 0.4em;
+  font-size: 0.9em;
+}
+.visual-doc .md-transcluded-footnote-body > p {
+  margin: 0;
 }

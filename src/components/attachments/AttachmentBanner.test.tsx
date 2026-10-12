@@ -91,6 +91,21 @@ describe('AttachmentBanner', () => {
     expect(screen.queryByRole('status')).toBeNull();
   });
 
+  it.each([
+    ['a same-note embed', '# H\n\n![[#Own]]\n\n## Own\n\nbody'],
+    ['a web address embed', '![[https://example.com/a.png]]'],
+    ['an embed in a fence inside a quote', '> ```md\n> ![[a.png]]\n> ```\n'],
+    ['an image with no destination', '![]()'],
+    ['an image that points at an anchor', '![x](#top)'],
+    ['an image with an empty angle destination', '![x](<>)'],
+  ])('does not need a folder for %s', async (_name, md) => {
+    load(md);
+    render(<AttachmentBanner />);
+    await settle();
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(svc.attachmentStatus).not.toHaveBeenCalled();
+  });
+
   it('counts local Markdown images too', async () => {
     load('![x](images/a.png)');
     render(<AttachmentBanner />);

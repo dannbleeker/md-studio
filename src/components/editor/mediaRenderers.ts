@@ -38,7 +38,9 @@ export function imageElement(p: {
   title?: string;
 }): HTMLImageElement {
   const img = el('img', 'md-embed-image');
-  img.loading = 'lazy';
+  // A vault file is already deferred until its embed is near the viewport, so a lazy image
+  // would only be left blank in a printout; a remote one still benefits.
+  if (!p.url.startsWith('blob:')) img.loading = 'lazy';
   img.alt = p.alt;
   if (p.title) img.title = p.title;
   if (p.size) {
@@ -55,8 +57,10 @@ export function pdfElement(p: {
   page: number | null;
   height: number | null;
   size: EmbedSize | null;
+  title?: string;
 }): HTMLElement {
   const box = el('div', 'md-embed-pdf');
+  if (p.title) box.title = p.title;
   const frame = el('iframe', 'md-embed-pdf-frame');
   frame.title = t('embed.pdf', { name: p.name });
   frame.src = p.page ? `${p.url}#page=${p.page}` : p.url;
@@ -72,8 +76,9 @@ export function pdfElement(p: {
 }
 
 /** Shown when the browser cannot play the file: the Open link is still there. */
-function unsupported(url: string, name: string): HTMLElement {
+function unsupported(url: string, name: string, title?: string): HTMLElement {
   const note = el('span', 'md-embed-chip md-embed-unsupported');
+  if (title) note.title = title;
   note.append(
     el('span', 'md-embed-label', t('embed.mediaUnsupported', { name })),
     openLink(url, name)
@@ -81,14 +86,14 @@ function unsupported(url: string, name: string): HTMLElement {
   return note;
 }
 
-export function audioElement(p: { url: string; name: string }): HTMLElement {
+export function audioElement(p: { url: string; name: string; title?: string }): HTMLElement {
   const box = el('span', 'md-embed-media');
   const audio = el('audio', 'md-embed-audio');
   audio.controls = true;
   audio.preload = 'none';
   audio.src = p.url;
-  audio.title = t('embed.audio', { name: p.name });
-  audio.addEventListener('error', () => box.replaceChildren(unsupported(p.url, p.name)), {
+  audio.title = [t('embed.audio', { name: p.name }), p.title].filter(Boolean).join('\n');
+  audio.addEventListener('error', () => box.replaceChildren(unsupported(p.url, p.name, p.title)), {
     once: true,
   });
   box.append(audio);
@@ -99,33 +104,35 @@ export function videoElement(p: {
   url: string;
   name: string;
   size: EmbedSize | null;
+  title?: string;
 }): HTMLElement {
   const box = el('span', 'md-embed-media');
   const video = el('video', 'md-embed-video');
   video.controls = true;
   video.preload = 'none';
   video.src = p.url;
-  video.title = t('embed.video', { name: p.name });
+  video.title = [t('embed.video', { name: p.name }), p.title].filter(Boolean).join('\n');
   if (p.size) {
     video.width = p.size.width;
     if (p.size.height !== null) video.height = p.size.height;
   }
-  video.addEventListener('error', () => box.replaceChildren(unsupported(p.url, p.name)), {
+  video.addEventListener('error', () => box.replaceChildren(unsupported(p.url, p.name, p.title)), {
     once: true,
   });
   box.append(video);
   return box;
 }
 
-export function fileChip(p: { url: string; name: string }): HTMLElement {
+export function fileChip(p: { url: string; name: string; title?: string }): HTMLElement {
   const chip = el('span', 'md-embed-chip md-embed-file');
+  if (p.title) chip.title = p.title;
   const open = openLink(p.url, p.name);
   open.download = p.name;
   chip.append(el('span', 'md-embed-label', t('embed.file', { name: p.name })), open);
   return chip;
 }
 
-type PlaceholderKind = 'loading' | 'missing' | 'unavailable' | 'cycle' | 'depth';
+type PlaceholderKind = 'loading' | 'missing' | 'unavailable' | 'cycle' | 'depth' | 'limit';
 
 /**
  * A labelled stand-in. The original token is always shown with it, so the

@@ -269,27 +269,30 @@ function vaultMatches(lk: Lookup, step: Step, folded: boolean, v: string): strin
 /**
  * Among files a target could mean, the one nearest the note wins: most
  * shared leading folders with the note, then fewest segments, then plain
- * string order, so the choice never depends on scan order.
+ * string order, so the choice never depends on scan order. One pass keeps the
+ * best so far; sorting a bucket of tens of thousands of same-named files on
+ * every resolve was the cost.
  */
 function choose(hits: readonly string[], from: string | null): ResolvedTarget | null {
-  const [best] = [...hits].sort(nearest(from));
+  const noteDir = from === null ? null : segmentsOf(dirOf(from));
+  let best: string | undefined;
+  let bestShared = 0;
+  let bestDepth = 0;
+  for (const hit of hits) {
+    const shared = noteDir === null ? 0 : sharedDepth(segmentsOf(dirOf(hit)), noteDir);
+    const depth = hit.split('/').length;
+    if (
+      best === undefined ||
+      shared > bestShared ||
+      (shared === bestShared && (depth < bestDepth || (depth === bestDepth && hit < best)))
+    ) {
+      best = hit;
+      bestShared = shared;
+      bestDepth = depth;
+    }
+  }
   if (best === undefined) return null;
   return { path: best, ambiguous: hits.length > 1, candidates: hits.length };
-}
-
-function nearest(from: string | null): (a: string, b: string) => number {
-  const noteDir = from === null ? null : segmentsOf(dirOf(from));
-  return (a, b) => {
-    if (noteDir !== null) {
-      const shared =
-        sharedDepth(segmentsOf(dirOf(b)), noteDir) - sharedDepth(segmentsOf(dirOf(a)), noteDir);
-      if (shared !== 0) return shared;
-    }
-    const depth = a.split('/').length - b.split('/').length;
-    if (depth !== 0) return depth;
-    if (a === b) return 0;
-    return a < b ? -1 : 1;
-  };
 }
 
 function sharedDepth(a: readonly string[], b: readonly string[]): number {
