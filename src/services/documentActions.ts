@@ -221,6 +221,13 @@ async function save(saveAs: boolean): Promise<void> {
     markSaved(result.name, result.handle, handleId, written);
     if (newHandle && handleId) settleOtherTabsOf(handleId, written.tabId);
     if (newHandle) void forgetUnusedHandles();
+    // Best effort: the new file keeps showing its attachments when the old
+    // folder also contains it. Never prompts, so it is safe outside a gesture.
+    if (newHandle && handleId && startHandleId && startHandleId !== handleId) {
+      void import('./attachments')
+        .then((m) => m.adoptAttachmentFolder(startHandleId, handleId, newHandle))
+        .catch(() => {});
+    }
     showToast(
       // The file's encoding could not hold the text: say it changed rather than drop characters.
       encoded.format.encoding !== doc.format?.encoding

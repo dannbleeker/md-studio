@@ -53,6 +53,11 @@ type Dialogs = {
   findWithReplace: boolean;
   /** Bumped by every Ctrl+F / Ctrl+H, so an open find bar refocuses and retargets. */
   findRequest: number;
+  /**
+   * Tabs whose attachment notice the user dismissed, keyed by tab id, so
+   * closing it for one note leaves the notice on for the others.
+   */
+  attachmentBannerDismissed: Record<string, true>;
 };
 
 const CLOSED: Dialogs = {
@@ -62,6 +67,7 @@ const CLOSED: Dialogs = {
   findOpen: false,
   findWithReplace: false,
   findRequest: 0,
+  attachmentBannerDismissed: {},
 };
 
 type UiState = Dialogs & {
@@ -94,6 +100,16 @@ export const useUiStore = create<UiState>()((set) => ({
 
 export function resetDialogsForTest(): void {
   useUiStore.setState(CLOSED);
+}
+
+/**
+ * Hides the attachment notice for one tab. Kept in memory only: a reload
+ * shows the notice again, which is the reminder the user may still need.
+ */
+export function dismissAttachmentBanner(tabId: string): void {
+  useUiStore.setState((s) => ({
+    attachmentBannerDismissed: { ...s.attachmentBannerDismissed, [tabId]: true },
+  }));
 }
 
 let nextToastId = 1;

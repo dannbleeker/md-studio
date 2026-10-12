@@ -86,4 +86,21 @@ describe('findHeadings', () => {
     expect(findHeadings('***\n---')).toEqual([]);
     expect(findHeadings('- - -\n===')).toEqual([]);
   });
+
+  it('reads closing hashes and trailing blanks off an ATX heading', () => {
+    expect(findHeadings('## Title ##  ')).toEqual([{ line: 0, level: 2, text: 'Title' }]);
+    expect(findHeadings('# C#')).toEqual([{ line: 0, level: 1, text: 'C#' }]);
+    expect(findHeadings('# a #b')).toEqual([{ line: 0, level: 1, text: 'a #b' }]);
+    expect(findHeadings('#')).toEqual([{ line: 0, level: 1, text: '' }]);
+    expect(findHeadings('####### seven')).toEqual([]);
+  });
+
+  it('reads a heading with a very long run of blanks in linear time', () => {
+    for (const line of [`# a${' '.repeat(30_000)}b`, `# a${' '.repeat(30_000)}#x`]) {
+      const t0 = performance.now();
+      const found = findHeadings(line);
+      expect(performance.now() - t0).toBeLessThan(400);
+      expect(found).toHaveLength(1);
+    }
+  });
 });

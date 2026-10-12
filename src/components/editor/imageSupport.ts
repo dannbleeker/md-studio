@@ -1,76 +1,135 @@
 import type { EditorView as TextView } from '@codemirror/view';
 import { type Editor, editorViewCtx } from '@milkdown/kit/core';
 import { insertImageCommand } from '@milkdown/kit/preset/commonmark';
-import type { Node } from '@milkdown/kit/prose/model';
 import { Plugin, TextSelection } from '@milkdown/kit/prose/state';
-import type { NodeViewConstructor } from '@milkdown/kit/prose/view';
 import { callCommand } from '@milkdown/kit/utils';
-import { isRelativeUrl, isWebImage } from '@/domain/imagePaths';
+import { EMBED_NODE_NAME, MEDIA_KINDS } from '@/domain/embeds';
 import { t } from '@/i18n';
-import { useStore } from '@/store';
+import type { PlacedAttachment } from '@/services/images';
+import { showToast } from '@/store/ui';
 
-/** The image service loads on first use: most sessions never paste one. */
+/** The attachment service loads on first use: most sessions never paste a file. */
 const images = () => import('@/services/images');
 
-const imageFiles = (data: DataTransfer | null): File[] =>
-  Array.from(data?.files ?? []).filter((f) => f.type.startsWith('image/'));
+const isImage = (f: File) => f.type.startsWith('image/');
 
-const placeImages = (files: File[], insert: (src: string, alt: string) => void) =>
-  images().then((m) => m.placeImages(files, insert));
+/** Dropped Markdown and text files are the window's to open (useFileDrop). */
+const isMarkdownFile = (f: File) => /\.(md|markdown|mdown|mkd|txt)$/i.test(f.name);
 
-const markdownImage = (src: string, alt: string) =>
-  `![${alt.replace(/[[\]\\]/g, '\\$&')}](${src.replace(/[()\s]/g, encodeURIComponent)})`;
+/**
+ * Files a paste takes over: images always; any other file only when the
+ * clipboard carries no text, so a spreadsheet copy (cells plus a preview
+ * picture) still pastes as text.
+ */
+function pastedFiles(data: DataTransfer | null): File[] {
+  const files = Array.from(data?.files ?? []);
+  if (files.length === 0) return [];
+  if (files.every(isImage)) return files;
+  return data?.getData('text/plain') ? [] : files;
+}
 
-/** Paste/drop handlers for the text pane: images become Markdown image links at the cursor. */
+const droppedFiles = (data: DataTransfer | null): File[] =>
+  Array.from(data?.files ?? []).filter((f) => !isMarkdownFile(f));
+
+const paste = (files: File[], insert: (p: PlacedAttachment) => void) =>
+  images().then((m) => m.placeFiles(files, 'paste', insert));
+
+/** placeFiles explains its own failures; this covers files it would never take. */
+const drop = (files: File[], insert: (p: PlacedAttachment) => void) =>
+  images().then(async (m) => {
+    if (m.isHandledDrop(files)) await m.placeFiles(files, 'drop', insert);
+    else showToast(t('attachment.saveUnsupported'));
+  });
+
+/**
+ * Paste/drop handlers for the text pane: files become links at the cursor
+ * (a wikilink embed or a Markdown link, per the vault conventions).
+ */
 export function textPaneImageHandlers(): {
   paste: (event: ClipboardEvent, view: TextView) => boolean;
   drop: (event: DragEvent, view: TextView) => boolean;
 } {
-  const insert = (view: TextView) => (src: string, alt: string) =>
-    view.dispatch(view.state.replaceSelection(markdownImage(src, alt)));
+  // One callback per event: each file goes in where the previous one left
+  // the caret, later ones on their own line. A plain user transaction, so
+  // it is undoable and reaches the store.
+  const inserter = (view: TextView) => {
+    let first = true;
+    return (p: PlacedAttachment) => {
+      const text = p.via === 'wikilink' ? p.raw : p.text;
+      view.dispatch(view.state.replaceSelection(first ? text : `\n${text}`));
+      first = false;
+    };
+  };
   return {
     paste(event, view) {
-      const files = imageFiles(event.clipboardData);
+      const files = pastedFiles(event.clipboardData);
       if (files.length === 0) return false;
       event.preventDefault();
-      void placeImages(files, insert(view));
+      void paste(files, inserter(view));
       return true;
     },
     drop(event, view) {
-      const files = imageFiles(event.dataTransfer);
-      if (files.length === 0) {
-        // Any other dropped file is the window's to open (useFileDrop):
-        // claiming it stops CodeMirror from also pasting the file's text.
-        return (event.dataTransfer?.files.length ?? 0) > 0;
-      }
+      if ((event.dataTransfer?.files.length ?? 0) === 0) return false;
+      const files = droppedFiles(event.dataTransfer);
+      // Claiming the event also stops CodeMirror from pasting file names.
+      if (files.length === 0) return true;
       event.preventDefault();
       const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
       if (pos !== null) view.dispatch({ selection: { anchor: pos } });
-      void placeImages(files, insert(view));
+      void drop(files, inserter(view));
       return true;
     },
   };
 }
 
-/** ProseMirror plugin for the visual pane: pasted and dropped images become image nodes. */
+/** ProseMirror plugin for the visual pane: pasted and dropped files become embed or image nodes. */
 export function visualPaneImagePlugin(getEditor: () => Editor | null): Plugin {
   // Focus first: a drop doesn't focus the pane, and focusing lands any
   // text-pane edits not yet applied, which the insert would otherwise overwrite.
-  const insert = (src: string, alt: string) =>
+  const insert = (p: PlacedAttachment) =>
     getEditor()?.action((ctx) => {
-      ctx.get(editorViewCtx).focus();
-      callCommand(insertImageCommand.key, { src, alt })(ctx);
+      const view = ctx.get(editorViewCtx);
+      view.focus();
+      const { state } = view;
+      if (p.via === 'data' || (p.via === 'markdown' && MEDIA_KINDS.has(p.kind))) {
+        callCommand(insertImageCommand.key, { src: p.src, alt: p.alt })(ctx);
+        return;
+      }
+      if (p.via === 'markdown') {
+        // Other files and notes are `[name](path)` links: an image node would
+        // serialize with a bang, which shows a broken image elsewhere.
+        const link = state.schema.marks.link;
+        const inCode = state.selection.$from.parent.type.spec.code;
+        view.dispatch(
+          (link && !inCode
+            ? state.tr.replaceSelectionWith(
+                state.schema.text(p.alt || p.src, [link.create({ href: p.src })]),
+                false
+              )
+            : state.tr.insertText(p.text)
+          ).scrollIntoView()
+        );
+        return;
+      }
+      const embed = state.schema.nodes[EMBED_NODE_NAME];
+      // The token is text inside a code block, where nodes cannot go.
+      view.dispatch(
+        (embed && !state.selection.$from.parent.type.spec.code
+          ? state.tr.replaceSelectionWith(embed.create({ raw: p.raw }))
+          : state.tr.insertText(p.raw)
+        ).scrollIntoView()
+      );
     });
   return new Plugin({
     props: {
       handlePaste(_view, event) {
-        const files = imageFiles(event.clipboardData);
+        const files = pastedFiles(event.clipboardData);
         if (files.length === 0) return false;
-        void placeImages(files, insert);
+        void paste(files, insert);
         return true;
       },
       handleDrop(view, event) {
-        const files = imageFiles(event.dataTransfer);
+        const files = droppedFiles(event.dataTransfer);
         if (files.length === 0) return false;
         const pos = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
         if (pos !== undefined) {
@@ -78,66 +137,9 @@ export function visualPaneImagePlugin(getEditor: () => Editor | null): Plugin {
             view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(pos)))
           );
         }
-        void placeImages(files, insert);
+        void drop(files, insert);
         return true;
       },
     },
   });
 }
-
-/**
- * Renders images in the visual pane. Relative links (images saved next to
- * the document) can't load from the app's origin, so they're read from the
- * document's folder and shown via an object URL. Web images load only when
- * the Load web images setting is on; until then the image shows its alt
- * text. The node's own `src` is never touched, so the Markdown keeps the
- * link either way.
- */
-export const imageNodeView: NodeViewConstructor = (initial: Node) => {
-  const img = document.createElement('img');
-  let node = initial;
-  let current = '';
-  let blocked = false;
-  const render = () => {
-    const src = String(node.attrs.src ?? '');
-    const alt = String(node.attrs.alt ?? '');
-    const title = String(node.attrs.title ?? '');
-    const block = isWebImage(src) && !useStore.getState().settings.webImages;
-    img.alt = block && !alt ? t('image.blocked') : alt;
-    img.title = block ? [title, t('image.blockedHint')].filter(Boolean).join('\n') : title;
-    img.classList.toggle('image-blocked', block);
-    if (src === current && block === blocked) return;
-    current = src;
-    blocked = block;
-    if (block) {
-      img.removeAttribute('src');
-      return;
-    }
-    if (!isRelativeUrl(src)) {
-      img.src = src;
-      return;
-    }
-    img.src = src; // shows the alt text if it can't be resolved
-    void images()
-      .then((m) => m.resolveRelativeImage(src))
-      .then((url) => {
-        if (url && current === src) img.src = url;
-      });
-  };
-  render();
-  // Turning the setting on (or off) applies to images already on screen.
-  const unsubscribe = useStore.subscribe((state, prev) => {
-    if (state.settings.webImages !== prev.settings.webImages) render();
-  });
-  return {
-    dom: img,
-    update(next) {
-      if (next.type !== initial.type) return false;
-      node = next;
-      render();
-      return true;
-    },
-    ignoreMutation: () => true,
-    destroy: unsubscribe,
-  };
-};

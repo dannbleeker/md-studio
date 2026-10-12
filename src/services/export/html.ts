@@ -1,5 +1,9 @@
 import { Marked } from 'marked';
+import { ATTACHMENT_SCHEME, parseSizeFragment } from '@/domain/embedExport';
 import type { HtmlTheme } from '@/domain/exportFormats';
+import { isRasterDataUrl, isWebImage } from '@/domain/imagePaths';
+import { t } from '@/i18n';
+import type { ExportImage } from './exportImages';
 
 const escapeHtml = (s: string) =>
   s.replace(
@@ -9,9 +13,6 @@ const escapeHtml = (s: string) =>
 
 /** Link targets that can't run script when the exported page is opened. */
 const SAFE_URL = /^(?:https?:|mailto:|tel:|#|\/|\.{0,2}\/|[^:]*$)/i;
-
-/** Pasted raster images (base64). SVG stays out: it can carry script. */
-const RASTER_DATA_URL = /^data:image\/(?:png|jpeg|gif|webp);base64,[A-Za-z0-9+/=]+$/i;
 
 /**
  * Raw HTML in the source is shown as text, not rendered, and script-capable
@@ -40,6 +41,50 @@ function headingId(text: string): string {
   return id;
 }
 
+/** Embedded images are capped so a vault of photos can't produce a gigantic page. */
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_TOTAL_BYTES = 25 * 1024 * 1024;
+const MIME = { png: 'image/png', jpg: 'image/jpeg', gif: 'image/gif' } as const;
+
+/** The images and privacy setting of the page being rendered (reset per export). */
+let loaded: ReadonlyMap<string, ExportImage> = new Map();
+let allowWebImages = true;
+let embeddedBytes = 0;
+
+function base64(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(binary);
+}
+
+/** What stands in for an image that is not shown: its alt text, or the file it names. */
+function imagePlaceholder(href: string, text: string): string {
+  if (text.trim()) return escapeHtml(text);
+  const last = href.split(/[#?]/)[0]?.split('/').pop() ?? '';
+  let name = last;
+  try {
+    name = decodeURIComponent(last);
+  } catch {
+    // A malformed escape: the name stays as written.
+  }
+  return escapeHtml(t('export.embedKind', { kind: 'image', name: name || 'image' }));
+}
+
+/** An <img> with the bytes inline, or null when there are none or they are too large. */
+function embeddedImage(href: string, text: string, title: string): string | null {
+  const image = loaded.get(href);
+  if (!image || image.bytes.length > MAX_IMAGE_BYTES) return null;
+  if (embeddedBytes + image.bytes.length > MAX_TOTAL_BYTES) return null;
+  embeddedBytes += image.bytes.length;
+  const size = [
+    image.displayWidth ? ` width="${image.displayWidth}"` : '',
+    image.displayWidth && image.displayHeight ? ` height="${image.displayHeight}"` : '',
+  ].join('');
+  return `<img src="data:${MIME[image.type]};base64,${base64(image.bytes)}" alt="${escapeHtml(text)}"${size}${title}>`;
+}
+
 const marked = new Marked({
   gfm: true,
   renderer: {
@@ -58,10 +103,23 @@ const marked = new Marked({
       return `<a href="${escapeHtml(href)}"${t}>${text}</a>`;
     },
     image({ href, title, text }) {
-      const safe = RASTER_DATA_URL.test(href) || (SAFE_URL.test(href) && !/^data:/i.test(href));
+      const attr = title ? ` title="${escapeHtml(title)}"` : '';
+      // A vault file only has a place in the page as bytes; never as a link to somewhere.
+      if (href.startsWith(ATTACHMENT_SCHEME)) {
+        return (
+          embeddedImage(href, text, attr) ?? imagePlaceholder(parseSizeFragment(href).href, text)
+        );
+      }
+      if (isWebImage(href) && !allowWebImages) return imagePlaceholder(href, text);
+      const inline = embeddedImage(href, text, attr);
+      if (inline) return inline;
+      // A backslash reads as a slash in a browser (`\\host\x` is a network share), and a
+      // tab or line break can hide a scheme: neither is a plain relative or web URL.
+      const safe =
+        isRasterDataUrl(href) ||
+        (SAFE_URL.test(href) && !/^data:/i.test(href) && !/[\\\t\n\r]/.test(href));
       if (!safe) return escapeHtml(text);
-      const t = title ? ` title="${escapeHtml(title)}"` : '';
-      return `<img src="${escapeHtml(href)}" alt="${escapeHtml(text)}"${t}>`;
+      return `<img src="${escapeHtml(href)}" alt="${escapeHtml(text)}"${attr}>`;
     },
   },
 });
@@ -80,8 +138,17 @@ function themeCss(theme: HtmlTheme): string {
  * The page has no script, and its CSP says so: should the renderer ever
  * let markup through, the exported file still can't run it.
  */
-export function markdownToHtml(markdown: string, title: string, theme: HtmlTheme): string {
+export function markdownToHtml(
+  markdown: string,
+  title: string,
+  theme: HtmlTheme,
+  images?: ReadonlyMap<string, ExportImage>,
+  webImages = true
+): string {
   usedIds = new Map();
+  loaded = images ?? new Map();
+  allowWebImages = webImages;
+  embeddedBytes = 0;
   const body = marked.parse(markdown, { async: false });
   return `<!doctype html>
 <html lang="en">
@@ -107,7 +174,7 @@ blockquote{margin:1em 0;padding-left:1rem;border-left:3px solid var(--accent);co
 table{border-collapse:collapse;margin:1em 0}th,td{border:1px solid var(--border);padding:.35rem .7rem;text-align:start;vertical-align:top}th{background:var(--surface-2)}
 [align=center]{text-align:center}[align=right]{text-align:right}
 hr{border:0;border-top:1px solid var(--border);margin:2em 0}
-img{max-width:100%}
+img{max-width:100%;height:auto}
 li>input[type=checkbox]{margin-right:.4em}
 @media print{:root{${LIGHT}}body{background:#fff;color:#000}main{padding:0}}
 </style>

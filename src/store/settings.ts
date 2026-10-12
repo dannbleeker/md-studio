@@ -1,4 +1,5 @@
 import type { ExportFormat, HtmlTheme } from '@/domain/exportFormats';
+import type { LinkStyle } from '@/domain/vaultConfig';
 import { isLocale, type LocalePreference } from '@/i18n/locales';
 
 export type ViewMode = 'split' | 'text' | 'visual';
@@ -29,7 +30,13 @@ export type Settings = {
    * metadata for other tools, not part of the document's text.
    */
   exportFrontMatter: boolean;
+  /** How inserted attachment links are written; auto follows the vault's app.json. */
+  linkStyle: LinkStyle;
+  /** Where pasted and dropped files are saved: the vault's folder rule, or images/ beside the note. */
+  attachmentRules: AttachmentRules;
 };
+
+type AttachmentRules = 'vault' | 'images';
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
@@ -44,6 +51,8 @@ export const DEFAULT_SETTINGS: Settings = {
   exportFormat: 'pdf',
   exportHtmlTheme: 'auto',
   exportFrontMatter: false,
+  linkStyle: 'auto',
+  attachmentRules: 'vault',
 };
 
 const VIEW_MODES: readonly ViewMode[] = ['split', 'text', 'visual'];
@@ -51,6 +60,8 @@ const THEMES: readonly ThemePreference[] = ['system', 'light', 'dark'];
 export const FONT_SIZES: readonly FontSize[] = ['small', 'medium', 'large'];
 const EXPORT_FORMATS: readonly ExportFormat[] = ['html', 'pdf', 'docx', 'txt'];
 const HTML_THEMES: readonly HtmlTheme[] = ['auto', 'light', 'dark'];
+const LINK_STYLES: readonly LinkStyle[] = ['wikilink', 'markdown', 'auto'];
+const ATTACHMENT_RULES: readonly AttachmentRules[] = ['vault', 'images'];
 
 const oneOf = <T>(allowed: readonly T[], value: unknown, fallback: T): T =>
   allowed.includes(value as T) ? (value as T) : fallback;
@@ -72,5 +83,7 @@ export function sanitizeSettings(raw: Record<string, unknown>): Settings {
     exportFormat: oneOf(EXPORT_FORMATS, raw.exportFormat, d.exportFormat),
     exportHtmlTheme: oneOf(HTML_THEMES, raw.exportHtmlTheme, d.exportHtmlTheme),
     exportFrontMatter: bool(raw.exportFrontMatter, d.exportFrontMatter),
+    linkStyle: oneOf(LINK_STYLES, raw.linkStyle, d.linkStyle),
+    attachmentRules: oneOf(ATTACHMENT_RULES, raw.attachmentRules, d.attachmentRules),
   };
 }

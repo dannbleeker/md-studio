@@ -2,6 +2,82 @@
 
 ## Unreleased
 
+- **Obsidian notes: embeds, wikilinks and a vault attachment folder.**
+  Notes written in Obsidian open with their pictures, PDFs, audio and
+  embedded notes shown, and editing never touches the syntax.
+  - Embeds and wikilinks: `![[a.png]]` and `[[Note|alias]]` are one
+    lossless inline node (`editor/embedNode.ts`, scanner in
+    `domain/embeds.ts`), so a visual edit next to one writes the token
+    back byte for byte. Before, the paragraph was rewritten with escaped
+    brackets and the token was lost. Wikilinks show as inert chips;
+    clicking does nothing yet.
+  - Sizes and alt text: `![[a.png|300]]`, `|300x200`, `|alt|300`, and
+    `![alt|300](p.png)` in Markdown images (the alt text itself is kept);
+    pdf `#page=3&height=400`; `<my file.png>` links; percent-encoded
+    links are decoded per segment, with the literal path as a fallback.
+  - Safe parsing: `remarkEmbeds` converts a text node only after it
+    checks the tokens against the source, so any doubt leaves the text
+    as it was. `editor/frontMatter.ts` now rebases the positions it
+    rebuilds, which that check needs. Code, front matter and escaped
+    forms are never read as embeds.
+  - Vault attachment folder (`services/attachments.ts`): reuses the
+    existing `dir:` key in IndexedDB, so images folders chosen before
+    keep working. Reads a subset of `.obsidian/app.json`
+    (`attachmentFolderPath`, `useMarkdownLinks`, `newLinkFormat`; bad
+    JSON gives the defaults). Resolution (`domain/vaultIndex.ts`) follows
+    Obsidian: exact path, path suffix, vault-wide file name, then note
+    relative; the nearest file wins when names collide, with a tooltip.
+    Markdown links keep resolving note-relative first. The scan runs in
+    the background with a progressive index (cap 50,000 files), and bare
+    names resolve at once through direct lookups; until the index is
+    complete a miss shows the loading chip, never Not found. A known
+    root is adopted without asking, preferring the vault root.
+  - Banner and notices: a bar above the editor when a note has embeds it
+    cannot show (choose the folder, allow access after a reload, save the
+    document first, a not-found variant that asks for the vault root);
+    non-Chromium browsers get a notice and labelled placeholders.
+    Dismissible per tab. Embeds inside code do not count.
+  - Other kinds: pdf (iframe, `#page`, height; the viewer is not yet
+    checked in a headed browser under the CSP, see NEXT_STEPS), audio, video and any
+    other file (chip with Open) load lazily, only once they scroll into
+    view; hidden panes load nothing.
+  - Note transclusion: `![[Note]]`, `#Heading`, `#^block` and same-note
+    forms render read-only inside the visual pane (depth 3, cycle-safe by
+    note and section, cached, links neutralised). They never enter the
+    document, the outline, find or the scroll map.
+  - Paste and drop: any file type is saved to the folder the vault
+    configures and linked in the chosen style. Names follow Obsidian
+    (`Pasted image 20261012093000.png`; dropped files keep their name,
+    collisions get a number). Each failure has its own reason: needs
+    permission, no folder, unsupported browser, failed. Images fall back
+    to data URLs with a toast; other files insert nothing.
+  - Settings: **Link style** (wikilinks, Markdown links, auto) and
+    **Attachment location** (vault settings, or `images` beside the
+    note). Auto without a `.obsidian` folder keeps the old behaviour, so
+    existing documents see no change. Command palette: **Choose
+    attachment folder…** and **Rescan attachments**.
+  - Export (`domain/embedExport.ts`): sized images in HTML, Word and PDF;
+    pdf, audio, video and other files become labelled lines; note
+    embeds expand as quotes, also inside lists and quotes, and collapse
+    to a labelled line in table cells or mid-paragraph; unresolved
+    embeds and wikilinks become plain text. Fixes: HTML export now
+    honours Load web images (it leaked requests to the image's server),
+    `//host/x.png` is no longer taken for a relative path, and a tab
+    switch during an export no longer reads the other document's folder.
+    webp, avif, bmp and svg are rasterised for Word and PDF.
+  - Markdown images re-resolve after a tab switch (two tabs with the
+    same `images/x.png` in different folders showed the first one's).
+  - The CSP gains `media-src blob:` and `frame-src blob:`
+    (`vite.config.ts`, pinned by a test).
+  - Tests: 384 -> 948 unit tests, plus two Playwright specs
+    (`e2e/embeds.spec.ts`, `e2e/embeds-vault.spec.ts`).
+  - Bundle: `index` re-pinned 32.5 -> 37.0 KB (measured 34.4 KB, +3.1 KB).
+    Total eager JS grew about 7 KB gzip, because shared code also moved
+    into three small start-up chunks (`embeds` 3.0 KB, `frontMatter`
+    0.6 KB, `fences` 0.2 KB), which now have their own budget entries. The
+    attachments service, vault index, transclusion, media and note
+    renderers, banner and export expansion are lazy chunks.
+
 - **Book and guide PDFs.** Pages are numbered (the book's cover excepted),
   the book's contents list each chapter's page with a dotted leader, and
   the cover's eyebrow uses the indigo of the other Studio books. A new

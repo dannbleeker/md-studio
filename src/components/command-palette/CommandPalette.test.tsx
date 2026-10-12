@@ -5,6 +5,17 @@ import { resetStoreForTest, useStore } from '@/store';
 import { useUiStore } from '@/store/ui';
 import { CommandPalette } from './CommandPalette';
 
+const attachments = vi.hoisted(() => ({
+  ctx: { fileHandle: null, handleId: 'h1' },
+  chooseAttachmentFolder: vi.fn(async () => true),
+  refreshAttachments: vi.fn(async () => {}),
+}));
+vi.mock('@/services/attachments', () => ({
+  currentDocContext: () => attachments.ctx,
+  chooseAttachmentFolder: attachments.chooseAttachmentFolder,
+  refreshAttachments: attachments.refreshAttachments,
+}));
+
 describe('CommandPalette', () => {
   beforeEach(() => {
     resetStoreForTest();
@@ -88,5 +99,43 @@ describe('CommandPalette', () => {
     expect(useUiStore.getState().paletteOpen).toBe(true);
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(useUiStore.getState().paletteOpen).toBe(false);
+  });
+
+  it('lists the attachment commands and runs them through the service', async () => {
+    render(<CommandPalette />);
+    const input = screen.getByRole('combobox', { name: 'Commands' });
+    fireEvent.change(input, { target: { value: 'attachment' } });
+    const labels = screen.getAllByRole('option').map((o) => o.textContent);
+    expect(labels).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('Choose attachment folder'),
+        expect.stringContaining('Rescan attachments'),
+      ])
+    );
+    fireEvent.change(input, { target: { value: 'choose attachment' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await vi.waitFor(() =>
+      expect(attachments.chooseAttachmentFolder).toHaveBeenCalledWith(attachments.ctx)
+    );
+  });
+
+  it('rescans attachments and says so', async () => {
+    render(<CommandPalette />);
+    const input = screen.getByRole('combobox', { name: 'Commands' });
+    fireEvent.change(input, { target: { value: 'rescan' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await vi.waitFor(() =>
+      expect(useUiStore.getState().toasts.map((x) => x.message)).toContain('Attachments rescanned.')
+    );
+    expect(attachments.refreshAttachments).toHaveBeenCalledWith(attachments.ctx);
+  });
+
+  it('hides the attachment commands on the start screen', () => {
+    useStore.getState().setScreen('start');
+    render(<CommandPalette />);
+    fireEvent.change(screen.getByRole('combobox', { name: 'Commands' }), {
+      target: { value: 'attachment' },
+    });
+    expect(screen.queryByRole('option', { name: /attachment/i })).toBeNull();
   });
 });

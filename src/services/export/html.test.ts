@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { ExportImage } from './exportImages';
 import { markdownToHtml } from './html';
 
 describe('markdownToHtml', () => {
@@ -86,5 +87,127 @@ describe('markdownToHtml', () => {
     const html = markdownToHtml('# a\n\n# a\n\n# a-1', 'T', 'light');
     const ids = [...html.matchAll(/<h1 id="([^"]+)"/g)].map((m) => m[1]);
     expect(new Set(ids).size).toBe(3);
+  });
+
+  describe('images', () => {
+    const PNG = Uint8Array.from(
+      atob(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+      ),
+      (c) => c.charCodeAt(0)
+    );
+    const image = (extra: Partial<ExportImage> = {}): ExportImage => ({
+      type: 'png',
+      bytes: PNG,
+      width: 1,
+      height: 1,
+      ...extra,
+    });
+
+    it('keeps web images out when the privacy setting says so', () => {
+      for (const src of [
+        'https://x.dk/a.png',
+        '//cdn.x.dk/a.png',
+        'http:/x.dk/a.png',
+        'HTTP:x.dk/a.png',
+      ]) {
+        const off = markdownToHtml(`![shot](${src})`, 't', 'light', undefined, false);
+        expect(off).not.toContain('<img');
+        expect(off).not.toContain(src);
+        expect(off).toContain('shot');
+        const on = markdownToHtml(`![shot](${src})`, 't', 'light', undefined, true);
+        expect(on).toContain(`<img src="${src}"`);
+      }
+    });
+
+    it('never writes a network-share or scheme-hiding target as an image source', () => {
+      for (const md of [
+        '![x](\\\\\\\\evil.example/a.png)',
+        '![x](<\\evil.example/a.png>)',
+        '![x](ht&#9;tps://evil.example/a.png)',
+      ]) {
+        for (const web of [true, false]) {
+          const html = markdownToHtml(md, 't', 'light', undefined, web);
+          expect(html, md).not.toContain('<img');
+          expect(html, md).not.toContain('evil.example');
+        }
+      }
+    });
+
+    it('names the file when a hidden web image has no alt', () => {
+      const html = markdownToHtml(
+        '![](https://x.dk/dir/a%20b.png)',
+        't',
+        'light',
+        undefined,
+        false
+      );
+      expect(html).toContain('a b.png');
+      expect(html).not.toContain('<img');
+    });
+
+    it('embeds loaded images as data URIs with their display size', () => {
+      const href = 'attachment:img/a.png#size=300x200';
+      const html = markdownToHtml(
+        `![a <pic>](${href})`,
+        't',
+        'light',
+        new Map([[href, image({ displayWidth: 300, displayHeight: 200 })]])
+      );
+      expect(html).toMatch(
+        /<img src="data:image\/png;base64,[A-Za-z0-9+/=]+" alt="a &lt;pic&gt;" width="300" height="200">/
+      );
+    });
+
+    it('writes the width alone when only the width was asked for', () => {
+      const href = 'attachment:a.png#size=300';
+      const html = markdownToHtml(
+        `![](${href})`,
+        't',
+        'light',
+        new Map([[href, image({ displayWidth: 300 })]])
+      );
+      expect(html).toContain(' width="300">');
+      expect(html).not.toContain('height="');
+    });
+
+    it('prints the alt text, never a link, for an attachment that was not loaded', () => {
+      const html = markdownToHtml(
+        '![a photo](attachment:img/a.png#size=300)\n\n![](attachment:img/b%20c.png)',
+        't',
+        'light'
+      );
+      expect(html).not.toContain('<img');
+      expect(html).not.toContain('attachment:');
+      expect(html).toContain('a photo');
+      expect(html).toContain('b c.png');
+    });
+
+    it('stops embedding past the size guards', () => {
+      const big = new Uint8Array(5 * 1024 * 1024 + 1);
+      const hrefs = ['attachment:big.png', 'attachment:a.png', 'attachment:b.png'];
+      const images = new Map(
+        hrefs.map((h, i) => [h, i === 0 ? image({ bytes: big }) : image()] as const)
+      );
+      const html = markdownToHtml(
+        hrefs.map((h) => `![x${h}](${h})`).join('\n\n'),
+        't',
+        'light',
+        images
+      );
+      expect(html).not.toContain('xattachment:big.png"');
+      expect(html.match(/<img /g)).toHaveLength(2);
+
+      const mid = new Uint8Array(4 * 1024 * 1024);
+      const many = Array.from({ length: 8 }, (_, i) => `attachment:m${i}.png`);
+      const crowded = markdownToHtml(
+        many.map((h) => `![](${h})`).join('\n\n'),
+        't',
+        'light',
+        new Map(many.map((h) => [h, image({ bytes: mid })] as const))
+      );
+      // 25 MB total: six 4 MB images fit, the rest fall back to their names.
+      expect(crowded.match(/<img /g)).toHaveLength(6);
+    });
   });
 });

@@ -63,6 +63,35 @@
       and commits from the GitHub API. No chart library: trends are inline
       SVG.
 
+- [ ] Obsidian embeds, follow-ups (the first version is in the
+      changelog; these are its known gaps):
+  - [ ] Link autocomplete for `[[` and `![[`.
+  - [ ] Clickable wikilinks (open the note, or a tab for it).
+  - [ ] A vault browser (file tree, quick switcher).
+  - [ ] Heading and block link targets in the UI (`#Heading`, `#^id`).
+  - [ ] `%%comments%%`.
+  - [ ] Edit an embed's size or target from the visual pane (today: in
+        the Markdown pane).
+  - [ ] Canvas and Base files (shown as other-file chips).
+  - [ ] Transcluded notes refresh live (today: after a refocus rescan).
+  - [ ] Headings inside lists, quotes and callouts as transclusion
+        targets (`findHeadings` is top-level only).
+  - [ ] Tokens split across inline nodes (emphasis or a bare address
+        inside a name) stay plain text and are escaped when that block is
+        edited in the visual pane.
+  - [ ] Replace the headless Milkdown editor used for transclusion with
+        a shared parser if the bundle sizes allow.
+  - [ ] **Unverified:** the PDF viewer for `![[report.pdf]]` under the CSP
+        (`object-src 'none'` with `frame-src blob:`) has not been checked
+        in a headed Chromium. Chromium may apply `object-src` to the PDF
+        plugin document and block the frame, leaving only the Open link.
+        If so, change the CSP in `vite.config.ts` to `object-src blob:`
+        (and update `csp.test.ts`).
+  - [ ] Check by hand that the command palette's attachment-folder picker
+        still has user activation: the dynamic import runs before
+        `showDirectoryPicker`, which some browsers reject without a
+        recent click or key press.
+
 ## Repo and CI
 
 - [x] GitHub Pages: Actions source, custom domain, HTTPS enforced.

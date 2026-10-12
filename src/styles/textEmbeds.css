@@ -1,0 +1,19 @@
+/* Text-pane marks for [[wikilinks]] and ![[embeds]]: colour only, so line
+   heights (and with them the linked scroll) never change. */
+.cm-embed-mark,
+.cm-embed-opts {
+  color: var(--text-muted);
+}
+.cm-embed-target {
+  color: var(--syn-link);
+}
+.cm-embed-frag {
+  color: var(--syn-property);
+}
+.cm-embed-link .cm-embed-target {
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+}
+.cm-embed-other .cm-embed-target {
+  font-style: italic;
+}

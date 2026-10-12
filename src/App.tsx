@@ -22,6 +22,11 @@ import { useUiStore } from './store/ui';
 const FindBar = lazy(() =>
   import('./components/find/FindBar').then((m) => ({ default: m.FindBar }))
 );
+const AttachmentBanner = lazy(() =>
+  import('./components/attachments/AttachmentBanner').then((m) => ({
+    default: m.AttachmentBanner,
+  }))
+);
 const OutlinePanel = lazy(() =>
   import('./components/outline/OutlinePanel').then((m) => ({ default: m.OutlinePanel }))
 );
@@ -59,6 +64,9 @@ export function App() {
                   <FindBar />
                 </LazyBoundary>
               ) : null}
+              <LazyBoundary>
+                <AttachmentBanner />
+              </LazyBoundary>
               <SplitView />
             </div>
           </div>

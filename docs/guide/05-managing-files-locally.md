@@ -100,6 +100,20 @@ In other browsers, before the document has been saved, or if you choose **Cancel
 
 So save a new document to disk *before* you start pasting images into it, and your Markdown stays clean.
 
+## The attachment folder and Obsidian vaults
+
+If your notes come from Obsidian, or you keep pictures and PDFs in a folder tree of their own, MD Studio can show them where the Markdown names them. This works in Edge and Chrome, with the document saved on disk. The idea is one folder per document that holds the note and everything it points to. Choose the vault's top folder, the one with the `.obsidian` folder in it, because a name like `![[plan.png]]` can refer to a file anywhere in the vault, and MD Studio can only look inside the folder you chose.
+
+When you open a note that has embeds the files cannot be found for, a bar appears above the editor. It says "Some attachments in this note cannot be shown" and has a **Choose attachment folder** button. Click it and pick the folder. The command palette has the same command, **Choose attachment folder…**. The folder must contain the note; if it does not, MD Studio tells you and keeps the old choice. Until then each embed is a labelled placeholder with its original text, so you can still read and edit the note.
+
+The bar has other forms. After you reload the page or restart the browser, it may say that attachments in the folder "need permission before they can be shown", with an **Allow access** button; the browser wants one click from you before it lets a page read a folder again. If the document has not been saved, it says "Save this document to disk to show its attachments." In a browser that cannot read folders, it says so and the placeholders stay. And if you chose a folder inside the vault, so that some files cannot be found, it says "Some attachments were not found" in that folder and asks you to choose the vault root. A missing file's placeholder also carries a tooltip with the same advice. The **×** closes the bar for that tab. Embeds that appear only inside code, such as in a guide that explains the syntax, do not raise it.
+
+The first time a large vault is opened, MD Studio indexes it in the background. You can start reading at once: a bare file name is tried in the note's folder, the vault's attachment folder and the vault root first, so most pictures show before the index is done. While the index is incomplete a file that cannot be found yet shows "Loading…" instead of "Not found". The index holds up to 50,000 files; a bigger vault gets a notice, and some files may then show as not found. MD Studio has no file watcher, so a file you add in another program shows after you return to the window, after a missing one is looked for again, or when you run **Rescan attachments** from the command palette.
+
+MD Studio reads three settings from `.obsidian/app.json` in the vault: the attachment folder, whether new links are Markdown or wikilinks, and whether paths are the shortest, relative or absolute. It never changes that file. A vault with a `.obsidian` folder but no `app.json` gets Obsidian's defaults, which are the vault root, wikilinks and the shortest path. A folder with no `.obsidian` folder keeps the older behaviour: images in an `images` folder beside the document, linked the Markdown way.
+
+The folder choice belongs to the document. If you use Save As to move a note to another place inside the same folder tree, the folder follows it. If the new location is outside the folder, MD Studio asks again when it is needed. A document with a folder already chosen for another note in the same vault picks up that folder without asking, preferring the vault's top folder when it has several to choose from.
+
 ## Working across devices
 
 MD Studio does not sync, so moving between a work laptop, a home desktop and a phone comes down to where you keep the files. You probably have the right tool already.
@@ -147,7 +161,7 @@ Ten minutes is enough to see this chapter in action.
 2. Type a sentence. Watch the unsaved-changes dot appear. Close the whole browser window without saving.
 3. Open MD Studio again. Your sentence is there, the dot is still there. Press **Ctrl+S**; the browser may ask for permission to edit the file; allow it.
 4. Open `practice.md` in Notepad or any other editor. Your sentence is in the file.
-5. Paste a screenshot into the document. Choose **Choose folder…**, pick the folder, and look in it: a new `images` folder with your screenshot inside.
+5. Paste a screenshot into the document. Choose **Choose folder…**, pick the folder, and look in it: a new `images` folder with your screenshot inside. If the folder is an Obsidian vault, the file lands where the vault's settings say and is linked as `![[Pasted image …]]` instead.
 6. Go to the start screen and find `practice.md` under **Recent**, labelled **File on disk**.
 
 If you have a second computer, open the same file there from the synced folder. That is all cross-device work in MD Studio involves: a file in a folder you already trust.

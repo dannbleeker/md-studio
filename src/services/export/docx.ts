@@ -99,14 +99,21 @@ function inline(tokens: Token[] | undefined, style: Style = {}): ParagraphChild[
         const loaded = images.get(image.href);
         if (loaded) {
           // Pixel sizes; fit to the text width (about 6.3 in at 96 dpi).
-          const scale = Math.min(1, MAX_IMAGE_PX / loaded.width);
+          // An Obsidian size (![[a.png|300]]) sets the displayed size, still capped.
+          const wide = loaded.displayWidth ?? loaded.width;
+          const tall =
+            loaded.displayHeight ??
+            (loaded.displayWidth
+              ? (loaded.displayWidth * loaded.height) / loaded.width
+              : loaded.height);
+          const scale = Math.min(1, MAX_IMAGE_PX / wide);
           out.push(
             new ImageRun({
               type: loaded.type,
               data: loaded.bytes,
               transformation: {
-                width: Math.round(loaded.width * scale),
-                height: Math.round(loaded.height * scale),
+                width: Math.max(1, Math.round(wide * scale)),
+                height: Math.max(1, Math.round(tall * scale)),
               },
               altText: { name: image.text || 'image', description: image.text, title: image.text },
             })

@@ -33,7 +33,7 @@ function indentOf(line: string): number {
  * paragraph's continuation lines and a list item's further paragraphs are
  * not mistaken for it.
  */
-function codeLines(lines: string[]): boolean[] {
+export function codeLines(lines: string[]): boolean[] {
   const code = lines.map(() => false);
   // Content columns of the list items the current line may belong to.
   const columns: number[] = [];

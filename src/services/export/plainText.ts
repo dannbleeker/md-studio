@@ -46,7 +46,8 @@ function inline(tokens: Token[] | undefined): string {
         break;
       }
       case 'image':
-        out += `[${(t as Tokens.Image).text}]`;
+        // Never an empty "[]": fall back to the file name.
+        out += `[${(t as Tokens.Image).text || imageName((t as Tokens.Image).href)}]`;
         break;
       case 'br':
         out += '\n';
@@ -135,4 +136,15 @@ function blocks(tokens: Token[], depth: number, sep = '\n\n'): string {
 /** marked leaves named entities (&copy;, &nbsp;, &mdash;…) encoded in its tokens. */
 function decode(s: string): string {
   return decodeHTML(s);
+}
+
+/** The file name an image points at, decoded where possible. */
+function imageName(href: string): string {
+  if (/^data:/i.test(href)) return 'image';
+  const last = href.split('#')[0]?.split('/').pop() ?? '';
+  try {
+    return decodeURIComponent(last) || 'image';
+  } catch {
+    return last || 'image';
+  }
 }

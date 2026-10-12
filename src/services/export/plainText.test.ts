@@ -62,4 +62,10 @@ describe('markdownToPlainText', () => {
     expect(markdownToPlainText('Use `&amp;` for &copy;')).toBe('Use &amp; for ©\n');
     expect(markdownToPlainText('```\n&copy;\n```')).toBe('&copy;\n');
   });
+
+  it('keeps images as [alt] and never prints an empty pair of brackets', () => {
+    expect(markdownToPlainText('![a photo](x.png)')).toBe('[a photo]\n');
+    expect(markdownToPlainText('![](attachment:img/my%20pic.png#size=300)')).toBe('[my pic.png]\n');
+    expect(markdownToPlainText('![](data:image/png;base64,AAAA)')).toBe('[image]\n');
+  });
 });

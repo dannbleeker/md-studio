@@ -27,4 +27,17 @@ describe('SettingsDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     expect(useUiStore.getState().settingsOpen).toBe(false);
   });
+
+  it('updates the link style and the attachment location', () => {
+    render(<SettingsDialog />);
+    expect(screen.getByRole('radio', { name: /Auto \(follow the vault\)/ })).toBeChecked();
+    expect(screen.getByRole('radio', { name: /Follow vault settings/ })).toBeChecked();
+    fireEvent.click(screen.getByRole('radio', { name: /Markdown links/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /Images folder next to the note/ }));
+    expect(useStore.getState().settings.linkStyle).toBe('markdown');
+    expect(useStore.getState().settings.attachmentRules).toBe('images');
+    fireEvent.click(screen.getByRole('radio', { name: /Wikilinks/ }));
+    expect(useStore.getState().settings.linkStyle).toBe('wikilink');
+    expect(screen.getByText(/\.obsidian\/app\.json/)).toBeInTheDocument();
+  });
 });

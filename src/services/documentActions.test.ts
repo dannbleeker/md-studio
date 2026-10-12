@@ -15,6 +15,9 @@ import {
   switchTab,
 } from './documentActions';
 
+const adoptAttachmentFolder = vi.hoisted(() => vi.fn(async () => {}));
+vi.mock('./attachments', () => ({ adoptAttachmentFolder }));
+
 const handles = new Map<string, FileSystemFileHandle>();
 vi.mock('./handleStore', () => ({
   getHandle: async (id: string) => handles.get(id) ?? null,
@@ -370,6 +373,43 @@ describe('Save As onto a file another tab has open', () => {
       ['# A, edited', null],
       ['# B, written over a.md', 'id-a'],
     ]);
+  });
+});
+
+describe('Save As and the attachment folder', () => {
+  beforeEach(() => {
+    handles.clear();
+    adoptAttachmentFolder.mockClear();
+    resetStoreForTest();
+  });
+
+  it('hands the old folder to the new file', async () => {
+    const a = fakeHandle('a.md', '# A');
+    handles.set('id-a', a);
+    useStore.getState().loadDocument(createDocument('# A', 'a.md'), a, 'id-a');
+    const b = fakeHandle('b.md', '');
+    Object.assign(window, { showSaveFilePicker: async () => b });
+    await saveDocument(true);
+    delete (window as { showSaveFilePicker?: unknown }).showSaveFilePicker;
+    await vi.waitFor(() => expect(adoptAttachmentFolder).toHaveBeenCalledTimes(1));
+    expect(adoptAttachmentFolder).toHaveBeenCalledWith('id-a', useStore.getState().handleId, b);
+  });
+
+  it('does nothing on a plain Save, and survives a failing migration', async () => {
+    const a = fakeHandle('a.md', '# A');
+    handles.set('id-a', a);
+    useStore.getState().loadDocument(createDocument('# A', 'a.md'), a, 'id-a');
+    useStore.getState().setMarkdown('# A2', 'text');
+    await saveDocument();
+    expect(adoptAttachmentFolder).not.toHaveBeenCalled();
+
+    adoptAttachmentFolder.mockRejectedValueOnce(new Error('denied'));
+    const b = fakeHandle('b.md', '');
+    Object.assign(window, { showSaveFilePicker: async () => b });
+    await saveDocument(true);
+    delete (window as { showSaveFilePicker?: unknown }).showSaveFilePicker;
+    await vi.waitFor(() => expect(adoptAttachmentFolder).toHaveBeenCalledTimes(1));
+    expect(useStore.getState().doc.fileName).toBe('b.md');
   });
 });
 

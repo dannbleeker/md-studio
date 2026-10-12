@@ -1,3 +1,5 @@
+import { loadAllEmbeds } from '@/components/editor/embedView';
+import { t } from '@/i18n';
 import type { MessageKey } from '@/i18n/en';
 import {
   closeTab,
@@ -11,7 +13,7 @@ import {
 import { exportDocument } from '@/services/export';
 import { BOOK_EPUB, BOOK_PDF, DASHBOARD, GUIDE_PDF } from '@/services/links';
 import { useStore } from '@/store';
-import { useUiStore } from '@/store/ui';
+import { showToast, useUiStore } from '@/store/ui';
 
 /** Same as clicking an `<a download>`: saves the file instead of navigating. */
 function downloadLink(href: string): void {
@@ -166,7 +168,28 @@ export const COMMANDS: readonly Command[] = [
     editorOnly: true,
     label: 'cmd.print',
     shortcut: 'Ctrl+P',
-    run: () => window.print(),
+    run: () => void loadAllEmbeds().then(() => window.print()),
+  },
+  {
+    id: 'choose-attachment-folder',
+    editorOnly: true,
+    label: 'cmd.chooseAttachmentFolder',
+    // Reached by a click or Enter, and the import resolves in a few ms, so
+    // the user activation the directory picker needs is still fresh.
+    run: () =>
+      void import('@/services/attachments').then((m) =>
+        m.chooseAttachmentFolder(m.currentDocContext())
+      ),
+  },
+  {
+    id: 'rescan-attachments',
+    editorOnly: true,
+    label: 'cmd.rescanAttachments',
+    run: () =>
+      void import('@/services/attachments').then(async (m) => {
+        await m.refreshAttachments(m.currentDocContext());
+        showToast(t('attachment.rescanned'));
+      }),
   },
   {
     id: 'settings',

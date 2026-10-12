@@ -10,7 +10,15 @@ export type MarkdownPdfOptions = {
   /** Images to embed, by source as written in the Markdown (PNG and JPEG). */
   images?: ReadonlyMap<
     string,
-    { type: 'png' | 'jpg' | 'gif'; bytes: Uint8Array; width: number; height: number }
+    {
+      type: 'png' | 'jpg' | 'gif';
+      bytes: Uint8Array;
+      width: number;
+      height: number;
+      /** Wanted size in pixels, when the Markdown gave one. */
+      displayWidth?: number;
+      displayHeight?: number;
+    }
   >;
   /** Book mode: cover page, clickable contents and bookmarks. */
   cover?: { eyebrow?: string } | null;

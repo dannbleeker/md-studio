@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   imageExtension,
   imageFileName,
+  isRasterDataUrl,
   isRelativeUrl,
   isWebImage,
   relativeImagePath,
@@ -39,6 +40,19 @@ describe('imagePaths', () => {
     expect(isRelativeUrl('/abs.png')).toBe(false);
     expect(isRelativeUrl('')).toBe(false);
   });
+
+  it('rejects targets a browser would read as another server', () => {
+    for (const src of [
+      'ht\ttps://evil.example/a.png',
+      'ht\ntps://evil.example/a.png',
+      '\\\\evil.example/a.png',
+      '\\evil.example/a.png',
+      '/\\evil.example/a.png',
+      ' //evil.example/a.png',
+      'images/a\tb.png',
+    ])
+      expect(isRelativeUrl(src), JSON.stringify(src)).toBe(false);
+  });
 });
 
 describe('isWebImage', () => {
@@ -49,6 +63,19 @@ describe('isWebImage', () => {
       'HTTPS://example.com/a.png',
       '//example.com/a.png',
       ' https://example.com/a.png',
+      'ht\ttps://evil.example/a.png',
+      'https:/\t/evil.example/a.png',
+      'ht\ntps://evil.example/a.png',
+      '\\\\evil.example/a.png',
+      '/\\evil.example/a.png',
+      '\\/evil.example/a.png',
+      '\u0001https://evil.example/a.png',
+      // Browsers read these as http(s)://evil.example/a.png.
+      'http:/evil.example/a.png',
+      'http:evil.example/a.png',
+      'HTTP:evil.example/a.png',
+      'https:/evil.example/a.png',
+      'ht\ttp:evil.example/a.png',
     ])
       expect(isWebImage(src), src).toBe(true);
   });
@@ -63,5 +90,20 @@ describe('isWebImage', () => {
       '',
     ])
       expect(isWebImage(src), src).toBe(false);
+  });
+});
+
+describe('isRasterDataUrl', () => {
+  it('accepts pasted raster images, webp included', () => {
+    for (const type of ['png', 'jpeg', 'gif', 'webp']) {
+      expect(isRasterDataUrl(`data:image/${type};base64,QUJD`), type).toBe(true);
+    }
+  });
+
+  it('rejects SVG, other schemes and data that is not base64', () => {
+    expect(isRasterDataUrl('data:image/svg+xml;base64,QUJD')).toBe(false);
+    expect(isRasterDataUrl('data:image/png,QUJD')).toBe(false);
+    expect(isRasterDataUrl('data:text/html;base64,QUJD')).toBe(false);
+    expect(isRasterDataUrl('https://x.dk/a.png')).toBe(false);
   });
 });

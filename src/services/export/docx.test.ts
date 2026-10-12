@@ -56,6 +56,37 @@ describe('markdownToDocx', () => {
     expect(xml).toContain('[gone]');
   });
 
+  it('sizes an image by displayWidth, capped, and keeps the aspect ratio', async () => {
+    const png = Uint8Array.from(
+      atob(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+      ),
+      (c) => c.charCodeAt(0)
+    );
+    const extent = async (extra: { displayWidth?: number; displayHeight?: number }) => {
+      const images = new Map([
+        ['a.png', { type: 'png' as const, bytes: png, width: 400, height: 200, ...extra }],
+      ]);
+      const zip = await JSZip.loadAsync(
+        await Packer.toBuffer(markdownToDocxDocument('![a](a.png)', 'T', images))
+      );
+      const xml = (await zip.file('word/document.xml')?.async('string')) ?? '';
+      const m = /<wp:extent cx="(\d+)" cy="(\d+)"/.exec(xml);
+      // EMU: 9525 per pixel.
+      return [Number(m?.[1]) / 9525, Number(m?.[2]) / 9525];
+    };
+    expect(await extent({})).toEqual([400, 200]);
+    expect(await extent({ displayWidth: 100 })).toEqual([100, 50]);
+    expect(await extent({ displayWidth: 100, displayHeight: 80 })).toEqual([100, 80]);
+    expect(await extent({ displayWidth: 1200 })).toEqual([600, 300]);
+  });
+
+  it('prints the alt text of an attachment image that was not loaded', async () => {
+    const xml = await documentXml('![a photo](attachment:img/a.png#size=300)');
+    expect(xml).toContain('[a photo]');
+    expect(xml).not.toContain('attachment:');
+  });
+
   it('keeps task item text in its bullet', async () => {
     const xml = await documentXml('- [x] done item\n- [ ] todo item');
     expect(xml).toMatch(/☑ <\/w:t>.*?done item/s);

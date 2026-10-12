@@ -362,3 +362,120 @@
   color: var(--text-faint);
   pointer-events: none;
 }
+
+/* embeds: Obsidian-style tokens ![[...]] and [[...]] in the visual pane */
+.visual-doc .md-embed-host {
+  display: inline;
+}
+.visual-doc .md-embed-host.md-embed-block {
+  display: block;
+  margin: 0.6em 0;
+}
+.visual-doc .md-embed-host img:not([height]) {
+  height: auto;
+}
+.visual-doc .md-embed-chip,
+.visual-doc .md-wikilink {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5em;
+  padding: 0.1em 0.55em;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+.visual-doc .md-wikilink {
+  color: var(--accent);
+  background: transparent;
+  border-style: dashed;
+  cursor: default;
+}
+.visual-doc .md-embed-raw {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  color: var(--text-faint);
+  overflow-wrap: anywhere;
+}
+.visual-doc .md-embed-missing,
+.visual-doc .md-embed-unavailable {
+  border-style: dashed;
+}
+.visual-doc .md-embed-cycle,
+.visual-doc .md-embed-depth {
+  border-style: dotted;
+}
+.visual-doc .md-embed-open {
+  color: var(--accent);
+  text-decoration: underline;
+  font-size: 0.9em;
+}
+.visual-doc .md-embed-pdf {
+  display: block;
+  max-width: 100%;
+}
+.visual-doc .md-embed-pdf-frame {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+}
+.visual-doc .md-embed-bar {
+  display: flex;
+  gap: 0.75em;
+  align-items: baseline;
+  padding-top: 0.25em;
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+.visual-doc .md-embed-audio {
+  width: min(100%, 28rem);
+}
+.visual-doc .md-embed-video {
+  max-width: 100%;
+  height: auto;
+}
+
+/* A transcluded note: read-only, set apart by a border and a quote bar. */
+.visual-doc .md-transclusion {
+  margin: 0;
+  padding: 0.4rem 0.9rem 0.6rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  user-select: text;
+}
+.visual-doc .md-transclusion-header {
+  margin-bottom: 0.3rem;
+  color: var(--text-faint);
+  font-family: var(--font-ui, inherit);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.visual-doc .md-transclusion-more {
+  color: var(--text-faint);
+}
+.visual-doc .md-transcluded-heading {
+  margin: 0.8em 0 0.3em;
+  font-weight: 650;
+}
+.visual-doc .md-transcluded-heading[aria-level="1"] {
+  font-size: 1.35em;
+}
+.visual-doc .md-transcluded-heading[aria-level="2"] {
+  font-size: 1.2em;
+}
+.visual-doc .md-transcluded-heading[aria-level="3"] {
+  font-size: 1.1em;
+}
+.visual-doc .md-transclusion p {
+  margin: 0.4em 0;
+}
+.visual-doc .md-transclusion img {
+  max-width: 100%;
+}

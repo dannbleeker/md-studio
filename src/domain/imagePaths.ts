@@ -50,15 +50,56 @@ export function relativeImagePath(
 }
 
 /**
- * True for an image on another server (`https://…`, `//host/…`): loading
- * it tells that server the document was opened. Pasted (`data:`) and local
- * images are not web images.
+ * The URL as a browser reads it: leading control characters and spaces go,
+ * tabs and line breaks are removed anywhere, and a backslash counts as a
+ * slash. `ht\ttps://host/a.png` and `\\host/a.png` both name another
+ * server although the raw text does not look like it.
  */
-export function isWebImage(src: string): boolean {
-  return /^(?:[a-z][a-z0-9+.-]*:)?\/\//i.test(src.trim());
+function asBrowserReads(src: string): string {
+  let start = 0;
+  while (start < src.length && src.charCodeAt(start) <= 0x20) start++;
+  return src
+    .slice(start)
+    .replace(/[\t\n\r]/g, '')
+    .replaceAll('\\', '/');
 }
 
-/** True for a relative link target (no scheme, not absolute, not a fragment). */
+function hasControlCharacter(src: string): boolean {
+  for (let i = 0; i < src.length; i++) {
+    const code = src.charCodeAt(i);
+    if (code < 0x20 || code === 0x7f) return true;
+  }
+  return false;
+}
+
+/**
+ * True for an image on another server (`https://…`, `//host/…`): loading
+ * it tells that server the document was opened. Pasted (`data:`) and local
+ * images are not web images. `http:/host/a.png` and `http:host/a.png` count
+ * too: a browser reads both as `http://host/a.png`.
+ */
+export function isWebImage(src: string): boolean {
+  const read = asBrowserReads(src);
+  return /^(?:[a-z][a-z0-9+.-]*:)?\/\//i.test(read) || /^https?:/i.test(read);
+}
+
+/**
+ * A pasted raster image (`data:` + base64) a browser can show as it is. SVG
+ * stays out: it can carry script.
+ */
+export function isRasterDataUrl(src: string): boolean {
+  return /^data:image\/(?:png|jpeg|gif|webp);base64,[A-Za-z0-9+/=]+$/i.test(src);
+}
+
+/**
+ * True for a relative link target (no scheme, not absolute, not a fragment).
+ * A target a browser would read differently from how it looks (a control
+ * character in it, a leading backslash) is not one.
+ */
 export function isRelativeUrl(src: string): boolean {
-  return src !== '' && !/^(?:[a-z][a-z0-9+.-]*:|\/|#)/i.test(src);
+  return (
+    src !== '' &&
+    !hasControlCharacter(src) &&
+    !/^(?:[a-z][a-z0-9+.-]*:|\/|#)/i.test(asBrowserReads(src))
+  );
 }
