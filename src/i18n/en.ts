@@ -62,7 +62,7 @@ export const en = {
   'settings.linkStyle.markdown': 'Markdown links, like ![](image.png)',
   'settings.linkStyle.auto': 'Auto (follow the vault)',
   'settings.linkStyle.autoHint':
-    'Auto reads .obsidian/app.json in the vault folder you chose, and falls back to wikilinks.',
+    'Auto reads .obsidian/app.json in the vault folder you chose. Without one, it keeps writing Markdown links.',
   'settings.attachmentRules': 'Attachment location',
   'settings.attachmentRules.vault': 'Follow vault settings',
   'settings.attachmentRules.images': 'Images folder next to the note',
