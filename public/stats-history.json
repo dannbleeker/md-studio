@@ -38,9 +38,9 @@
   {
     "date": "2026-10-13",
     "appLines": 16308,
-    "testLines": 16070,
+    "testLines": 16090,
     "tests": 1277,
-    "coverageLines": 88.96,
+    "coverageLines": null,
     "eagerGzipBytes": 468598,
     "bookWords": 26071
   }
