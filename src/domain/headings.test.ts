@@ -95,7 +95,7 @@ describe('findHeadings', () => {
     expect(findHeadings('####### seven')).toEqual([]);
   });
 
-  it('reads a heading with a very long run of blanks in linear time', () => {
+  it('reads a heading with a very long run of blanks in linear time', { tags: ['stress'] }, () => {
     for (const line of [`# a${' '.repeat(30_000)}b`, `# a${' '.repeat(30_000)}#x`]) {
       const t0 = performance.now();
       const found = findHeadings(line);

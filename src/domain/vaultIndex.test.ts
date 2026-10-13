@@ -341,7 +341,9 @@ describe('large vaults', () => {
     }
   });
 
-  it('picks the nearest file out of a big same-name bucket without sorting it', () => {
+  it('picks the nearest file out of a big same-name bucket without sorting it', {
+    tags: ['stress'],
+  }, () => {
     // Timing bounds are generous: the old copy-and-sort took ~200 ms per
     // resolve at this size, the single pass takes a few.
     const paths = Array.from({ length: 30000 }, (_, i) => `d${i % 300}/s${i}/image.png`);

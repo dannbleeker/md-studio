@@ -325,7 +325,7 @@ describe('long lines stay cheap', () => {
   const LIMIT_MS = 400;
   const N = 30_000;
 
-  it('looks up a heading past a heading made of blanks', () => {
+  it('looks up a heading past a heading made of blanks', { tags: ['stress'] }, () => {
     for (const heading of [
       `# a${' '.repeat(N)}b`,
       `# a${' '.repeat(N)}#x`,
@@ -346,7 +346,7 @@ describe('long lines stay cheap', () => {
     }
   });
 
-  it('looks up a heading past thousands of bracket-heavy headings', () => {
+  it('looks up a heading past thousands of bracket-heavy headings', { tags: ['stress'] }, () => {
     // Each heading is cut to 1000 characters, but the link patterns were still quadratic in that.
     for (const heading of [
       '['.repeat(990),
@@ -374,7 +374,9 @@ describe('long lines stay cheap', () => {
     expect(select(md('See [[Note]] now'), 'See Note now')).not.toBeNull();
   });
 
-  it('looks up a block id past a line of blanks and a table-like line', () => {
+  it('looks up a block id past a line of blanks and a table-like line', {
+    tags: ['stress'],
+  }, () => {
     const md = `${' '.repeat(N)}x\n\n${' '.repeat(N)}\n\nPara one\nmore ^id\n\n${' '.repeat(N)}-x`;
     let found: string | null = null;
     expect(
@@ -493,7 +495,9 @@ describe('hiding block ids stays linear', () => {
     return performance.now() - t0;
   };
 
-  it('does not walk the document for every indented line that carries an id', () => {
+  it('does not walk the document for every indented line that carries an id', {
+    tags: ['stress'],
+  }, () => {
     // Each id line used to look for its list owner by walking up to the top of the note.
     const code = '\n    x ^a\n'.repeat(20_000);
     let shown: string | null = null;
@@ -527,7 +531,9 @@ describe('hiding block ids stays linear', () => {
     expect(select('    - item ^a\n', null)).toBe('    - item\n');
   });
 
-  it('does not walk the document for every indented line without an id', () => {
+  it('does not walk the document for every indented line without an id', {
+    tags: ['stress'],
+  }, () => {
     // A caret anywhere (here x^2) switches the id pass on. 8000 indented code
     // paragraphs took seconds when each one searched for its list owner.
     const md = `x^2 and ${'    code line\n\n'.repeat(8000)}`;
@@ -544,7 +550,9 @@ describe('selectNoteContent: many embeds of one large note', () => {
     `## Section ${i} ^s${i}\n\nSome paragraph with [[Link ${i}]] and **bold**.\n\n- item one\n- item two\n  - nested\n\n> quote ^q${i}\n\n`;
   const big = Array.from({ length: 2000 }, (_, i) => section(i)).join('');
 
-  it('analyses a note once, however often a fragment of it is embedded', () => {
+  it('analyses a note once, however often a fragment of it is embedded', {
+    tags: ['stress'],
+  }, () => {
     const started = performance.now();
     for (let i = 0; i < 300; i++) {
       expect(selectNoteContent(big, 'Nope')).toBeNull();

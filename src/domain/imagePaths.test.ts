@@ -113,7 +113,7 @@ describe('large data: and blob: URLs', () => {
   // image". Bounds are generous (the full scans took 5-30 ms per call here).
   const big = `data:image/png;base64,${'A'.repeat(5_000_000)}`;
 
-  it('answers without reading the whole string', () => {
+  it('answers without reading the whole string', { tags: ['stress'] }, () => {
     const started = performance.now();
     for (let i = 0; i < 50; i += 1) {
       expect(isWebImage(big)).toBe(false);

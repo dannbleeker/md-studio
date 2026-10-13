@@ -97,7 +97,7 @@ describe('codeRanges', () => {
     expect(inCode([], 0)).toBe(false);
   });
 
-  it('stays quick on very deep and very wide input', () => {
+  it('stays quick on very deep and very wide input', { tags: ['stress'] }, () => {
     const started = performance.now();
     codeRanges(`${'>'.repeat(200_000)} x`);
     codeRanges(`${'- '.repeat(100_000)}x`);
@@ -106,7 +106,9 @@ describe('codeRanges', () => {
     expect(performance.now() - started).toBeLessThan(3000);
   });
 
-  it('stays quick on a wide non-matching line before a setext underline', () => {
+  it('stays quick on a wide non-matching line before a setext underline', {
+    tags: ['stress'],
+  }, () => {
     // Two adjacent blank runs in the definition test backtracked quadratically.
     const started = performance.now();
     codeRanges(`[a]: x${' '.repeat(50_000)}y\n---\n`);

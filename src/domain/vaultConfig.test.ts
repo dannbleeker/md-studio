@@ -114,7 +114,9 @@ describe('attachmentDirectory', () => {
     }
   });
 
-  it('ignores slashes around the folder, however many, in linear time', () => {
+  it('ignores slashes around the folder, however many, in linear time', {
+    tags: ['stress'],
+  }, () => {
     const folder = `a${'/'.repeat(80_000)}b`;
     const started = performance.now();
     expect(attachmentDirectory(cfg({ attachmentFolderPath: folder }), 'n.md')).toBe('a/b');
