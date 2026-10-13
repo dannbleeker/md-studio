@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Mutation run works again.** The weekly `mutation.yml` job stopped at
+  Stryker's first test run since the embeds landed: instrumented code is
+  several times slower, and the speed tests (huge inputs, absolute time
+  ceilings) failed there, which aborts the job. Those tests are now tagged
+  `stress` and `vitest.mutation.config.ts` leaves them out; the normal test
+  run still runs every one of them.
 - **Long paragraphs serialize in linear time.** Milkdown's serializer
   rebuilt a paragraph's child list with `concat` per child, so every visual
   edit took time quadratic in the number of inline nodes: 10,000 `[[a]] `

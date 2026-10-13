@@ -135,12 +135,12 @@ describe('findMarkdownImages work bound', () => {
     return performance.now() - started;
   }
 
-  it('stays fast on a line of unclosed image starts', () => {
+  it('stays fast on a line of unclosed image starts', { tags: ['stress'] }, () => {
     expect(timed('![ '.repeat(400_000))).toBeLessThan(SLOW_MS);
     expect(timed('!['.repeat(500_000))).toBeLessThan(SLOW_MS);
   });
 
-  it('stays fast on a line of image starts with endless destinations', () => {
+  it('stays fast on a line of image starts with endless destinations', { tags: ['stress'] }, () => {
     expect(timed('![a]('.repeat(200_000))).toBeLessThan(SLOW_MS);
     expect(timed('![a](x '.repeat(200_000))).toBeLessThan(SLOW_MS);
     expect(timed('![a](<'.repeat(200_000))).toBeLessThan(SLOW_MS);

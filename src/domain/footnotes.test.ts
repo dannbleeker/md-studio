@@ -86,7 +86,7 @@ describe('inlineFootnotes', () => {
     );
   });
 
-  it('handles a long run of "[^" in linear time', () => {
+  it('handles a long run of "[^" in linear time', { tags: ['stress'] }, () => {
     const md = `[^a]: d\n\n${'[^'.repeat(64_000)} [^a]`;
     const started = performance.now();
     const out = inlineFootnotes(md);

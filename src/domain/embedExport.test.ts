@@ -474,7 +474,7 @@ describe('expandEmbeds: code stays literal in every container', () => {
 });
 
 describe('expandEmbeds: speed', () => {
-  it('handles a long table with an embed per row', async () => {
+  it('handles a long table with an embed per row', { tags: ['stress'] }, async () => {
     const rows = Array.from({ length: 6000 }, (_, i) => `| ${i} | ![[a b.png|20]] |`).join('\n');
     const start = performance.now();
     const out = await expandEmbeds(`| n | img |\n|---|---|\n${rows}\n`, null, fakeEnv(VAULT));
@@ -482,14 +482,16 @@ describe('expandEmbeds: speed', () => {
     expect(performance.now() - start).toBeLessThan(1500);
   });
 
-  it('handles a long run of pipe lines that is no table', async () => {
+  it('handles a long run of pipe lines that is no table', { tags: ['stress'] }, async () => {
     const rows = Array.from({ length: 6000 }, (_, i) => `a | ![[a b.png]] ${i}`).join('\n');
     const start = performance.now();
     await expandEmbeds(rows, null, fakeEnv(VAULT));
     expect(performance.now() - start).toBeLessThan(1500);
   });
 
-  it('handles a very wide delimiter-shaped line next to an embed', async () => {
+  it('handles a very wide delimiter-shaped line next to an embed', {
+    tags: ['stress'],
+  }, async () => {
     // Trailing text after the dashes makes a backtracking delimiter match quadratic in the padding.
     const wide = `|${' '.repeat(40000)}-${' '.repeat(40000)}x`;
     const start = performance.now();
@@ -503,7 +505,9 @@ describe('expandEmbeds: speed', () => {
 describe('expandEmbeds: long neighbour lines', () => {
   const files: Files = { 'a.png': null };
 
-  it('reads each neighbour line once, however many tokens sit between them', async () => {
+  it('reads each neighbour line once, however many tokens sit between them', {
+    tags: ['stress'],
+  }, async () => {
     const quotes = '>'.repeat(20_000);
     const md = `${quotes}x\n${'![[a.png]]'.repeat(2000)}\n${quotes}x`;
     const start = performance.now();
@@ -512,7 +516,7 @@ describe('expandEmbeds: long neighbour lines', () => {
     expect(out).toContain('![a.png](attachment:a.png)');
   });
 
-  it('is quick next to a long run of blanks or list markers', async () => {
+  it('is quick next to a long run of blanks or list markers', { tags: ['stress'] }, async () => {
     for (const lead of [' '.repeat(40_000), '- '.repeat(20_000)]) {
       const start = performance.now();
       await expandEmbeds(`${lead}x\n${'![[a.png]]'.repeat(4000)}\n`, 'h.md', fakeEnv(files));
@@ -520,7 +524,9 @@ describe('expandEmbeds: long neighbour lines', () => {
     }
   });
 
-  it('keeps a long run of blanks around an unchanged table-cell image linear', async () => {
+  it('keeps a long run of blanks around an unchanged table-cell image linear', {
+    tags: ['stress'],
+  }, async () => {
     const blanks = ' '.repeat(64_000);
     for (const row of [
       `| ![a|5](${blanks}http://x/y.png) |`,
@@ -546,14 +552,14 @@ describe('expandEmbeds: long neighbour lines', () => {
 describe('expandEmbeds: crafted container prefixes', () => {
   const vault = (note: string): Files => ({ 'N.md': note, 'a.png': null });
 
-  it('stays quick on a very long quote prefix with many tokens', async () => {
+  it('stays quick on a very long quote prefix with many tokens', { tags: ['stress'] }, async () => {
     const md = `${'> '.repeat(20_000)}${'![[a.png]] '.repeat(2000)}`;
     const start = performance.now();
     await expandEmbeds(md, 'h.md', fakeEnv({}));
     expect(performance.now() - start).toBeLessThan(1000);
   });
 
-  it('stays quick on a very long list prefix with many tokens', async () => {
+  it('stays quick on a very long list prefix with many tokens', { tags: ['stress'] }, async () => {
     const md = `${'- '.repeat(20_000)}${'![[a.png]] '.repeat(2000)}`;
     const start = performance.now();
     await expandEmbeds(md, 'h.md', fakeEnv({}));

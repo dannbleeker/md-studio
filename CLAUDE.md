@@ -162,7 +162,9 @@ that keep it safe:
 - **Complexity is a bug.** Every new regex and scan loop is linear with a
   scaling test (time at n and 2n, no absolute thresholds); no unbounded
   character classes next to each other. Crafted notes reach these paths
-  (`SECURITY.md`).
+  (`SECURITY.md`). A test that feeds huge input to prove it is tagged
+  `{ tags: ['stress'] }`: the mutation run skips those, because instrumented
+  code is too slow for their time ceilings and one failing test aborts the job.
 - **e2e vault specs** hand the app real OPFS handles with an in-memory
   IndexedDB stand-in (CI's newer headless Chromium stalls cloning OPFS
   handles into IndexedDB); the visual pane adopts a click's selection right
