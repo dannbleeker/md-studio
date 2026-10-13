@@ -25,6 +25,15 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 8
+    # Stryker 10 (the latest) kills no mutants under vitest 5: it filters tests
+    # by name the old way, so every mutant "survives" and the weekly mutation
+    # job reports a score of 0. Lift this once a Stryker release supports
+    # vitest 5 (check with `pnpm mutation` on the update before merging).
+    ignore:
+      - dependency-name: vitest
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@vitest/*'
+        update-types: ['version-update:semver-major']
     # A dependency joins the FIRST group that matches it, so the specific
     # groups come before the minor/patch catch-all. Major versions of
     # anything not named here arrive as one pull request each.
