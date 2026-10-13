@@ -1,21 +1,21 @@
 {
-  "generatedAt": "2026-10-12",
+  "generatedAt": "2026-10-13",
   "version": "0.1.0",
   "code": [
     {
       "category": "App code",
-      "files": 83,
-      "lines": 8232
+      "files": 100,
+      "lines": 16286
     },
     {
       "category": "Unit tests",
-      "files": 53,
-      "lines": 4625
+      "files": 81,
+      "lines": 15901
     },
     {
       "category": "E2E tests",
-      "files": 14,
-      "lines": 2136
+      "files": 16,
+      "lines": 2655
     },
     {
       "category": "Scripts",
@@ -24,69 +24,83 @@
     },
     {
       "category": "Styles",
-      "files": 4,
-      "lines": 1131
+      "files": 6,
+      "lines": 1304
     },
     {
       "category": "Book",
       "files": 13,
-      "lines": 2342
+      "lines": 2502
     }
   ],
   "tests": {
-    "files": 51,
-    "total": 384,
-    "passed": 384,
-    "failed": 0,
-    "e2eSpecs": 13
+    "files": 77,
+    "total": 1272,
+    "passed": 1269,
+    "failed": 3,
+    "e2eSpecs": 15
   },
-  "coverage": {
-    "lines": 69.25,
-    "statements": 67.64,
-    "functions": 61.74,
-    "branches": 67.35
-  },
+  "coverage": null,
   "bundle": {
-    "eagerGzipBytes": 455309,
+    "eagerGzipBytes": 468461,
     "eager": [
       "codemirror",
+      "embeds",
+      "fences",
+      "frontMatter",
+      "i18n",
       "index",
       "milkdown",
       "react",
-      "rolldown-runtime"
+      "rolldown-runtime",
+      "ui"
     ],
     "chunks": {
-      "FindBar": 1885,
-      "FormatToolbar": 1038,
-      "OutlinePanel": 906,
-      "USER_GUIDE": 3782,
-      "codemirror": 215617,
+      "AttachmentBanner": 1515,
+      "FindBar": 2541,
+      "FormatToolbar": 1061,
+      "OutlinePanel": 920,
+      "USER_GUIDE": 4962,
+      "attachments": 6223,
+      "codemirror": 215708,
       "decode": 22186,
-      "docx": 115995,
-      "exportImages": 810,
-      "html": 1703,
-      "images": 1342,
-      "index": 31329,
-      "markdownPdf": 179085,
+      "docx": 116035,
+      "embedExport": 3395,
+      "embedLinks": 1283,
+      "embedRender": 4202,
+      "embeds": 4350,
+      "exportImages": 2177,
+      "fences": 189,
+      "frontMatter": 605,
+      "html": 2259,
+      "i18n": 4635,
+      "images": 1279,
+      "index": 33726,
+      "markdownPdf": 179127,
       "marked.esm": 13334,
-      "milkdown": 140213,
-      "plainText": 942,
+      "milkdown": 140239,
+      "noteRenderer": 3006,
+      "plainText": 1025,
       "react": 67523,
       "rolldown-runtime": 627,
+      "transclusion": 3276,
+      "ui": 859,
+      "vaultConfig": 1626,
+      "vaultIndex": 1648,
       "welcome.en": 989,
       "workbox-window.prod.es5": 2199
     },
-    "lazyLanguageGzipBytes": 394918
+    "lazyLanguageGzipBytes": 394931
   },
   "book": {
     "chapters": 11,
     "written": 11,
-    "words": 23045
+    "words": 26071
   },
   "git": {
-    "commits": 99,
+    "commits": 109,
     "firstCommit": "2026-10-02",
-    "lastCommit": "2026-10-11",
-    "activeDays": 5
+    "lastCommit": "2026-10-13",
+    "activeDays": 7
   }
 }
