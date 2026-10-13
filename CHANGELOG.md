@@ -47,10 +47,10 @@
     document first, a not-found variant that asks for the vault root);
     non-Chromium browsers get a notice and labelled placeholders.
     Dismissible per tab. Embeds inside code do not count.
-  - Other kinds: pdf (iframe, `#page`, height; the viewer is not yet
-    checked in a headed browser under the CSP, see NEXT_STEPS), audio, video and any
-    other file (chip with Open) load lazily, only once they scroll into
-    view; hidden panes load nothing.
+  - Other kinds: pdf (iframe, `#page`, height; the viewer was checked in a
+    headed browser under the CSP), audio, video and any other file (chip
+    with Open) load lazily, only once they scroll into view; hidden panes
+    load nothing.
   - Note transclusion: `![[Note]]`, `#Heading`, `#^block` and same-note
     forms render read-only inside the visual pane (depth 3, cycle-safe by
     note and section, cached, links neutralised). They never enter the
