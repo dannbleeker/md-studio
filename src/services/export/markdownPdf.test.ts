@@ -21,6 +21,19 @@ function drawnText(bytes: Uint8Array): string {
   return out.join(' ');
 }
 
+/** The width and height an image is drawn at, in points, from its `cm` operator. */
+function drawnImageSize(bytes: Uint8Array): [number, number] | null {
+  const raw = Buffer.from(bytes).toString('latin1');
+  for (const m of raw.matchAll(/stream\r?\n([\s\S]*?)\r?\nendstream/g)) {
+    try {
+      const content = inflateSync(Buffer.from(m[1] ?? '', 'latin1')).toString('latin1');
+      const cm = /([\d.]+) 0 0 ([\d.]+) 0 0 cm\s+1 0 0 1 0 0 cm\s+\/\S+ Do/.exec(content);
+      if (cm) return [Number(cm[1]), Number(cm[2])];
+    } catch {}
+  }
+  return null;
+}
+
 /** The text drawn on each page, as one list of strings per page. */
 async function pageTexts(bytes: Uint8Array): Promise<string[][]> {
   const pdf = await PDFDocument.load(bytes);
@@ -218,6 +231,40 @@ describe('markdownToPdf', () => {
     });
     expect(Buffer.from(bytes).toString('latin1')).toMatch(/\/Subtype \/Image/);
     expect(drawnText(bytes)).toContain('[missing]');
+  });
+
+  it('draws an image at the size the Markdown asked for, 0.75 pt per pixel', async () => {
+    const png = Uint8Array.from(
+      atob(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+      ),
+      (c) => c.charCodeAt(0)
+    );
+    const draw = async (extra: { displayWidth?: number; displayHeight?: number }) =>
+      drawnImageSize(
+        await markdownToPdf({
+          sources: ['![dot](a.png)'],
+          title: 'x',
+          images: new Map([
+            ['a.png', { type: 'png' as const, bytes: png, width: 400, height: 200, ...extra }],
+          ]),
+        })
+      );
+    expect(await draw({})).toEqual([400, 200]);
+    expect(await draw({ displayWidth: 100 })).toEqual([75, 37.5]);
+    expect(await draw({ displayWidth: 100, displayHeight: 80 })).toEqual([75, 60]);
+    // Never wider than the column.
+    const wide = await draw({ displayWidth: 5000 });
+    expect(wide?.[0]).toBeLessThan(500);
+  });
+
+  it('prints the alt text of an attachment image that was not loaded', async () => {
+    const bytes = await markdownToPdf({
+      sources: ['![a photo](attachment:img/a.png#size=300)'],
+      title: 'x',
+    });
+    expect(drawnText(bytes)).toContain('[a photo]');
+    expect(drawnText(bytes)).not.toContain('attachment');
   });
 
   it('draws everything inside quotes, parsed table cells and entities', async () => {

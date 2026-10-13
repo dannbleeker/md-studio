@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { printDocument } from '@/components/editor/embedView';
 import {
   closeTab,
   cycleTab,
@@ -40,6 +41,8 @@ export function useShortcuts(): void {
       else if ((mod && key === 'k') || (mod && e.shiftKey && key === 'p'))
         useUiStore.getState().setPaletteOpen(true);
       else if (mod && key === ',') useUiStore.getState().setSettingsOpen(true);
+      // The browser's own print would run before off-screen embeds have loaded.
+      else if (mod && !e.shiftKey && key === 'p' && s.screen === 'editor') void printDocument();
       else if (mod && !e.shiftKey && key === 'f') useUiStore.getState().setFind(true, false);
       else if (mod && !e.shiftKey && key === 'h') useUiStore.getState().setFind(true, true);
       else if (mod && e.shiftKey && key === 'o')

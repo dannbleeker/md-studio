@@ -31,19 +31,26 @@ to:
 
 - **Content Security Policy.** The built app ships a policy (a `<meta>` tag,
   since GitHub Pages can't send headers) that allows scripts only from the
-  app's own origin, no plugins, no frames, no form posts and no `<base>`
-  rewriting. Even content that reached the page as HTML could not run
-  script. It is set in `vite.config.ts`. The project dashboard
-  (`public/dashboard.html`) has its own policy, keeps its script in a
-  separate file, and links only to `https://github.com/` from GitHub API
-  data. Exported HTML pages declare a policy that forbids all script.
+  app's own origin, no plugins (`object-src 'none'`), no form posts and no
+  `<base>` rewriting. Frames and media may come only from `blob:` URLs the
+  app made itself from files in the vault folder you chose (a PDF shown
+  beside its **Open** link, audio, video); nothing else can be framed. Even
+  content that reached the page as HTML could not run script. It is set in
+  `vite.config.ts`. The project dashboard (`public/dashboard.html`) has its
+  own policy, keeps its script in a separate file, and links only to
+  `https://github.com/` from GitHub API data. Exported HTML pages declare a
+  policy that forbids all script.
 - **Markdown is never rendered as HTML in the app.** Both panes are editors:
   CodeMirror shows source text, and Milkdown shows raw HTML in a document as
   text, not as markup.
 - **HTML export** escapes raw HTML in the document, keeps only `http:`,
   `https:`, `mailto:`, `tel:`, relative and in-page links, and embeds only
-  raster `data:` images (PNG, JPEG, GIF, WebP). See
-  `src/services/export/html.ts`.
+  `data:` images, recognised by their bytes and not by a file name (raster
+  formats, a real bitmap header, a closed `<svg>` document), at most 5 MB
+  each and 25 MB in all. A vault file is read for export only when the vault
+  classes it as an image (and it is under 32 MB); a note cannot name another
+  vault path through the internal `attachment:` scheme. See
+  `src/services/export/html.ts` and `exportImages.ts`.
 - **No network requests of its own.** Exports read pasted images and images
   next to the file; they never fetch web images. The only network traffic
   is the app's own files, and web images that a document links to (shown in
@@ -56,6 +63,21 @@ to:
   never parsed: the visual pane goes inert and says so, the Markdown pane
   shows it as plain text without highlighting, and both come back once the
   document is fixed. See `src/domain/nesting.ts`.
+- **Obsidian notes and vault folders.** The vault folder is read only after
+  you choose it (and the browser's permission prompt); `.obsidian/app.json`
+  is read, never written, and a bad one gives the defaults. Attachments are
+  written only inside that folder; a path that climbs out of it is not used.
+  Embedded notes are rendered read-only in a detached document and cleaned
+  through an allow-list, so a note's images are not requested before **Load
+  web images** is applied, its links are neutralised (only `http(s)` and
+  `mailto` survive, opened in a new tab), and nothing in it can reach the
+  document, the outline or find. Their size is bounded: a note is parsed up
+  to 50,000 characters and is shown as plain text when it would be too
+  costly to render (`src/domain/renderCost.ts`), nesting stops at depth 3
+  and repeats are cut, and an export expands at most 1,000,000 characters of
+  embedded notes. The scanners and exporters are written to be linear-time
+  and have scaling tests for crafted input; the one known exception, in
+  Milkdown's serializer, is listed in `NEXT_STEPS.md`.
 - **Files** are opened only when you pick or drop them, and written only
   through a handle you granted, after the browser's permission prompt.
 - **Service worker** precaches the app's own build output (the user guide

@@ -103,6 +103,18 @@ export async function getHandleAt<T extends FileSystemHandle>(key: string): Prom
   }
 }
 
+/**
+ * Every stored handle whose key starts with `prefix`, e.g. `dir:` for the
+ * attachment folders chosen so far. Empty when IndexedDB is unavailable.
+ */
+export async function listHandlesWithPrefix(prefix: string): Promise<[string, FileSystemHandle][]> {
+  try {
+    return (await entries()).filter(([id]) => id.startsWith(prefix));
+  } catch {
+    return [];
+  }
+}
+
 /** Key for the image folder chosen for the document with handle id `docHandleId`. */
 export const imageFolderKey = (docHandleId: string) => `dir:${docHandleId}`;
 

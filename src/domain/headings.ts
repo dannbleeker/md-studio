@@ -19,13 +19,13 @@ export type Heading = {
   text: string;
 };
 
-const ATX = /^ {0,3}(#{1,6})(?:[ \t]+(.*?))?(?:[ \t]+#+)?[ \t]*$/;
+const ATX_OPEN = /^ {0,3}(#{1,6})(?:[ \t]|$)/;
 const SETEXT_1 = /^ {0,3}=+[ \t]*$/;
 const SETEXT_2 = /^ {0,3}-+[ \t]*$/;
 /** Starts a list item or block quote: headings inside those aren't top-level. */
 const CONTAINER = /^ {0,3}(?:(?:[*+-]|\d{1,9}[.)])(?:[ \t]|$)|>)/;
 /** Starts an HTML block (CommonMark types 1, 2 and 6): its lines aren't Markdown. */
-const HTML_BLOCK =
+export const HTML_BLOCK =
   /^ {0,3}<(?:!--|\/?(?:address|article|aside|blockquote|details|dialog|div|dl|fieldset|figcaption|figure|footer|form|h[1-6]|header|hr|li|main|nav|ol|p|pre|script|section|style|summary|table|tbody|td|tfoot|th|thead|tr|ul)(?:[\s/>]|$))/i;
 /**
  * Lines that can't start a paragraph, once containers, fences, HTML and ATX
@@ -34,6 +34,30 @@ const HTML_BLOCK =
  * prose, and a setext underline below it makes it a heading.
  */
 const NOT_PARAGRAPH = /^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$|^(?: {4}|\t)/;
+
+const isSpaceTab = (ch: string | undefined): boolean => ch === ' ' || ch === '\t';
+
+/**
+ * Level and text of an ATX heading line, or null. Written as a scan: one
+ * regex for the whole line (lazy text, optional closing hashes, trailing
+ * blanks) is quadratic on a long run of blanks. A closing sequence needs a
+ * blank before it inside the text, so `# ##` keeps `##` as its text.
+ */
+function atxHeading(line: string): { level: number; text: string } | null {
+  const open = ATX_OPEN.exec(line);
+  if (!open?.[1]) return null;
+  let start = open[0].length;
+  while (isSpaceTab(line[start])) start++;
+  let end = line.length;
+  while (end > start && isSpaceTab(line[end - 1])) end--;
+  let hashes = end;
+  while (hashes > start && line[hashes - 1] === '#') hashes--;
+  if (hashes < end && hashes > start && isSpaceTab(line[hashes - 1])) {
+    end = hashes;
+    while (end > start && isSpaceTab(line[end - 1])) end--;
+  }
+  return { level: open[1].length, text: line.slice(start, end).trim() };
+}
 
 export function findHeadings(markdown: string): Heading[] {
   const lines = markdown.split(/\r?\n/);
@@ -70,7 +94,7 @@ export function findHeadings(markdown: string): Heading[] {
     }
 
     const indented = /^[ \t]/.test(line);
-    const interrupts = !indented && (ATX.test(line) || openFence(line) !== null);
+    const interrupts = !indented && (atxHeading(line) !== null || openFence(line) !== null);
     if (container && !CONTAINER.test(line) && (indented || !blankBefore) && !interrupts) {
       blankBefore = false;
       continue;
@@ -95,9 +119,9 @@ export function findHeadings(markdown: string): Heading[] {
       continue;
     }
 
-    const atx = ATX.exec(line);
-    if (atx?.[1]) {
-      headings.push({ line: i, level: atx[1].length, text: (atx[2] ?? '').trim() });
+    const atx = atxHeading(line);
+    if (atx) {
+      headings.push({ line: i, level: atx.level, text: atx.text });
       paragraphStart = -1;
       continue;
     }

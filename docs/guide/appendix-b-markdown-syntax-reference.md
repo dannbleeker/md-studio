@@ -95,12 +95,98 @@ Read the [lease][lease] and the [terms][].
 | `![Alt text](images/plan.png)` | The image from a file next to the document |
 | `![Alt text](https://example.com/plan.png)` | The image from the web |
 | `![Alt text](images/plan.png "Title")` | The image with a title |
+| `![Alt text](<my plan.png>)` | A file name with spaces, in angle brackets (`my%20plan.png` also works) |
+| `![Alt text\|300](images/plan.png)` | The image shown 300 pixels wide; `\|300x200` sets both sides |
 
-Pasting (**Ctrl+V**) or dropping an image writes this syntax for you. In Edge or
-Chrome with the document saved on disk, MD Studio saves the image in an
-`images` folder next to the document and links it by relative path. Elsewhere it
-shrinks the image to at most 1600 px and embeds it as a `data:` address. See
-[Chapter 4](04-formatting-and-rich-content.md).
+In that last row a pipe and a number at the end of the alt text set the width. The
+alt text itself is kept as written, and the size is not read as part of the
+description. Obsidian writes sizes the same way.
+
+Pasting (**Ctrl+V**) or dropping a file writes the link for you. In Edge or
+Chrome with the document saved on disk, MD Studio saves the file in the folder
+the vault's settings name (an `images` folder next to the document when there is
+no `.obsidian` folder) and links it, as a wikilink or a Markdown link depending
+on **Link style** in Settings. Elsewhere an image is shrunk to at most 1600 px
+and embedded as a `data:` address, and other kinds of file are not inserted. See
+[Chapter 4](04-formatting-and-rich-content.md) and the next section.
+
+## Obsidian embeds and wikilinks
+
+Notes written in Obsidian use double brackets to embed and link. MD Studio keeps
+these exactly as written: the visual pane shows each one as a picture, a player
+or a labelled chip, and an edit in either pane never rewrites the token. The
+files come from the attachment folder you choose, which should be the vault root
+([Chapter 5](05-managing-files-locally.md)). Embeds work in Edge and Chrome; in
+other browsers they appear as labelled placeholders and the source is unchanged.
+
+| Source | Result |
+| --- | --- |
+| `![[plan.png]]` | The image named `plan.png`, found anywhere in the vault |
+| `![[plan.png\|300]]` | The image 300 pixels wide, height following |
+| `![[plan.png\|300x200]]` | The image 300 by 200 pixels |
+| `![[plan.png\|Floor plan]]` | The image with alt text; `\|Floor plan\|300` gives both |
+| `![[report.pdf]]` | The PDF in a frame where the browser allows it, with an **Open** link beside it |
+| `![[report.pdf#page=3&height=400]]` | The PDF opened at page 3, 400 pixels high |
+| `![[talk.mp3]]` | An audio player |
+| `![[demo.mp4\|480]]` | A video player 480 pixels wide |
+| `![[data.zip]]` | A labelled chip with an **Open** link |
+| `![[Meeting notes]]` | The whole note, shown as a quoted block you cannot edit |
+| `![[Meeting notes#Decisions]]` | The section under that heading |
+| `![[Meeting notes#^abc123]]` | The paragraph, list item or quote that ends in `^abc123`; a lone `^abc123` line after a list names the whole list |
+| `![[#Decisions]]` and `![[#^abc123]]` | The same, from the note you are editing |
+| `[[Meeting notes]]` and `[[Meeting notes\|the notes]]` | A plain chip showing the name or the alias |
+
+A few rules sit behind the table. A size is read from the last option that is
+digits or digits, an x and digits, and only for images, PDFs and video; for a
+note, an audio file or a link, a number is an alias, so `[[Note\|2024]]` shows
+2024. File kinds follow the extension, and a name with no extension, or with one
+that is not a known file type, such as `Note v1.2`, is a note.
+
+A bare name is looked up across the whole vault. If two files share it, the one
+nearest the note wins and the tooltip says which. A name with a slash must match
+the end of a path, and `./` or `../` is relative to the note. Wikilinks are not
+percent-decoded: write the space, not `%20`. A Markdown link such as
+`![](images/x.png)` is looked up next to the note first, then across the vault.
+
+A web address in an embed, as in `![[https://example.com/a.png]]`, is a web
+image: it follows **Load web images** in Settings, in the visual pane and in
+exports, and a size after the `|` is ignored. An embed of a section of the note
+you are editing, or of a web address, needs no folder, so it does not raise the
+attachment bar.
+
+Transcluded notes can go three levels deep, and a note never repeats itself
+inside itself, so a loop shows a short notice instead. A section runs from its
+heading to the next heading of the same or a higher level, sub-headings
+included. Front matter is left out, and so are the `^abc123` markers, which belong to the
+source. Links inside a transcluded note are shown as plain text unless they are
+web or email addresses. A note larger than 2 MB is not embedded; the placeholder
+says so.
+
+Inside a table, write the pipe in an embed as a backslash and a pipe, as in the
+rows above, or the table breaks. In the visual pane a chip that holds a bare pipe,
+because it was copied or dragged into a cell or edited with Find and Replace, is
+written to the file with the pipe escaped.
+
+Some things are not embeds, and are left alone: anything in a fenced or indented
+code block (also inside a list item or a quote), in a code span (also one that
+wraps over a line break) or in front matter, a token whose opening bracket has a
+backslash in front of it, an empty `![[]]`, and a token that runs over a line
+break. A backslash before the `!` only, as in `\![[a.png]]`, leaves the `!` as
+text and makes the rest a plain wikilink. In the visual pane, turning a paragraph
+into a code block, or putting inline code around a token, changes the chip back
+to its text, so the token is never hidden inside code. Undoing that with the
+opposite action (turning the block back into a paragraph, or removing the inline
+code) makes the token a chip again.
+
+MD Studio has some known gaps. Only top-level headings can be named after the `#`
+in a transclusion, not headings inside a list, a quote or a callout. A token that
+Markdown splits into pieces, such as `![[_name_]]` with emphasis or a bare web
+address inside the name, stays plain text and may gain backslashes if you edit
+that paragraph in the visual pane. The same is true of a token inside the label
+of a Markdown link, as in `[see ![[plan.png]]](https://example.com)`: it is shown
+as text, and editing that paragraph in the visual pane writes the brackets with
+backslashes (edit such a link in the Markdown pane). Obsidian's `%%comments%%` are not understood.
+Clicking a wikilink does nothing yet, and there is no link autocomplete.
 
 ## Lists
 

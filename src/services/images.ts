@@ -1,19 +1,27 @@
 /**
- * Pasted and dropped images.
+ * Pasted and dropped files.
  *
- * With the document saved on disk in Edge/Chrome, images go into an
- * `images` folder next to it and are linked by relative path, so the
- * Markdown stays small and portable along with its folder. That needs the
- * folder itself: browsers don't reveal a file's parent folder, so the user
- * picks it once per document (the picker opens there) and the handle is
- * kept. Everywhere else, or if they decline, the image is shrunk and
- * embedded as a data URL, which travels inside the file.
+ * With the document saved on disk in Edge/Chrome, files go into the document's
+ * attachment folder (see attachments.ts) and are linked by the style the
+ * vault or the settings ask for, so the Markdown stays small and portable
+ * along with its folder. That needs the folder itself: browsers don't reveal
+ * a file's parent folder, so the user picks it once and the handle is kept.
+ * Everywhere else, or if they decline, an image is shrunk and embedded as a
+ * data URL, which travels inside the file; other files cannot be embedded and
+ * are not inserted.
  */
-import { imageExtension, imageFileName, relativeImagePath } from '@/domain/imagePaths';
+import type { EmbedKind } from '@/domain/embeds';
+import type { AttachmentOrigin } from '@/domain/vaultConfig';
 import { t } from '@/i18n';
 import { useStore } from '@/store';
 import { requestConfirm, showToast } from '@/store/ui';
-import { ensurePermission, getHandleAt, imageFolderKey, putHandleAt } from './handleStore';
+import {
+  attachmentStatus,
+  attachmentsSupported,
+  chooseAttachmentFolder,
+  currentDocContext,
+  saveAttachment,
+} from './attachments';
 
 /** Longest side of embedded images; larger ones are scaled down. */
 const MAX_EMBED_SIDE = 1600;
@@ -52,71 +60,55 @@ const toDataUrl = (blob: Blob) =>
     reader.readAsDataURL(blob);
   });
 
-/** The document's image folder, if one was chosen and access is (or can be) granted. */
-export async function documentImageFolder(
-  docHandleId: string,
-  ask: boolean
-): Promise<FileSystemDirectoryHandle | null> {
-  const folder = await getHandleAt<FileSystemDirectoryHandle>(imageFolderKey(docHandleId));
-  if (!folder) return null;
-  if (!ask) return (await folder.queryPermission?.({ mode: 'read' })) === 'granted' ? folder : null;
-  return (await ensurePermission(folder, 'readwrite')) ? folder : null;
+export type PlacedAttachment =
+  | { via: 'wikilink'; raw: string; kind: EmbedKind }
+  | { via: 'markdown'; src: string; alt: string; kind: EmbedKind; text: string }
+  | { via: 'data'; src: string; alt: string; kind: 'image'; text: string };
+
+const isImage = (file: File) => file.type.startsWith('image/');
+
+const escapeAlt = (alt: string) => alt.replace(/[\\[\]]/g, '\\$&');
+
+/** Destination and alt of a `![alt](dest)` or `[label](dest)` link written by saveAttachment. */
+function parseMarkdownLink(text: string): { src: string; alt: string } {
+  const match = /^!?\[((?:\\.|[^\]\\])*)\]\((.*)\)$/s.exec(text);
+  if (!match) return { src: text, alt: '' };
+  return { src: match[2] ?? '', alt: (match[1] ?? '').replace(/\\([\\[\]|])/g, '$1') };
 }
 
-async function chooseImageFolder(
-  doc: FileSystemFileHandle,
-  docHandleId: string
-): Promise<FileSystemDirectoryHandle | null> {
-  const picker = window.showDirectoryPicker;
-  if (!picker) return null;
-  try {
-    const folder = await picker({ id: 'md-studio-images', mode: 'readwrite', startIn: doc });
-    if (!(await folder.resolve(doc))) {
-      showToast(t('image.folderMismatch', { name: doc.name }));
-      return null;
-    }
-    await putHandleAt(imageFolderKey(docHandleId), folder);
-    return folder;
-  } catch {
-    return null; // cancelled
-  }
+function placed(markdown: string, kind: EmbedKind): PlacedAttachment {
+  if (markdown.startsWith('![[')) return { via: 'wikilink', raw: markdown, kind };
+  return { via: 'markdown', ...parseMarkdownLink(markdown), kind, text: markdown };
 }
 
-/** Saves into `images/` next to the document; returns the relative link. */
-async function saveNextToDocument(
-  folder: FileSystemDirectoryHandle,
-  doc: FileSystemFileHandle,
-  file: File
-): Promise<string | null> {
-  const docPath = await folder.resolve(doc);
-  if (!docPath) return null;
-  let dir = folder;
-  for (const segment of docPath.slice(0, -1)) dir = await dir.getDirectoryHandle(segment);
-  const images = await dir.getDirectoryHandle('images', { create: true });
-  const existing = new Set<string>();
-  for await (const name of (images as unknown as { keys(): AsyncIterable<string> }).keys()) {
-    existing.add(name);
+/** Why a file that cannot be embedded was not added, so the user knows what to do about it. */
+function skipMessage(reason: string): string {
+  switch (reason) {
+    case 'needs-permission':
+      return t('attachment.needsPermission');
+    case 'no-folder':
+      return t('attachment.noFolder');
+    case 'no-note-file':
+      return t('attachment.noNoteFile');
+    default:
+      return t('attachment.saveUnsupported');
   }
-  const name = imageFileName(new Date(), imageExtension(file.type), (n) => existing.has(n));
-  const target = await images.getFileHandle(name, { create: true });
-  const writable = await target.createWritable();
-  await writable.write(file);
-  await writable.close();
-  return relativeImagePath(docPath, [...docPath.slice(0, -1), 'images', name]);
 }
 
 /**
- * Turns image files into Markdown image links: saved next to the document
- * when possible (asking for the folder the first time), else embedded.
- * `insert` receives each link's target URL and alt text.
+ * Saves each file to the attachment folder when it can and hands `insert` the
+ * link to put in the document. When it cannot, an image is embedded instead
+ * and anything else is skipped with a toast that says why.
  */
-export async function placeImages(
+export async function placeFiles(
   files: File[],
-  insert: (src: string, alt: string) => void
+  origin: AttachmentOrigin,
+  insert: (p: PlacedAttachment) => void
 ): Promise<void> {
-  const { fileHandle, handleId, loadId } = useStore.getState();
+  const ctx = currentDocContext();
+  const { loadId } = useStore.getState();
   // Saving or asking takes time, and both panes reuse one editor across
-  // tabs: if another document is showing by now, the image isn't inserted
+  // tabs: if another document is showing by now, the file isn't inserted
   // into it (its link would also point next to the first document).
   const stillHere = () => {
     if (useStore.getState().loadId === loadId) return true;
@@ -124,69 +116,58 @@ export async function placeImages(
     return false;
   };
   for (const file of files) {
-    const alt = file.name.replace(/\.[^.]+$/, '') || 'image';
     try {
-      if (fileHandle && handleId && window.showDirectoryPicker && !embedChosen.has(handleId)) {
-        let folder = await documentImageFolder(handleId, true);
-        if (!folder) {
-          const useFolder = await requestConfirm({
-            title: t('image.folderTitle'),
-            body: t('image.folderBody', { name: fileHandle.name }),
-            confirmLabel: t('image.folderChoose'),
-          });
-          if (useFolder) folder = await chooseImageFolder(fileHandle, handleId);
-          else embedChosen.add(handleId);
-        }
-        if (folder) {
-          const link = await saveNextToDocument(folder, fileHandle, file);
-          if (link) {
-            if (!stillHere()) return;
-            insert(link, alt);
-            continue;
-          }
-        }
+      let status = await attachmentStatus(ctx);
+      // First image in a document with no folder yet: ask once, as before.
+      if (
+        status.kind === 'no-folder' &&
+        isImage(file) &&
+        ctx.fileHandle &&
+        ctx.handleId &&
+        !embedChosen.has(ctx.handleId)
+      ) {
+        const useFolder = await requestConfirm({
+          title: t('image.folderTitle'),
+          body: t('image.folderBody', { name: ctx.fileHandle.name }),
+          confirmLabel: t('image.folderChoose'),
+        });
+        if (useFolder) {
+          if (await chooseAttachmentFolder(ctx)) status = await attachmentStatus(ctx);
+        } else embedChosen.add(ctx.handleId);
       }
-      const dataUrl = await toDataUrl(await shrink(file));
+      let reason: string = status.kind;
+      if (status.kind === 'ready' || status.kind === 'needs-permission') {
+        const result = await saveAttachment(ctx, file, origin);
+        if (result.ok) {
+          if (!stillHere()) return;
+          insert(placed(result.saved.markdown, result.saved.kind));
+          continue;
+        }
+        reason = result.reason;
+      }
+      if (!isImage(file)) {
+        showToast(skipMessage(reason));
+        continue;
+      }
+      const alt = file.name.replace(/\.[^.]+$/, '') || 'image';
+      const src = await toDataUrl(await shrink(file));
       if (!stillHere()) return;
-      insert(dataUrl, alt);
-      if (dataUrl.length > LARGE_EMBED) showToast(t('image.largeEmbed'));
+      insert({ via: 'data', src, alt, kind: 'image', text: `![${escapeAlt(alt)}](${src})` });
+      if (src.length > LARGE_EMBED) showToast(t('image.largeEmbed'));
+      // Say what to do, not the internal reason code.
+      if (reason === 'needs-permission') showToast(t('attachment.imageFallbackPermission'));
+      else if (reason === 'failed') showToast(t('attachment.imageFallbackFailed'));
     } catch {
       showToast(t('image.failed'));
     }
   }
 }
 
-const resolved = new Map<string, string>();
-
 /**
- * Object URL for a relative image link in the open document, read from the
- * document's image folder. Null when there's no folder access (the visual
- * pane then shows the link's alt text). Never prompts: called while
- * rendering, outside a user gesture.
+ * Dropped files are taken over when any is an image (it can always be embedded;
+ * placeFiles toasts for the others it cannot save), or when they can be saved
+ * to a folder.
  */
-export async function resolveRelativeImage(src: string): Promise<string | null> {
-  const { fileHandle, handleId } = useStore.getState();
-  if (!fileHandle || !handleId) return null;
-  const key = `${handleId}|${src}`;
-  const cached = resolved.get(key);
-  if (cached) return cached;
-  try {
-    const folder = await documentImageFolder(handleId, false);
-    const docPath = folder ? await folder.resolve(fileHandle) : null;
-    if (!folder || !docPath) return null;
-    const segments = [...docPath.slice(0, -1)];
-    for (const part of src.split(/[?#]/)[0]!.split('/')) {
-      if (part === '..') segments.pop();
-      else if (part !== '.' && part !== '') segments.push(decodeURIComponent(part));
-    }
-    const name = segments.pop();
-    if (!name) return null;
-    let dir = folder;
-    for (const segment of segments) dir = await dir.getDirectoryHandle(segment);
-    const url = URL.createObjectURL(await (await dir.getFileHandle(name)).getFile());
-    resolved.set(key, url);
-    return url;
-  } catch {
-    return null;
-  }
+export function isHandledDrop(files: readonly File[]): boolean {
+  return files.length === 0 || files.some(isImage) || attachmentsSupported();
 }

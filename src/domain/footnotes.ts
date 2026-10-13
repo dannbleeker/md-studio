@@ -10,7 +10,35 @@
 const FENCE = /^ {0,3}(`{3,}|~{3,})/;
 const DEFINITION = /^ {0,3}\[\^([^\]\s]+)\]:[ \t]?(.*)$/;
 const CONTINUATION = /^(?: {4}|\t)/;
-const REFERENCE = /\[\^([^\]\s]+)\]/g;
+
+/**
+ * Replaces each `[^label]` in `text` with `replace(label, match)`. A hand scan
+ * and not a regex: a label may hold `[` and `^`, so a regex retries every `[^`
+ * inside one long run (`[^[^[^...`) and goes quadratic. A start that fails
+ * because the run ends in a blank or the end of the text makes every later
+ * start inside the same run fail too, so the scan resumes after the run.
+ */
+function replaceReferences(
+  text: string,
+  replace: (label: string, match: string) => string
+): string {
+  let out = '';
+  let from = 0;
+  let at = text.indexOf('[^');
+  while (at !== -1) {
+    let end = at + 2;
+    while (end < text.length && text[end] !== ']' && !/\s/.test(text[end] as string)) end++;
+    if (text[end] === ']' && end > at + 2) {
+      out += text.slice(from, at) + replace(text.slice(at + 2, end), text.slice(at, end + 1));
+      from = end + 1;
+      at = text.indexOf('[^', from);
+    } else {
+      // `[^]` fails on its label being empty, not on the run, so only step past it.
+      at = text.indexOf('[^', text[end] === ']' ? at + 1 : end);
+    }
+  }
+  return out + text.slice(from);
+}
 
 const OPEN_FENCE = /^ *(`{3,}|~{3,})/;
 const LIST_ITEM = /^( *)([-*+]|\d{1,9}[.)])( *)/;
@@ -33,7 +61,7 @@ function indentOf(line: string): number {
  * paragraph's continuation lines and a list item's further paragraphs are
  * not mistaken for it.
  */
-function codeLines(lines: string[]): boolean[] {
+export function codeLines(lines: string[]): boolean[] {
   const code = lines.map(() => false);
   // Content columns of the list items the current line may belong to.
   const columns: number[] = [];
@@ -134,14 +162,20 @@ export function inlineFootnotes(markdown: string): string {
   }
 
   const order: string[] = [];
+  const numbers = new Map<string, number>();
   const number = (ref: string) => {
     const id = ref.toLowerCase();
     if (!definitions.has(id)) return null;
-    if (!order.includes(id)) order.push(id);
-    return order.indexOf(id) + 1;
+    let n = numbers.get(id);
+    if (n === undefined) {
+      order.push(id);
+      n = order.length;
+      numbers.set(id, n);
+    }
+    return n;
   };
   const refs = (text: string) =>
-    text.replace(REFERENCE, (match, id: string) => {
+    replaceReferences(text, (id, match) => {
       const n = number(id);
       return n === null ? match : `\\[${n}\\]`;
     });

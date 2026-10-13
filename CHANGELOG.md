@@ -2,6 +2,190 @@
 
 ## Unreleased
 
+- **Obsidian notes: embeds, wikilinks and a vault attachment folder.**
+  Notes written in Obsidian open with their pictures, PDFs, audio and
+  embedded notes shown, and editing never touches the syntax.
+  - Embeds and wikilinks: `![[a.png]]` and `[[Note|alias]]` are one
+    lossless inline node (`editor/embedNode.ts`, scanner in
+    `domain/embeds.ts`), so a visual edit next to one writes the token
+    back byte for byte. Before, the paragraph was rewritten with escaped
+    brackets and the token was lost. Wikilinks show as inert chips;
+    clicking does nothing yet.
+  - Sizes and alt text: `![[a.png|300]]`, `|300x200`, `|alt|300`, and
+    `![alt|300](p.png)` in Markdown images (the alt text itself is kept);
+    pdf `#page=3&height=400`; `<my file.png>` links; percent-encoded
+    links are decoded per segment, with the literal path as a fallback.
+  - Safe parsing: `remarkEmbeds` converts a text node only after it
+    checks the tokens against the source, so any doubt leaves the text
+    as it was. `editor/frontMatter.ts` now rebases the positions it
+    rebuilds, which that check needs. Code, front matter and escaped
+    forms are never read as embeds.
+  - Vault attachment folder (`services/attachments.ts`): reuses the
+    existing `dir:` key in IndexedDB, so images folders chosen before
+    keep working. Reads a subset of `.obsidian/app.json`
+    (`attachmentFolderPath`, `useMarkdownLinks`, `newLinkFormat`; bad
+    JSON gives the defaults). Resolution (`domain/vaultIndex.ts`) follows
+    Obsidian: exact path, path suffix, vault-wide file name, then note
+    relative; the nearest file wins when names collide, with a tooltip.
+    Markdown links keep resolving note-relative first. The scan runs in
+    the background with a progressive index (cap 50,000 files), and bare
+    names resolve at once through direct lookups; until the index is
+    complete a miss shows the loading chip, never Not found. A known
+    root is adopted without asking, preferring the vault root.
+  - Banner and notices: a bar above the editor when a note has embeds it
+    cannot show (choose the folder, allow access after a reload, save the
+    document first, a not-found variant that asks for the vault root);
+    non-Chromium browsers get a notice and labelled placeholders.
+    Dismissible per tab. Embeds inside code do not count.
+  - Other kinds: pdf (iframe, `#page`, height; the viewer is not yet
+    checked in a headed browser under the CSP, see NEXT_STEPS), audio, video and any
+    other file (chip with Open) load lazily, only once they scroll into
+    view; hidden panes load nothing.
+  - Note transclusion: `![[Note]]`, `#Heading`, `#^block` and same-note
+    forms render read-only inside the visual pane (depth 3, cycle-safe by
+    note and section, cached, links neutralised). They never enter the
+    document, the outline, find or the scroll map.
+  - Paste and drop: any file type is saved to the folder the vault
+    configures and linked in the chosen style. Names follow Obsidian
+    (`Pasted image 20261012093000.png`; dropped files keep their name,
+    collisions get a number). Each failure has its own reason: needs
+    permission, no folder, unsupported browser, failed. Images fall back
+    to data URLs with a toast; other files insert nothing.
+  - Settings: **Link style** (wikilinks, Markdown links, auto) and
+    **Attachment location** (vault settings, or `images` beside the
+    note). Auto without a `.obsidian` folder keeps the old behaviour, so
+    existing documents see no change. Command palette: **Choose
+    attachment folder…** and **Rescan attachments**.
+  - Export (`domain/embedExport.ts`): sized images in HTML, Word and PDF;
+    pdf, audio, video and other files become labelled lines; note
+    embeds expand as quotes, also inside lists and quotes, and collapse
+    to a labelled line in table cells or mid-paragraph; unresolved
+    embeds and wikilinks become plain text. Fixes: HTML export now
+    honours Load web images (it leaked requests to the image's server),
+    `//host/x.png` is no longer taken for a relative path, and a tab
+    switch during an export no longer reads the other document's folder.
+    webp, avif, bmp and svg are rasterised for Word and PDF.
+  - Markdown images re-resolve after a tab switch (two tabs with the
+    same `images/x.png` in different folders showed the first one's).
+  - The CSP gains `media-src blob:` and `frame-src blob:`
+    (`vite.config.ts`, pinned by a test).
+  - Tests: the unit suite grew to over 1,000 tests, plus two Playwright specs
+    (`e2e/embeds.spec.ts`, `e2e/embeds-vault.spec.ts`).
+  - Bundle: `index` re-pinned 32.5 -> 37.0 KB (measured 34.4 KB, +3.1 KB).
+    Total eager JS grew about 7 KB gzip, because shared code also moved
+    into three small start-up chunks (`embeds` 3.0 KB, `frontMatter`
+    0.6 KB, `fences` 0.2 KB), which now have their own budget entries. The
+    attachments service, vault index, transclusion, media and note
+    renderers, banner and export expansion are lazy chunks.
+
+- **Obsidian embeds, post-review bug hunt**: 77 reproduced defects fixed
+  (a handful mitigated or documented, listed last), each with a regression
+  test that failed first.
+  - Visual pane and embeds (`editor/embedNode.ts`, `imageSupport.ts`):
+    a token never ends up hidden in code. Code blocks (toolbar, `` ``` ``
+    shortcut, joins) and inline code turn the chip back into its text; a
+    link mark is dropped; inserting an embed in marked text keeps only
+    emphasis, strong and strike-through. Tokens after an even number of
+    backslashes, or written with an entity, are read as embeds and survive
+    a round trip. Documents without tokens serialize exactly as before the
+    feature, so no backslashes are added to unrelated text. Plain-text copy
+    includes tokens. Find, Replace and Replace All in the visual pane see
+    the text of embed and wikilink tokens.
+  - Review follow-ups: a literal `!` from `\![[a.png]]`, `&#33;` or `&excl;`
+    stays text before the link; a chip with a bare pipe is written with the
+    pipe escaped inside a table cell; text that stops being code (block back
+    to a paragraph, inline code toggled off) gets its tokens back as chips; a
+    token beside an escaped address or URL (`a\@b.co`) is still read; the
+    visual pane keeps at most 200 transcluded notes on screen
+    (`MAX_LIVE_TRANSCLUSIONS`, a labelled placeholder beyond that); block id
+    hiding no longer walks the note for every indented line.
+  - Scanner (`domain/codeRegions.ts`, new, shared by `embeds.ts`,
+    `embedLinks.ts`, export and the banner): fences and indented code
+    inside list items, quotes and footnotes, fences opened on a bullet
+    line, code spans that wrap over a line break and escaped backticks
+    are read as CommonMark does. `\![[a.png]]` is a literal `!` and a
+    plain wikilink; a size written `\|300` in a table loses the backslash.
+    Root-absolute, backslash, anchor-only and empty image destinations are
+    not local files. The `embeds` chunk grew to about 4.3 KB gzip.
+  - Attachments service: a file saved during a rescan stays in the index;
+    lookups follow rescans (nearest file, ambiguity, first-scan answers);
+    links written before the index is complete use the full path; a failed
+    write cleans up; a folder that cannot be listed keeps its old entries
+    and is retried; Save As onto a document with a folder keeps that
+    folder; the truncated-index toast shows once per session; a
+    configuration that cannot be read refuses the save instead of using
+    `images`; a lapsed permission no longer empties the index on refocus;
+    notes over 2 MB say so; the image-drop toast points at Allow access.
+    Dropped images without an extension get one; relative-style wikilinks
+    get `./`; the vault index and web-image checks are linear.
+  - Rendering and print: transcluded notes keep list start numbers, task
+    state, alignment, footnotes and `|size`; nested list items and block
+    ids are cut correctly; `^id` markers are hidden; a Markdown image link
+    to a PDF, audio or video is an embed; the app's Open links work inside
+    a note; web-image changes and a late host path redraw a drawn note; a
+    rendered note is cached by content, not file date; blocked images never
+    get a live `src`. Printing from text-only view first brings the hidden
+    visual pane up to the open tab's Markdown (`store/flush.ts`,
+    `visualSync.prepareForPrint`; also on `beforeprint`). Ctrl+P and the Print command wait for every embed
+    and picture to load; ambiguity tooltips cover PDF, audio, video, file
+    chips and notes.
+  - Export: links labelled `[[1]]` stay links; notes embedded from another
+    folder keep their images; embedded notes isolate their reference
+    definitions and footnotes; wikilink text is escaped; web-address
+    embeds follow Load web images; `./` guards a colon in a path; a missing
+    note is labelled a missing note; the PDF character warning looks at
+    expanded text; HTML keeps webp, avif, bmp and svg as they are; a
+    withheld image is a dashed frame; a document with only plain wikilinks
+    no longer waits for the vault.
+  - Banner and palette: same-note and web-address embeds, quoted fences and
+    empty or anchor-only images no longer raise the banner; *Rescan
+    attachments* and *Choose attachment folder…* say why when they cannot
+    run. Docs: first-image wording (chapter 4), link-label token gap,
+    code, web-embed, size-limit and print notes. Unused key
+    `attachment.folderRoot` and `attachment.imageFallback` removed.
+  - Bounded work: block-id hiding and heading-link stripping are linear
+    (an indented `^id` line no longer walks the note, a heading of brackets
+    no longer rescans itself); `findMarkdownImages` finds each `![` pair in
+    one pass and gives a line a total scan budget; a transcluded note is
+    parsed up to 50,000 characters (was 200,000) and shows its opening text
+    as plain text when a paragraph holds over 1,000 `*`, `_` or `~`, a list
+    is nested 32 levels or more, or a table row has over 256 cells
+    (`domain/renderCost.ts`); Ctrl+P and Print also wait for embeds whose
+    load has started and for the first vault scan (up to 10 s). HTML export
+    reads a plain image link only when the vault classes the file as an
+    image (and under 32 MB), and keeps a bmp or svg as it is only when its
+    bytes are a real bitmap header or a closed `<svg>` document.
+  - Mitigated, not fully fixed: the HTML export still caps pictures at 5 MB
+    each and 25 MB in all (now announced in a toast); embedded notes in an
+    export are capped at about 1,000,000 characters (was 5,000,000) with
+    no toast on truncation; object URLs are reclaimed oldest-first with
+    other documents' first (a single document with over 4,000 distinct
+    embeds loses its oldest); the banner's not-found count can outlast a
+    corrected typo until a rescan or reload.
+  - Super-linear work, round two: the HTML export's SVG check no longer
+    backtracks exponentially on a run of `<!---->` comments;
+    `expandEmbeds` reads each neighbour line once per token line, bounds
+    the quote loop, and joins table-cell lines in one pass; a note embedded
+    many times is analysed once (`transclusion.ts` keeps the last four
+    analyses and each heading's plain text); `renderCost.ts` also refuses
+    notes with over 1,500 nested, quoted or setext lines in one container
+    run, or more than 32 markers on one line; converting a block with
+    thousands of chips to code and back makes one replace per textblock and
+    maps the caret through the fixes; the attachment folder is no longer
+    trimmed with a quadratic regex; footnote references are found by a scan
+    that skips a failed run of `[^`.
+  - A `\|` in a table cell followed by a mark (`| x \| y **z** |`) keeps its
+    escape when a visual edit rewrites the row; the row used to gain a cell.
+  - Click selection (`editor/clickSelection.ts`): the visual pane adopts the
+    click's selection one task after it gains focus. ProseMirror's own focus
+    handler checks the DOM selection 20 ms later and, when its stored one
+    differs (after a text-side update replaced the blocks it sits at the end
+    of the document), writes that back over the click, so a key pressed
+    more than 20 ms after a click acted at the end. It made the e2e test
+    "keys pressed before the browser reports a click act where the user
+    clicked" fail in about 30% of full-file runs on this branch (about 1 in
+    10 on main); it now passes 12 of 12.
+
 - **Book and guide PDFs.** Pages are numbered (the book's cover excepted),
   the book's contents list each chapter's page with a dotted leader, and
   the cover's eyebrow uses the indigo of the other Studio books. A new

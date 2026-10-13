@@ -4,7 +4,6 @@
  */
 export const en = {
   appName: 'MD Studio',
-  untitled: 'Untitled.md',
   'start.tagline': 'Local-first Markdown, visual and raw side by side.',
   'start.new': 'New document',
   'start.open': 'Open file…',
@@ -20,7 +19,6 @@ export const en = {
   'start.dashboard': 'Project dashboard',
   'start.guide': 'User guide',
   'start.guidePdf': 'User guide (PDF)',
-  'toolbar.home': 'Home',
   'toolbar.new': 'New',
   'toolbar.open': 'Open',
   'toolbar.save': 'Save',
@@ -57,6 +55,15 @@ export const en = {
   'image.blockedHint': 'Web image not loaded. Turn on Load web images in Settings to show it.',
   'guide.fileName': 'User-Guide.md',
   'settings.language.system': 'Match browser',
+  'settings.linkStyle': 'Link style',
+  'settings.linkStyle.wikilink': 'Wikilinks, like ![[image.png]]',
+  'settings.linkStyle.markdown': 'Markdown links, like ![](image.png)',
+  'settings.linkStyle.auto': 'Auto (follow the vault)',
+  'settings.linkStyle.autoHint':
+    'Auto reads .obsidian/app.json in the vault folder you chose. Without one, it keeps writing Markdown links.',
+  'settings.attachmentRules': 'Attachment location',
+  'settings.attachmentRules.vault': 'Follow vault settings',
+  'settings.attachmentRules.images': 'Images folder next to the note',
   'palette.placeholder': 'Type a command, or # to jump to a heading',
   'palette.headingsNeedDocument': 'Open a document to jump to its headings.',
   'palette.empty': 'No matching commands',
@@ -86,6 +93,8 @@ export const en = {
   'cmd.guide': 'Open the user guide',
   'cmd.guidePdf': 'Open the user guide (PDF)',
   'cmd.bookEpub': 'Download the book (EPUB)',
+  'cmd.chooseAttachmentFolder': 'Choose attachment folder…',
+  'cmd.rescanAttachments': 'Rescan attachments',
   'export.title': 'Export',
   'export.intro': 'Save a copy in another format. Your Markdown file stays as it is.',
   'export.format': 'Format',
@@ -103,6 +112,14 @@ export const en = {
   'export.theme.light': 'Light',
   'export.theme.dark': 'Dark',
   'export.submit': 'Export',
+  'export.embedMissing': 'Attachment not found: {name}',
+  'export.embedUnavailable': 'Attachment not included: {name}',
+  'export.embedCycle': 'Embed of {name} left out to avoid a loop.',
+  'export.embedDepth': 'Embed of {name} left out: nested too deeply.',
+  'export.embedLimit': 'Embed of {name} left out: the embedded notes add up to too much text.',
+  'export.embedKind': '{kind}: {name}',
+  'export.attachmentsUnavailable':
+    'Some attachments could not be included. They appear as labelled text instead.',
   'find.title': 'Find and replace',
   'find.search': 'Find',
   'find.replaceWith': 'Replace with',
@@ -154,6 +171,53 @@ export const en = {
     'The embedded image makes the document large. Saving the document to disk lets images go in a folder instead.',
   'image.failed': 'Could not add the image.',
   'image.documentChanged': 'The image wasn’t added: another document is open now.',
+  'attachment.banner.choose':
+    'Some attachments in this note cannot be shown. Choose the vault or attachment folder to display them.',
+  'attachment.banner.chooseButton': 'Choose attachment folder',
+  'attachment.banner.allow': 'Attachments in {folder} need permission before they can be shown.',
+  'attachment.banner.allowButton': 'Allow access',
+  'attachment.banner.noFile': 'Save this document to disk to show its attachments.',
+  'attachment.banner.unsupported':
+    'This browser cannot read folders, so attachments are shown as labelled placeholders. Your embeds are kept exactly as written. Pasted images are embedded in the file.',
+  'attachment.banner.notFound':
+    'Some attachments were not found in {folder}. Choose the vault root folder.',
+  'attachment.banner.dismiss': 'Dismiss this notice',
+  'attachment.saveUnsupported':
+    'This browser cannot save files to a folder, so the file was not added.',
+  'attachment.noFolder':
+    'No attachment folder is chosen for this document yet. Use Choose attachment folder in the command palette (or paste an image), then add the file again.',
+  'attachment.noNoteFile': 'Save this document to disk first, then add the file again.',
+  'attachment.needsPermission':
+    'Allow access to the attachment folder (see the bar above the editor) to save this file.',
+  'attachment.imageFallbackPermission':
+    'Image embedded in the file because the attachment folder needs permission. Use Allow access in the bar above the editor to save images there.',
+  'attachment.imageFallbackFailed':
+    'Image embedded in the file because it could not be saved to the attachment folder.',
+  'attachment.saveFailed': 'Could not save {name} to the attachment folder.',
+  'attachment.indexTruncated':
+    'The attachment folder has more than {count} files, so some attachments may show as not found.',
+  'attachment.rescanned': 'Attachments rescanned.',
+  'attachment.rescanNoFolder':
+    'No attachment folder is chosen for this document yet. Use Choose attachment folder first.',
+  'embed.loading': 'Loading…',
+  'embed.missing': 'Not found: {name}',
+  'embed.missingHint':
+    'If your vault is in a parent folder, choose that folder as the attachment folder.',
+  'embed.ambiguous': 'Several files share this name. Showing {path}.',
+  'embed.unavailable': 'Cannot show {name} yet. See the attachment notice above the editor.',
+  'embed.noteMissing': 'Note not found: {name}',
+  'embed.noteTooLarge': 'Note too large to embed (limit 2 MB): {name}',
+  'embed.sectionMissing': 'Section not found in {name}',
+  'embed.cycle': '{name} is already shown above, so it is not repeated here.',
+  'embed.depth': '{name} is nested too deeply to show.',
+  'embed.limit': '{name} is not shown: too many notes are embedded on this page.',
+  'embed.pdf': 'PDF: {name}',
+  'embed.audio': 'Audio: {name}',
+  'embed.video': 'Video: {name}',
+  'embed.file': 'File: {name}',
+  'embed.open': 'Open',
+  'embed.link': 'Link: {name}',
+  'embed.mediaUnsupported': 'This browser cannot play {name}. Use Open to view it.',
   'confirm.discard.title': 'Discard unsaved changes?',
   'confirm.discard.body': '“{name}” has changes that are not saved to disk.',
   'confirm.discard.ok': 'Discard',
@@ -178,6 +242,8 @@ export const en = {
   'toast.opened': 'Opened {name}',
   'toast.exported': 'Exported {name}',
   'toast.exportFailed': 'Could not export the document.',
+  'toast.htmlImagesLeftOut':
+    'Some images were left out of the page: a picture over 5 MB, or past 25 MB of pictures in all, is not embedded. Word and PDF exports keep them.',
   'toast.pdfMissingCharacters':
     'Some characters (such as Greek, Chinese, Arabic or emoji) can’t be shown in a PDF and were left out. Word and HTML exports keep them.',
   'toast.recentUnavailable':

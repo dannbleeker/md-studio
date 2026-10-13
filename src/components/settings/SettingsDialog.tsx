@@ -3,12 +3,14 @@ import { LOCALES, type LocalePreference, SUPPORTED_LOCALES } from '@/i18n/locale
 import { openUserGuide } from '@/services/documentActions';
 import { BOOK_EPUB, BOOK_PDF, GUIDE_PDF } from '@/services/links';
 import { useStore } from '@/store';
-import { FONT_SIZES, type ThemePreference, type ViewMode } from '@/store/settings';
+import { FONT_SIZES, type Settings, type ThemePreference, type ViewMode } from '@/store/settings';
 import { useUiStore } from '@/store/ui';
 import { Dialog } from '../ui/Dialog';
 
 const THEMES: ThemePreference[] = ['system', 'light', 'dark'];
 const VIEWS: ViewMode[] = ['split', 'text', 'visual'];
+const LINK_STYLES: Settings['linkStyle'][] = ['auto', 'wikilink', 'markdown'];
+const ATTACHMENT_RULES: Settings['attachmentRules'][] = ['vault', 'images'];
 
 export function SettingsDialog() {
   const open = useUiStore((s) => s.settingsOpen);
@@ -66,6 +68,39 @@ export function SettingsDialog() {
                 onChange={() => update({ fontSize: size })}
               />
               {t(`settings.fontSize.${size}`)}
+            </label>
+          ))}
+        </fieldset>
+
+        <fieldset>
+          <legend>{t('settings.linkStyle')}</legend>
+          {LINK_STYLES.map((linkStyle) => (
+            <label key={linkStyle} className="radio">
+              <input
+                type="radio"
+                name="linkStyle"
+                value={linkStyle}
+                checked={settings.linkStyle === linkStyle}
+                onChange={() => update({ linkStyle })}
+              />
+              {t(`settings.linkStyle.${linkStyle}`)}
+            </label>
+          ))}
+          <p className="muted">{t('settings.linkStyle.autoHint')}</p>
+        </fieldset>
+
+        <fieldset>
+          <legend>{t('settings.attachmentRules')}</legend>
+          {ATTACHMENT_RULES.map((attachmentRules) => (
+            <label key={attachmentRules} className="radio">
+              <input
+                type="radio"
+                name="attachmentRules"
+                value={attachmentRules}
+                checked={settings.attachmentRules === attachmentRules}
+                onChange={() => update({ attachmentRules })}
+              />
+              {t(`settings.attachmentRules.${attachmentRules}`)}
             </label>
           ))}
         </fieldset>

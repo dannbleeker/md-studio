@@ -45,7 +45,7 @@ The HTML export is a single, self-contained `.html` file styled like MD Studio's
 
 HTML is the export that travels best. It keeps everything Markdown expresses as structure: headings, nested lists, task lists, tables, block quotes, code, links. It is also the easiest to paste from (see below), and when printed from a browser, the page drops its background and prints black on white.
 
-Images come along in three ways. A picture pasted into the document (PNG, JPEG, GIF or WebP) is embedded in the page itself. Images linked by a relative path, like `images/chart.png`, stay as links, so they appear when the `.html` file sits next to the `images` folder. Images on the web keep working while the reader is online.
+Images come along in three ways. A picture pasted into the document (PNG, JPEG, GIF or WebP) is embedded in the page itself, and so is a picture read from the folder you chose for the document, an Obsidian attachment included, at the width the note gives it. Images linked by a relative path that MD Studio cannot read stay as links, so they appear when the `.html` file sits next to the `images` folder. A picture over 5 MB, or any picture past 25 MB in total, is left out of the page to keep it a sensible size; the description is shown in its place and MD Studio says how many were left out. Word and PDF keep them, and WebP, AVIF, BMP and SVG pictures go into the page as they are, without being redrawn. Images on the web, including a web address written as an embed, `![[https://example.com/a.png]]`, follow **Load web images** in Settings, as they do in the visual pane: with it off, which is the default, the page shows the image's description in a dashed frame instead of loading it, so the exported file never makes the reader's browser contact that server. Turn it on and the page links to them, and they work while the reader is online.
 
 Raw HTML in your Markdown is shown as text rather than run, and a link that could run a script loses its address but keeps its text. Ordinary web, email and relative links stay clickable. The reason is simple: a page exported from a document someone sent you should never run code from that document.
 
@@ -53,7 +53,7 @@ Raw HTML in your Markdown is shown as text rather than run, and a link that coul
 
 The PDF export produces an A4 document, set in clean standard fonts, with headings, lists, tables, quotes and code blocks laid out on the page. Nested lists keep their indentation, and task list items show `[x]` or `[ ]`. It is the format for "please send me something I can read on a plane", for formal attachments, and for anything that must look the same everywhere.
 
-Know its main limit in advance. To stay small and fast, the PDF uses the standard fonts every PDF reader has built in. Those cover Latin text, including Danish **æ**, **ø** and **å**, accented letters and ordinary punctuation. They do not cover emoji, Greek, Cyrillic, Chinese, Arabic and other scripts, and those characters are left out of the PDF rather than breaking the export. Images come along when MD Studio can read them: pictures pasted into the document, and pictures in the document's `images` folder when the document is saved on disk in Edge or Chrome. PNG and JPEG are embedded at full width; other formats, and images on the web, show their alt text instead.
+Know its main limit in advance. To stay small and fast, the PDF uses the standard fonts every PDF reader has built in. Those cover Latin text, including Danish **æ**, **ø** and **å**, accented letters and ordinary punctuation. They do not cover emoji, Greek, Cyrillic, Chinese, Arabic and other scripts, and those characters are left out of the PDF rather than breaking the export. Images come along when MD Studio can read them: pictures pasted into the document, and pictures in the document's attachment or `images` folder when the document is saved on disk in Edge or Chrome. PNG and JPEG are embedded, and WebP, AVIF, BMP and SVG are redrawn as PNG first, at the size a note asks for with `![[plan.png|300]]` or the full width otherwise. GIFs and images on the web show their alt text instead.
 
 If your document contains any of that, use printing instead (next section): the browser's own PDF printer renders every character and every image the visual pane can show.
 
@@ -63,7 +63,7 @@ The Word export is for when the next person will keep working on the document in
 
 The result uses real Word structure. Your `#` headings become Word's built-in Heading 1, Heading 2 and so on, so the navigation pane, a generated table of contents and the document's styles all work. Bulleted and numbered lists, nested ones included, become Word lists, and tables become Word tables with a header row. Links stay clickable. Code blocks are set in a monospace font, block quotes are indented, and task list items keep their state as a ☐ or ☑ in front of the text.
 
-Images are embedded the same way as in the PDF (PNG, JPEG and GIF), and anything MD Studio can't read becomes a short placeholder with its alt text. Once the `.docx` leaves MD Studio, it is a Word document. Edits made there will not flow back into your Markdown, so decide which copy is the master before the review starts.
+Images are embedded the same way as in the PDF (PNG, JPEG and GIF, with WebP, AVIF, BMP and SVG redrawn as PNG), and anything MD Studio can't read becomes a short placeholder with its alt text. Once the `.docx` leaves MD Studio, it is a Word document. Edits made there will not flow back into your Markdown, so decide which copy is the master before the review starts.
 
 ## Plain text
 
@@ -75,7 +75,7 @@ The `.txt` file looks a lot like your Markdown without the asterisks and backtic
 
 ## Printing, and the other road to PDF
 
-**Ctrl+P**, or *Print* in the command palette, prints the formatted document. The toolbar and the Markdown pane are left out, so the printout is the formatted document, not the source. Print from **Split** or **Visual** view, so the formatted pane is up to date with your latest edits.
+**Ctrl+P**, or *Print* in the command palette, prints the formatted document, after every embedded picture, PDF and note has loaded. The toolbar and the Markdown pane are left out, so the printout is the formatted document, not the source. Print from **Split** or **Visual** view, so the formatted pane is up to date with your latest edits.
 
 The browser's print dialog has a *Save as PDF* (or *Microsoft Print to PDF*) destination, and that gives you a second road to PDF with different strengths:
 
@@ -103,17 +103,29 @@ No conversion is perfect. The table shows what to expect from each route, so you
 | Links | Yes | Clickable | Shown as text | Clickable | Address in brackets |
 | Task lists | Yes | Checkboxes | `[ ]` and `[x]` | ☐ and ☑ | `[ ]` and `[x]` |
 | Strikethrough | Yes | Yes | Yes | Yes | Plain text |
-| Pasted images | Yes, inside the file | Yes | PNG, JPEG | PNG, JPEG, GIF | Alt text |
-| Images in an `images` folder | If you send the folder | If the folder sits next to it | PNG, JPEG, when saved on disk | PNG, JPEG, GIF, when saved on disk | Alt text |
+| Pasted images | Yes, inside the file | Yes | PNG, JPEG, WebP | PNG, JPEG, GIF, WebP | Alt text |
+| Images in an `images` or attachment folder | If you send the folder | Embedded when saved on disk in Edge or Chrome | PNG, JPEG, WebP, AVIF, BMP, SVG, when saved on disk | PNG, JPEG, GIF, WebP, AVIF, BMP, SVG, when saved on disk | Alt text |
+| Obsidian `![[...]]` embeds of PDF, audio, video, other files | Yes | A labelled line | A labelled line | A labelled line | A labelled line |
+| Obsidian note embeds | Yes | Written out as a quote | Written out as a quote | Written out as a quote | Written out in place |
 | Footnotes | Yes | Numbered notes at the end | Numbered notes at the end | Numbered notes at the end | Numbered notes at the end |
 | Raw HTML | Yes | Shown as text | Mostly left out | Shown as code | Kept as text |
 | Emoji, non-Latin scripts | Yes | Yes | Left out | Yes | Yes |
 
 Headings, tables and simple lists come through every format, which is a good reason to carry meaning in structure rather than in visual tricks.
 
-Images are the format that needs the most care. Images on the web are never fetched for a PDF or Word export, so link to a copy in the `images` folder if the picture has to travel. And remember that a relative link such as `images/chart.png` means "next to this file": move the file without its folder and the link points at nothing.
+Images are the format that needs the most care. Images on the web are never fetched for a PDF or Word export, so link to a copy in the `images` folder if the picture has to travel. In an HTML export they are linked only when **Load web images** is on. And remember that a relative link such as `images/chart.png` means "next to this file": move the file without its folder and the link points at nothing.
 
 Footnotes are not part of CommonMark, so the exports turn them into something every format understands: each marker becomes a number in brackets, and the notes follow as a numbered list after a rule at the end. Raw HTML is handled differently by each format, as the table shows. [Appendix B](appendix-b-markdown-syntax-reference.md) marks which syntax is CommonMark and which is GitHub Flavored Markdown. If a document has to export cleanly, stay within those two.
+
+## Embeds and wikilinks in exports
+
+An export is made from a copy of the text, so your note stays as it is. The copy is changed in a few ways to suit a file that cannot go and fetch things.
+
+A picture embed, `![[plan.png|300]]` or an ordinary Markdown link to a file in the folder you chose, becomes a picture at the width you wrote, in HTML, Word and PDF. A PDF, audio, video or other file embed cannot play inside a static document, so it becomes a line naming it, such as "PDF: report.pdf". A plain wikilink `[[Meeting notes|the notes]]` becomes its alias or its name as ordinary text.
+
+A note embed is written out in place as a quote, to a depth of three, and a note that would repeat itself is left out with a short notice. That works also inside a list item or a quote, which keeps its indentation. When the embed shares its paragraph with other text, or sits in a table cell, there is no clean place for a quote, and it becomes a one-line label with the note's name instead. The embedded notes of one export add up to at most about a million characters; past that the rest are left out with a notice saying the embedded notes add up to too much text. A note's own reference links and footnotes stay with it, and the Markdown links in your note whose label is a bracketed name, such as `[[1]](https://example.com)`, stay links.
+
+Anything that cannot be found, or whose folder cannot be read, becomes plain text such as "Attachment not found: plan.png", "Note not found: Meeting notes" or "Attachment not included: plan.png", never a blank or a broken picture. If the folder needs permission again, for example after a reload, MD Studio shows a notice and exports with those labels; allow access from the bar above the editor and export again to include them.
 
 ## Pasting into email, chat and wikis
 

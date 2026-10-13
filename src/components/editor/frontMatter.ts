@@ -41,8 +41,47 @@ export const remarkFrontMatter: RemarkPlugin = {
   options: {},
 };
 
-type MdNode = { type: string; value?: unknown; data?: Record<string, unknown> | undefined };
+type MdPoint = { line?: number; column?: number; offset?: number };
+type MdNode = {
+  type: string;
+  value?: unknown;
+  data?: Record<string, unknown> | undefined;
+  position?: { start?: MdPoint; end?: MdPoint } | undefined;
+  children?: MdNode[];
+};
 type MdRoot = { children: MdNode[] };
+
+/**
+ * The re-parsed body carries offsets into the string it was parsed from (a
+ * line break plus the rest of the source), not into the file. Later plugins
+ * read positions against the file's text (remarkEmbeds slices it), so each
+ * node is moved to file coordinates: the leading line break is one
+ * character that isn't in the file, and the body starts `bodyStart` in. A
+ * point that can't be moved reliably is dropped with its node's position,
+ * which makes later plugins leave that node alone.
+ */
+function rebase(nodes: MdNode[], bodyStart: number, lineShift: number): void {
+  for (const node of nodes) {
+    const { start, end } = node.position ?? {};
+    if (
+      !start ||
+      !end ||
+      typeof start.offset !== 'number' ||
+      typeof end.offset !== 'number' ||
+      typeof start.line !== 'number' ||
+      typeof end.line !== 'number' ||
+      start.offset < 1
+    ) {
+      delete node.position;
+    } else {
+      start.offset += bodyStart - 1;
+      end.offset += bodyStart - 1;
+      start.line += lineShift;
+      end.line += lineShift;
+    }
+    if (node.children) rebase(node.children, bodyStart, lineShift);
+  }
+}
 
 /**
  * `remark-frontmatter` closes front matter only at `---` and takes an
@@ -64,7 +103,14 @@ function pandocFrontMatter(
   const closeStart = source.lastIndexOf('\n', end - 1) + 1;
   const byDots = end >= 0 && source[closeStart] === '.';
   if (end >= 0 && parsedAsYaml && !byDots) return;
-  const body = parse(`\n${end < 0 ? source : source.slice(end + 1)}`).children;
+  const bodyStart = end < 0 ? 0 : end + 1;
+  const body = parse(`\n${source.slice(bodyStart)}`).children;
+  // The parsed string has one more line than the file's body; its first
+  // line is the added break, so line N there is line N - 1 of the body.
+  let lineShift = -1;
+  for (let i = source.indexOf('\n'); i >= 0 && i < bodyStart; i = source.indexOf('\n', i + 1))
+    lineShift++;
+  rebase(body, bodyStart, lineShift);
   if (end < 0) {
     tree.children = body;
     return;

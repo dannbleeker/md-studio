@@ -20,6 +20,7 @@ import { useStore } from '@/store';
 import { flushEditors } from '@/store/flush';
 import { registerViewPart } from '@/store/viewState';
 import { editors, isHidden, restoreScroll } from './editorRegistry';
+import { embedDecorations } from './embedDecorations';
 import { markdownWithFrontMatter } from './frontMatterLanguage';
 import { highlightStyle } from './highlight';
 import { textPaneImageHandlers } from './imageSupport';
@@ -117,6 +118,7 @@ export function TextPane({ onAdapter }: Props) {
           // Takes precedence over basicSetup's fallback default style.
           syntaxHighlighting(highlightStyle),
           language.of(languageFor(useStore.getState().doc.markdown.split(/(?=\n)/))),
+          embedDecorations((s) => language.get(s) === plainText),
           guardNesting,
           // Search state for the app's find bar (its own panel stays closed).
           search(),

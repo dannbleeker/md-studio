@@ -1,6 +1,7 @@
 import { renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { COMMANDS } from '@/components/command-palette/commands';
+import { printDocument } from '@/components/editor/embedView';
 import * as actions from '@/services/documentActions';
 import { resetStoreForTest, useStore } from '@/store';
 import { useUiStore } from '@/store/ui';
@@ -13,9 +14,15 @@ vi.mock('@/services/documentActions', async (importOriginal) => {
   return Object.fromEntries(Object.keys(real).map((name) => [name, vi.fn()]));
 });
 
+// Print waits for the off-screen embeds; the real one would open the print dialog.
+vi.mock('@/components/editor/embedView', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  printDocument: vi.fn(),
+}));
+
 /**
- * Hints that are not the app's own keys: `#` is typed into the palette,
- * and Ctrl+P is the browser's print, which the command merely invokes.
+ * Hints that are not the app's own keys: `#` is typed into the palette.
+ * Ctrl+P is checked on its own below: it calls no document action.
  */
 const NOT_APP_KEYS = new Set(['#', 'Ctrl+P']);
 
@@ -102,6 +109,42 @@ describe('shortcut hints in the command palette', () => {
       expect(effect()).toEqual(byCommand);
     });
   }
+});
+
+describe('Ctrl+P', () => {
+  beforeEach(() => fresh());
+
+  const press = (init: KeyboardEventInit = {}) => {
+    const { unmount } = renderHook(() => useShortcuts());
+    const event = new KeyboardEvent('keydown', {
+      key: 'p',
+      code: 'KeyP',
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+      ...init,
+    });
+    window.dispatchEvent(event);
+    unmount();
+    return event.defaultPrevented;
+  };
+
+  it('runs the same print as the palette command, not the browser’s own', () => {
+    expect(press()).toBe(true);
+    expect(printDocument).toHaveBeenCalledTimes(1);
+    COMMANDS.find((c) => c.id === 'print')?.run();
+    expect(printDocument).toHaveBeenCalledTimes(2);
+  });
+
+  it('leaves the browser alone off the editor screen, and Ctrl+Shift+P opens the palette', () => {
+    useStore.getState().setScreen('start');
+    expect(press()).toBe(false);
+    expect(printDocument).not.toHaveBeenCalled();
+    useStore.getState().setScreen('editor');
+    expect(press({ shiftKey: true, key: 'P' })).toBe(true);
+    expect(printDocument).not.toHaveBeenCalled();
+    expect(useUiStore.getState().paletteOpen).toBe(true);
+  });
 });
 
 describe('shortcuts on a Mac', () => {

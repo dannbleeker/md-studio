@@ -63,6 +63,80 @@
       and commits from the GitHub API. No chart library: trends are inline
       SVG.
 
+- [ ] Obsidian embeds, follow-ups (the first version is in the
+      changelog; these are its known gaps):
+  - [ ] Link autocomplete for `[[` and `![[`.
+  - [ ] Clickable wikilinks (open the note, or a tab for it).
+  - [ ] A vault browser (file tree, quick switcher).
+  - [ ] Heading and block link targets in the UI (`#Heading`, `#^id`).
+  - [ ] `%%comments%%`.
+  - [ ] Edit an embed's size or target from the visual pane (today: in
+        the Markdown pane).
+  - [ ] Canvas and Base files (shown as other-file chips).
+  - [ ] Transcluded notes refresh live (today: after a refocus rescan).
+  - [ ] Headings inside lists, quotes and callouts as transclusion
+        targets (`findHeadings` is top-level only).
+  - [ ] Tokens split across inline nodes (emphasis or a bare address
+        inside a name) stay plain text and are escaped when that block is
+        edited in the visual pane. So is a token inside a Markdown link
+        label (`[a ![[b.png]]](url)`), on purpose: converting inside link
+        text would need a node that can sit in a link.
+  - [ ] Remaining limits after the post-review bug hunt: the HTML export
+        drops pictures over 5 MB (25 MB in all) and says so, but cannot
+        embed them; the embedded-note text cap (1,000,000 characters) is
+        a size cap, not a time budget for the PDF writer, and truncation
+        has no toast; object URLs: one document with over 4,000 distinct
+        embeds loses its oldest URLs (a per-view ref count would fix it);
+        tokens in raw HTML blocks are scanned as embeds but
+        the visual pane makes no chip for them; a native browser-menu
+        print cannot wait for embeds (Ctrl+P and the palette can);
+        `domain/codeRegions.ts` differs from micromark in two quirks
+        (empty list items after a paragraph; a document starting with an
+        unclosed `---`), listed in its header.
+  - [x] **Re-pin `bundle-budget.json`:** `embeds` re-pinned 3,300 to 4,500
+        (measured 4,347 B gzip, the shared `codeRegions.ts` scanner); `i18n`
+        and `ui` start-up chunks got ceilings; `index` lowered to 34,500.
+  - [x] `embedExport.ts` no longer has its own `fencedLines`: block
+        boundaries read `codeRanges`, so a fence left open in a quote or
+        list item ends with it. `stripContainers` stays: the table-row and
+        heading/break checks still need the line with its markers off.
+  - [ ] The `codeRegions.ts` table-row delimiter regex backtracks on a very
+        long line of pipes and spaces (about 2 s for 80 KB). Make it linear
+        by trimming the row first.
+  - [x] **Pipe in a table cell next to a mark:** Milkdown's text handler
+        returns text that ends in whitespace unescaped, so `| x \| y **z** |`
+        was written with a bare pipe and the row gained a cell (plain
+        Milkdown does the same on main). The text handler in
+        `configureEmbedStringify` now escapes a pipe left bare in a
+        `tableCell`; any output that was well-formed is unchanged.
+  - [ ] **Serializing a paragraph with thousands of chips is quadratic:**
+        `@milkdown/transformer`'s `#maybeMergeChildren` rebuilds the child
+        array with `concat` per child (also hit by a paragraph of many inline
+        marks on main). A paragraph of 10,000 `[[a]] ` tokens (64 KB, no blank
+        line) takes 1.6 s per visual edit; 8,000 characters take 30 ms. The
+        fix lives in the library: a `pnpm patch` of that method to `push`
+        into one array. Not done here because it adds `patchedDependencies`
+        and a lockfile change, which CI cannot be checked against from this
+        branch.
+  - [ ] **Manual check against a real vault:** open a real Obsidian vault
+        (thousands of files, nested folders, PDFs, audio) in Chrome or
+        Edge and go through the embed forms in Appendix B, pasting and
+        dropping files, Save As and a reload with the permission prompt.
+        The test suite uses a fake file system; none of this has run
+        against a real one since the bug-hunt fixes.
+  - [ ] Replace the headless Milkdown editor used for transclusion with
+        a shared parser if the bundle sizes allow.
+  - [ ] **Unverified:** the PDF viewer for `![[report.pdf]]` under the CSP
+        (`object-src 'none'` with `frame-src blob:`) has not been checked
+        in a headed Chromium. Chromium may apply `object-src` to the PDF
+        plugin document and block the frame, leaving only the Open link.
+        If so, change the CSP in `vite.config.ts` to `object-src blob:`
+        (and update `csp.test.ts`).
+  - [ ] Check by hand that the command palette's attachment-folder picker
+        still has user activation: the dynamic import runs before
+        `showDirectoryPicker`, which some browsers reject without a
+        recent click or key press.
+
 ## Repo and CI
 
 - [x] GitHub Pages: Actions source, custom domain, HTTPS enforced.

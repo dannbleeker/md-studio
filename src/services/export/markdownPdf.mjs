@@ -324,9 +324,16 @@ export async function markdownToPdf({
     const ref = embedded.get(img);
     if (!ref) return;
     const maxH = (PAGE.h - M.top - M.bottom) * 0.66;
-    const scale = Math.min(1, width / img.width, maxH / img.height);
-    const w = img.width * scale;
-    const h = img.height * scale;
+    // A size given in pixels (Obsidian's ![[a.png|300]]) is 0.75 pt per px.
+    const wanted = img.displayWidth ? img.displayWidth * 0.75 : img.width;
+    const tall = img.displayHeight
+      ? img.displayHeight * 0.75
+      : img.displayWidth
+        ? (wanted * img.height) / img.width
+        : img.height;
+    const scale = Math.min(1, width / wanted, maxH / tall);
+    const w = wanted * scale;
+    const h = tall * scale;
     space(h + 6);
     S.page.drawImage(ref, { x, y: PAGE.h - S.y - h - 3, width: w, height: h });
     S.fresh = false;

@@ -9,7 +9,7 @@ import {
 } from '@codemirror/search';
 import type { EditorView as TextView } from '@codemirror/view';
 import { Fragment, type Mark, type Node as PmNode, Slice } from '@milkdown/kit/prose/model';
-import type { EditorState } from '@milkdown/kit/prose/state';
+import { EditorState } from '@milkdown/kit/prose/state';
 import {
   getSearchState,
   SearchQuery as PmQuery,
@@ -17,8 +17,10 @@ import {
   findPrev as pmFindPrev,
   replaceAll as pmReplaceAll,
   replaceNext as pmReplaceNext,
+  type SearchResult,
   setSearchState,
 } from 'prosemirror-search';
+import { EMBED_NODE_NAME, parseWikiRef } from '@/domain/embeds';
 import { editors } from '../editor/editorRegistry';
 
 /**
@@ -104,18 +106,103 @@ function sharedMarks(doc: PmNode, from: number, to: number): readonly Mark[] {
   return shared ?? [];
 }
 
+/** An embed or wikilink atom the query matches inside: its text is not in the document's text. */
+type TokenHit = { node: PmNode; pos: number };
+
 /**
- * prosemirror-search gives replacement text only the marks that continue
- * past the match's edges, so a mark that doesn't extend (inline code is
- * not inclusive) is lost when the match covers it to its end: `foo` → bar
- * dropped the backticks. Replacement text keeps every mark the whole match
- * had.
+ * prosemirror-search sees an atom as one placeholder character, so a file
+ * name or note title that only appears inside a token could not be found,
+ * counted or replaced here although the text pane finds it. This query also
+ * matches the token's source text and reports the whole atom as the match;
+ * replacing rewrites the token (when the result is still one valid token).
+ * A match found this way is looked up in `tokenHits` by its result object.
+ *
+ * It also fixes a mark loss: prosemirror-search gives replacement text only
+ * the marks that continue past the match's edges, so a mark that doesn't
+ * extend (inline code is not inclusive) is lost when the match covers it to
+ * its end: `foo` → bar dropped the backticks. Replacement text keeps every
+ * mark the whole match had.
  */
-class MarkKeepingQuery extends PmQuery {
+class VisualQuery extends PmQuery {
+  private readonly tokenHits = new WeakMap<SearchResult, TokenHit>();
+  private tokenCache: { doc: PmNode; hits: SearchResult[] } | null = null;
+
+  /** The text of `raw` as a one-paragraph document, so the library's own matching applies to it. */
+  private rawState(state: EditorState, raw: string): EditorState | null {
+    const { schema } = state;
+    const paragraph = schema.nodes.paragraph;
+    const doc =
+      paragraph && schema.topNodeType.createAndFill(null, paragraph.create(null, schema.text(raw)));
+    return doc ? EditorState.create({ doc }) : null;
+  }
+
+  private tokens(state: EditorState): SearchResult[] {
+    if (this.tokenCache?.doc === state.doc) return this.tokenCache.hits;
+    const hits: SearchResult[] = [];
+    state.doc.descendants((node, pos) => {
+      if (node.type.name !== EMBED_NODE_NAME) return true;
+      const raw = String(node.attrs.raw ?? '');
+      const temp = raw ? this.rawState(state, raw) : null;
+      if (temp && super.findNext(temp, 0)) {
+        const hit = { from: pos, to: pos + node.nodeSize, match: null, matchStart: pos };
+        this.tokenHits.set(hit, { node, pos });
+        hits.push(hit);
+      }
+      return false;
+    });
+    this.tokenCache = { doc: state.doc, hits };
+    return hits;
+  }
+
+  override findNext(state: EditorState, from = 0, to = state.doc.content.size) {
+    const text = super.findNext(state, from, to);
+    if (!this.valid) return text;
+    const token = this.tokens(state).find((h) => h.from >= from && h.to <= to);
+    return token && (!text || token.from < text.from) ? token : text;
+  }
+
+  override findPrev(state: EditorState, from = state.doc.content.size, to = 0) {
+    const text = super.findPrev(state, from, to);
+    if (!this.valid) return text;
+    let token: SearchResult | undefined;
+    for (const h of this.tokens(state)) if (h.to <= from && h.from >= to) token = h;
+    return token && (!text || token.from > text.from) ? token : text;
+  }
+
+  /** The token with every match inside it replaced, or null when that is no longer one token. */
+  private rewritten(state: EditorState, raw: string): string | null {
+    const temp = this.rawState(state, raw);
+    if (!temp) return null;
+    const matches: SearchResult[] = [];
+    for (let pos = 0; ; ) {
+      const next = super.findNext(temp, pos, temp.doc.content.size);
+      if (!next) break;
+      if (next.to > pos || matches.length === 0) matches.push(next);
+      pos = Math.max(next.to, pos + 1);
+    }
+    const tr = temp.tr;
+    for (const match of matches.reverse()) {
+      const ranges = super.getReplacements(temp, match);
+      for (let i = ranges.length - 1; i >= 0; i--) {
+        const r = ranges[i];
+        if (r) tr.replace(r.from, r.to, r.insert);
+      }
+    }
+    const next = tr.doc.textContent;
+    return next !== raw && parseWikiRef(next)?.raw === next ? next : null;
+  }
+
   override getReplacements(
     state: EditorState,
-    result: Parameters<PmQuery['getReplacements']>[1]
+    result: SearchResult
   ): ReturnType<PmQuery['getReplacements']> {
+    const token = this.tokenHits.get(result);
+    if (token) {
+      const next = this.rewritten(state, String(token.node.attrs.raw ?? ''));
+      if (next === null) return [];
+      const node = token.node.type.create({ raw: next }, null, token.node.marks);
+      return [{ from: result.from, to: result.to, insert: new Slice(Fragment.from(node), 0, 0) }];
+    }
     const replacements = super.getReplacements(state, result);
     const marks = sharedMarks(state.doc, result.from, result.to);
     if (marks.length === 0) return replacements;
@@ -161,7 +248,7 @@ function visualEngine(): Engine | null {
   };
   return {
     apply(options) {
-      view.dispatch(setSearchState(view.state.tr, new MarkKeepingQuery(options)));
+      view.dispatch(setSearchState(view.state.tr, new VisualQuery(options)));
       return info();
     },
     next: () => run(pmFindNext),

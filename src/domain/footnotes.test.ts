@@ -85,4 +85,25 @@ describe('inlineFootnotes', () => {
       '1. item\n\n    more.\\[1\\]\n\nPara\n    lazy.\\[1\\]\n\n---\n\n1. A.\n'
     );
   });
+
+  it('handles a long run of "[^" in linear time', () => {
+    const md = `[^a]: d\n\n${'[^'.repeat(64_000)} [^a]`;
+    const started = performance.now();
+    const out = inlineFootnotes(md);
+    expect(performance.now() - started).toBeLessThan(1000);
+    expect(out).toContain('\\[1\\]');
+  });
+
+  it('numbers the same references as the label pattern it replaced', () => {
+    // 3 000 distinct notes: numbering must not rescan the list per reference.
+    const ids = Array.from({ length: 3000 }, (_, i) => `n${i}`);
+    const md = `${ids.map((id) => `[^${id}]`).join(' ')}\n\n${ids.map((id) => `[^${id}]: ${id}`).join('\n')}\n`;
+    expect(inlineFootnotes(md).startsWith('\\[1\\] \\[2\\] \\[3\\]')).toBe(true);
+  });
+
+  it('matches labels exactly as before around brackets, carets and blanks', () => {
+    const md =
+      '[^a[^b] [^] [^ x] [^a] [^^] [^a\n[^b]: one\n[^a[^b]: two\n[^^]: three\n[^a]: four\n';
+    expect(inlineFootnotes(md).split('\n---\n')[0]).toBe('\\[1\\] [^] [^ x] \\[2\\] \\[3\\] [^a\n');
+  });
 });

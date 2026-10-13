@@ -5,6 +5,7 @@ import {
   getHandle,
   getHandleAt,
   imageFolderKey,
+  listHandlesWithPrefix,
   pruneHandles,
   putHandle,
   putHandleAt,
@@ -38,6 +39,17 @@ describe('handleStore', () => {
     await pruneHandles(new Set([doc]));
     expect(await getHandleAt(imageFolderKey(doc))).toMatchObject({ name: 'folder' });
     expect(await getHandleAt(imageFolderKey(other))).toBeNull();
+  });
+
+  it('lists the handles stored under a key prefix, folders only for dir:', async () => {
+    const doc = (await putHandle(handle('listed.md')))!;
+    await putHandleAt(imageFolderKey(doc), handle('listed-folder'));
+    const folders = await listHandlesWithPrefix('dir:');
+    const mine = folders.filter(([key]) => key === imageFolderKey(doc));
+    expect(mine).toHaveLength(1);
+    expect(mine[0]?.[1]).toMatchObject({ name: 'listed-folder' });
+    expect(folders.every(([key]) => key.startsWith('dir:'))).toBe(true);
+    expect(await listHandlesWithPrefix('no-such-prefix:')).toEqual([]);
   });
 
   it('asks for permission only when not already granted', async () => {

@@ -121,18 +121,23 @@ cannot be loaded.
 Write alt text that says what the picture shows. *Image* or *screenshot* tells a
 reader who cannot see it nothing.
 
-### Pasting and dropping images
+### Pasting and dropping files
 
 You rarely need to type image links by hand. Paste an image with **Ctrl+V** into
-either pane, or drag an image file from your desktop onto one. What happens next
+either pane, or drag a file from your desktop onto one. What happens next
 depends on where the document lives.
 
 In Edge or Chrome, with the document saved on disk, the first image you add
-brings up a question: *Save images next to the document?* Choose **Choose
+brings up a question: *Save images next to the document?* (Any other kind of
+file, such as a PDF, does not ask. Until a folder is chosen it shows a notice
+and inserts nothing, so choose one first with **Choose attachment folder…** in
+the command palette, or paste an image to be asked.) Choose **Choose
 folder…** and pick the folder the document is in (the folder picker opens
-there). From then on, every image you paste or drop is saved as its own file in
-an `images` folder beside the document, named by date and time such as
-`image-20261002-171530.png`, and linked with a relative path:
+there). If the document belongs to an Obsidian vault, pick the vault's top folder
+instead; it contains the note, and MD Studio then follows the vault's own
+settings. Without a `.obsidian` folder, every image you paste or drop is saved as
+its own file in an `images` folder beside the document, named by date and time
+such as `image-20261002-171530.png`, and linked with a relative path:
 
 ```markdown
 ![floorplan](images/image-20261002-171530.png)
@@ -144,6 +149,31 @@ tells you so and embeds that image, and the next image asks again. If you choose
 **Cancel**, the image is embedded and MD Studio stops asking for that document
 for the rest of the session.
 
+In a vault the file goes where the vault's attachment setting says, which may be
+the vault's top folder, a folder next to the note or a fixed folder such as
+`Attachments`. A pasted image is named the way Obsidian names it, as in
+`Pasted image 20261012093000.png`, and a dropped file keeps its own name with anything
+unsafe replaced. If the name is taken, MD Studio adds a number rather than
+overwriting. Any kind of file can be dropped this way, not only images: a PDF,
+a recording or a spreadsheet is saved and linked.
+
+How the link is written follows **Link style** in Settings. *Wikilinks* writes
+`![[Pasted image 20261012093000.png]]`. *Markdown links* writes
+`![](Pasted%20image%2020261012093000.png)` for images, PDFs, audio and
+video, and `[name](path)` for other files. *Auto (follow the vault)* does what the
+vault's own settings do, and uses Markdown links when there is no `.obsidian`
+folder, which is why documents that were fine before still work the same way. The
+vault's choice of shortest, relative or absolute paths is followed too. **Attachment
+location** in Settings can force the old behaviour, an `images` folder next to the
+note, even inside a vault.
+
+When a file cannot be saved, MD Studio says why. After a reload the browser may
+want permission for the folder again, and the bar above the editor has an
+**Allow access** button; a file dropped from outside the browser can fail for the
+same reason, and the toast then points to that bar. With no folder chosen, or in a
+browser that cannot save to folders, an image is embedded in the document instead
+and a file of another kind is not added.
+
 In Firefox, Safari, on phones, or before you have saved the document, the image
 is embedded in the document itself. MD Studio first shrinks it so the longest
 side is at most 1600 pixels, then writes it into the Markdown as a long encoded
@@ -151,6 +181,24 @@ address beginning `data:image/`. The document then carries its pictures inside
 it. That is convenient for a single file, but it makes the source long and hard
 to read. A large image brings up a notice that the document is getting big, with
 the reminder that saving it to disk lets images go in a folder.
+
+### Obsidian embeds
+
+Notes from Obsidian use `![[plan.png]]` to show a file and `![[Other note]]` to
+show another note inside this one. MD Studio shows these in the visual pane and
+leaves the text exactly as written, also when you edit the paragraph around it.
+Pictures take a size (`![[plan.png|300]]`), PDFs a page (`![[report.pdf#page=3]]`),
+and audio, video and other files appear as a player or a labelled chip with an
+**Open** link. An embedded note appears as a quoted block that you read but cannot
+edit here; change it in its own note. Plain links such as `[[Other note]]` show as
+a chip, and clicking one does nothing yet. [Appendix B](appendix-b-markdown-syntax-reference.md)
+lists every form, and [Chapter 5](05-managing-files-locally.md) explains how MD
+Studio finds the files.
+
+Until a folder is chosen, or where the browser cannot read folders, each embed is a
+labelled placeholder with the original text beside it. Nothing is lost, and a bar
+above the editor says what to do. Embeds written inside code are shown as code and
+never counted.
 
 ### Files next to the document, or web addresses
 
@@ -160,7 +208,7 @@ only as long as the other site keeps it at that address.
 
 | Where the image lives | Good for | Watch out for |
 | --- | --- | --- |
-| `images` folder next to the document | Documents on disk, folders in git, anything you share as a folder | Send the folder, not just the `.md` file |
+| `images` folder next to the document, or the vault's attachment folder | Documents on disk, folders in git, Obsidian vaults, anything you share as a folder | Send the folder, not just the `.md` file |
 | Embedded in the document | A single self-contained file; browsers without folder access | Long, unreadable source; larger files |
 | A web address | Images that already live online | Needs a connection; can break if the site changes |
 

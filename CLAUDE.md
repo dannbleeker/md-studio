@@ -38,7 +38,9 @@ src/
                changed region + minimal text diff, block-preserving merge,
                reference definitions, nesting guard, fuzzy match, export
                formats, footnotes, image paths and info,
-               front matter
+               front matter, Obsidian embeds (embeds, embedLinks,
+               codeRegions, vaultIndex, vaultConfig, transclusion,
+               embedExport, renderCost)
   store/       Zustand: index.ts (document, tabs, settings, recents,
                persistence subscription), settings.ts, ui.ts (dialogs and
                find bar flags, toasts, confirm/prompt, format state),
@@ -47,10 +49,13 @@ src/
   services/    side effects: storage.ts (localStorage), fileSystem.ts
                (File System Access + fallbacks), handleStore.ts (file
                handles in IndexedDB), documentActions.ts (user commands),
-               images.ts, links.ts, perfMarks.ts, export/ (HTML, Word, PDF,
+               images.ts, attachments.ts (vault folder, scan, resolve,
+               save), links.ts, perfMarks.ts, export/ (HTML, Word, PDF,
                plain text; markdownPdf.mjs is shared with the book scripts)
   components/  editor/ (TextPane, VisualPane + visualSync, SplitView,
-               sync helpers) ·
+               sync helpers; embedNode, embedView, embedRender,
+               noteRenderer, imageView, mediaRenderers for embeds) ·
+               attachments/ (folder banner) ·
                start/ · tabs/ · find/ · outline/ · export/ · settings/ ·
                command-palette/ · toolbar/ · toast/ · ui/ (Dialog,
                LazyBoundary)
@@ -61,7 +66,7 @@ src/
                resolveLocale, index.ts t() / setLocale / dateTimeFormat
   styles/      tokens.css (slate theme), app.css, editor.css; mobile.css
 e2e/           Playwright specs against the built app
-test/          Vitest setup + stubs
+test/          Vitest setup + stubs; fakeFs.ts (fake vault folders)
 docs/guide/    the practitioner book (CC BY-NC 4.0)
 ```
 
@@ -122,6 +127,46 @@ docs/guide/    the practitioner book (CC BY-NC 4.0)
   scroll live in memory: each pane registers a reader with
   `store/viewState.ts`, the store captures them when leaving a tab, and
   the panes apply `restoreView` on the next load.
+
+## Obsidian embeds (read before touching them)
+
+`![[file|300]]`, `[[Note]]`, `![[Note#Heading]]` and friends open with their
+files and notes shown. Details per change are in `CHANGELOG.md`; the rules
+that keep it safe:
+
+- **One lossless node.** Every wiki token is a single inline atom (`embed`,
+  attr `raw`) built by `remarkEmbeds` only after it checks the tokens
+  against the source, and serialized back through an `html` mdast node, so
+  the text is written back byte for byte. Any doubt leaves the text as
+  text. Everything else (size, kind, file) is derived from `raw`.
+- **Never lose a token.** An atom never carries marks and never sits in
+  code: code blocks and the code mark turn it back into its raw text
+  (`fixEmbeds`), and a text that stops being code gets its chips back.
+  Documents without tokens must serialize exactly as before the feature
+  (`configureEmbedStringify` delegates to Milkdown's handler); keep that
+  differential test green.
+- **One code-region detector** (`domain/codeRegions.ts`) serves the
+  scanner, export and the banner, so they agree with the visual pane on
+  what is code. Do not add a second fence or code-span scanner.
+- **Async lives in the node views.** Resolving a file, reading a note or
+  loading media never touches the document. Views defer work until they
+  scroll into view (`IntersectionObserver`), and print flushes it
+  (`printDocument`, `prepareForPrint`).
+- **Transcluded notes** render in a detached document and an allow-list
+  sanitiser, never as live `<img>` before the privacy setting is applied,
+  and stay out of the outline, find and scroll map.
+- **Resolution** follows Obsidian (`domain/vaultIndex.ts`); Markdown links
+  keep resolving note-relative first. The vault folder is the existing
+  `dir:<handleId>` key in IndexedDB; permission is only ever queried while
+  rendering, never prompted outside a user gesture.
+- **Complexity is a bug.** Every new regex and scan loop is linear with a
+  scaling test (time at n and 2n, no absolute thresholds); no unbounded
+  character classes next to each other. Crafted notes reach these paths
+  (`SECURITY.md`).
+- **e2e vault specs** hand the app real OPFS handles with an in-memory
+  IndexedDB stand-in (CI's newer headless Chromium stalls cloning OPFS
+  handles into IndexedDB); the visual pane adopts a click's selection right
+  after focus (`clickSelection`), before ProseMirror's own 20 ms check.
 
 ## Conventions
 

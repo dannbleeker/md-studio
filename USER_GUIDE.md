@@ -53,7 +53,7 @@ clearing the address removes the link.
 
 ## Images
 
-Paste an image (Ctrl+V) or drop an image file into either pane.
+Paste an image (Ctrl+V) or drop a file into either pane.
 
 In Edge and Chrome, once the document is saved on disk, MD Studio asks you
 the first time to pick the folder the document is in. Images then go into
@@ -64,12 +64,51 @@ git). Choose *Cancel* to embed the image instead.
 In other browsers, or before the document is saved, the image is shrunk to
 at most 1600 px and embedded in the document itself.
 
+### Obsidian notes
+
+Notes from Obsidian open with their attachments. `![[plan.png|300]]` shows
+a picture 300 px wide, `![[report.pdf#page=3]]` a PDF, and audio, video and
+other files appear as a player or a chip with an **Open** link.
+`![[Other note]]` and `![[Other note#Heading]]` show that note or section
+as a read-only quote; `[[Other note]]` shows as a plain chip. MD Studio
+never rewrites the text of an embed, whichever pane you edit in (the two
+exceptions are listed under the known gaps below). Inside a
+table, write the pipe in an embed as a backslash and a pipe.
+
+To see the files, choose the vault's top folder (the one with `.obsidian`
+in it) when the bar above the editor asks, or run *Choose attachment
+folder…* from the command palette. The folder must contain the note.
+After a reload the bar may ask you to **Allow access** again. *Rescan
+attachments* picks up files added elsewhere. Embeds are also placeholders
+in browsers that cannot read folders, with the text unchanged.
+
+The bar stays away for an embed of a section of the same note
+(`![[#Heading]]`) or of a web address, since neither needs a folder. If the
+command palette's *Choose attachment folder…* or *Rescan attachments* cannot
+run (browser unsupported, document not saved, no folder chosen, access to
+allow), it says why instead of doing nothing.
+
+Pasting or dropping any kind of file saves it in the folder the vault's
+settings name (`.obsidian/app.json` is read, never written), with a name
+like `Pasted image 20261012093000.png`, and links it. **Link style** in
+Settings chooses wikilinks, Markdown links, or auto (follow the vault);
+**Attachment location** can keep the older `images` folder next to the
+note. Without a `.obsidian` folder, everything behaves as before.
+
+Known gaps: only top-level headings can be linked into (`![[Note#Heading]]`),
+a token that Markdown splits (emphasis inside the name) or one inside the label
+of a Markdown link stays text and gains backslashes if you edit that paragraph
+in the visual pane, `%%comments%%` are not understood, and wikilinks are not clickable yet. Appendix B of the
+book lists every form.
+
 ## Finding and navigating
 
 - **Find** (Ctrl+F) and **Find and replace** (Ctrl+H) open a bar above the
   editors. It searches the pane you are working in: the Markdown source,
   or the formatted document in visual view. Options: match case (Aa),
-  whole word (W) and regular expressions (.*). Enter goes to the next
+  whole word (W) and regular expressions (.*). In the visual pane, a match
+inside an embed or wikilink token (its file name or alias) counts too, and
+Replace rewrites the token if the result is still a valid one. Enter goes to the next
   match, Shift+Enter to the previous one, Escape closes the bar. A
   replacement in either pane appears in the other.
 - **Outline** (toolbar, or Ctrl+Shift+O) lists the document's headings.
@@ -90,6 +129,7 @@ scroll:
   its server that, and when, the document was opened, so until you turn
   this on the visual pane shows its description in a dashed frame instead.
   Pasted images and images next to the file always show.
+  The setting also applies to HTML export.
 - **Help and reading** at the bottom opens this guide and the book from
   anywhere in the app. The command palette has them too: *Open the user
   guide*, *Open the user guide (PDF)*, *Open the book* and *Download the
@@ -146,9 +186,16 @@ file that Save writes to.
 | Word document (DOCX) | Editable in Word, with real headings, lists, tables and links |
 | Plain text | Formatting marks removed, structure kept |
 
-Pasted images and images in the document's `images` folder come along (PDF:
-PNG and JPEG; Word also GIF); images on the web are not fetched and show
-their alt text. Footnotes become numbered notes at the end.
+Pasted images and images from the document's attachment or `images` folder
+come along at the size a note gives them (PDF: PNG and JPEG; Word also
+GIF; WebP, AVIF, BMP and SVG are redrawn as PNG for both). Images on the
+web are not fetched for PDF or Word and show their alt text; in HTML they
+are linked only when **Load web images** is on. Obsidian embeds of PDF,
+audio, video and other files become a labelled line; an embedded note is
+written out as a quote (a label when it shares a paragraph or sits in a
+table cell); wikilinks become their alias or name. Footnotes become
+numbered notes at the end. The HTML page leaves out a picture over 5 MB, and
+all pictures past 25 MB, and says so; Word and PDF keep them.
 
 Front matter is left out of exports and print. To include it, as a code
 block at the top, tick **Include front matter in exports and print** in

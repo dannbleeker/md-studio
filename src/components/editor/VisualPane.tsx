@@ -18,20 +18,24 @@ import { Plugin } from '@milkdown/kit/prose/state';
 import { getMarkdown } from '@milkdown/kit/utils';
 import { search } from 'prosemirror-search';
 import { useEffect, useRef } from 'react';
+import { EMBED_NODE_NAME } from '@/domain/embeds';
 import { dropEmptyLineMarkers } from '@/domain/emptyLines';
 import { t } from '@/i18n';
 import { perfMeasure } from '@/services/perfMarks';
 import { useStore } from '@/store';
-import { registerFlush } from '@/store/flush';
+import { registerFlush, registerPrepareForPrint } from '@/store/flush';
 import { showToast } from '@/store/ui';
 import { registerViewPart } from '@/store/viewState';
 import { applyFull, applyIncremental } from './applyMarkdown';
 import { clickSelection } from './clickSelection';
 import { editors, isHidden, restoreScroll, visualHeadings } from './editorRegistry';
+import { configureEmbedStringify, embeds, remarkEmbeds } from './embedNode';
+import { embedNodeView } from './embedView';
 import { reportFormat } from './formatState';
 import { frontMatter, remarkFrontMatter } from './frontMatter';
-import { imageNodeView, visualPaneImagePlugin } from './imageSupport';
+import { visualPaneImagePlugin } from './imageSupport';
 import { imageTitleFix } from './imageTitleFix';
+import { imageNodeView } from './imageView';
 import { keepSourceStyle } from './keepSourceStyle';
 import type { ScrollAdapter } from './scrollAdapter';
 import { createVisualSync, type SyncState } from './visualSync';
@@ -92,10 +96,17 @@ export function VisualPane({ onAdapter }: Props) {
             visualPaneImagePlugin(() => editor),
             clickSelection,
           ]);
-          ctx.update(remarkPluginsCtx, (plugins) => [...plugins, remarkFrontMatter, imageTitleFix]);
+          ctx.update(remarkPluginsCtx, (plugins) => [
+            ...plugins,
+            remarkFrontMatter,
+            imageTitleFix,
+            remarkEmbeds,
+          ]);
+          configureEmbedStringify(ctx);
           ctx.update(nodeViewCtx, (views) => {
             const image: (typeof views)[number] = ['image', imageNodeView];
-            return [...views, image];
+            const embed: (typeof views)[number] = [EMBED_NODE_NAME, embedNodeView];
+            return [...views, image, embed];
           });
           ctx.update(editorViewOptionsCtx, (prev) => ({
             ...prev,
@@ -112,6 +123,7 @@ export function VisualPane({ onAdapter }: Props) {
         .use(commonmark)
         .use(gfm)
         .use(frontMatter)
+        .use(embeds)
         .use(history)
         .use(clipboard)
         .use(listener)
@@ -189,6 +201,11 @@ export function VisualPane({ onAdapter }: Props) {
       if (unreported) editor?.action((ctx) => report(ctx, getMarkdown()(ctx)));
     };
     const unregisterFlush = registerFlush(flush);
+    // Ctrl+P and the Print command go through printDocument; the browser's menu
+    // only fires beforeprint, which can still update the tree synchronously.
+    const prepare = () => sync.prepareForPrint();
+    const unregisterPrepare = registerPrepareForPrint(prepare);
+    window.addEventListener('beforeprint', prepare);
 
     const unregisterView = registerViewPart(() =>
       isHidden(scrollEl) ? {} : { visualScroll: scrollEl.scrollTop }
@@ -211,6 +228,8 @@ export function VisualPane({ onAdapter }: Props) {
       unsubscribe();
       unregisterView();
       unregisterFlush();
+      unregisterPrepare();
+      window.removeEventListener('beforeprint', prepare);
       rootEl.removeEventListener('focusin', onFocus);
       sync.dispose();
     };

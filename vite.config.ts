@@ -25,7 +25,10 @@ const LAZY_LANGUAGE =
  * run; no plugins, no <base> hijack, no form posts. Styles need
  * 'unsafe-inline' because CodeMirror and Milkdown inject <style> elements.
  * Images may come from anywhere: Markdown documents link web images.
- * Not applied in dev, where Vite injects inline scripts for HMR.
+ * Attachments from a chosen vault folder (audio, video, PDF) are shown from
+ * same-origin blob: URLs made from the user's own files, so media-src and
+ * frame-src allow blob: and nothing else. Not applied in dev, where Vite
+ * injects inline scripts for HMR.
  */
 const CSP = [
   "default-src 'self'",
@@ -36,8 +39,9 @@ const CSP = [
   "font-src 'self'",
   "worker-src 'self'",
   "manifest-src 'self'",
+  "media-src 'self' blob:",
   "object-src 'none'",
-  "frame-src 'none'",
+  'frame-src blob:',
   "base-uri 'self'",
   "form-action 'none'",
 ].join('; ');

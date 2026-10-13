@@ -1,4 +1,7 @@
+import { printDocument } from '@/components/editor/embedView';
+import { t } from '@/i18n';
 import type { MessageKey } from '@/i18n/en';
+import type { AttachmentStatus } from '@/services/attachments';
 import {
   closeTab,
   cycleTab,
@@ -11,7 +14,26 @@ import {
 import { exportDocument } from '@/services/export';
 import { BOOK_EPUB, BOOK_PDF, DASHBOARD, GUIDE_PDF } from '@/services/links';
 import { useStore } from '@/store';
-import { useUiStore } from '@/store/ui';
+import { showToast, useUiStore } from '@/store/ui';
+
+/**
+ * Why an attachment command cannot run right now, in words the user can act
+ * on (the same wording as the notice above the editor), or null when it can.
+ */
+function attachmentBlocker(status: AttachmentStatus): string | null {
+  switch (status.kind) {
+    case 'unsupported':
+      return t('attachment.banner.unsupported');
+    case 'no-note-file':
+      return t('attachment.banner.noFile');
+    case 'no-folder':
+      return t('attachment.rescanNoFolder');
+    case 'needs-permission':
+      return t('attachment.banner.allow', { folder: status.folderName });
+    case 'ready':
+      return null;
+  }
+}
 
 /** Same as clicking an `<a download>`: saves the file instead of navigating. */
 function downloadLink(href: string): void {
@@ -166,7 +188,44 @@ export const COMMANDS: readonly Command[] = [
     editorOnly: true,
     label: 'cmd.print',
     shortcut: 'Ctrl+P',
-    run: () => window.print(),
+    run: () => void printDocument(),
+  },
+  {
+    id: 'choose-attachment-folder',
+    editorOnly: true,
+    label: 'cmd.chooseAttachmentFolder',
+    // Reached by a click or Enter, and the import resolves in a few ms, so
+    // the user activation the directory picker needs is still fresh.
+    run: () =>
+      void import('@/services/attachments').then(async (m) => {
+        const ctx = m.currentDocContext();
+        // Called first, with nothing awaited, so the picker still has its click.
+        if (await m.chooseAttachmentFolder(ctx)) return;
+        // False is also a cancelled picker, which needs no message. Only the
+        // cases where the picker could never open are explained.
+        const status = await m.attachmentStatus(ctx);
+        if (status.kind === 'unsupported' || status.kind === 'no-note-file') {
+          showToast(attachmentBlocker(status) ?? '');
+        }
+      }),
+  },
+  {
+    id: 'rescan-attachments',
+    editorOnly: true,
+    label: 'cmd.rescanAttachments',
+    run: () =>
+      void import('@/services/attachments').then(async (m) => {
+        const ctx = m.currentDocContext();
+        // refreshAttachments returns quietly when nothing can be scanned, so
+        // ask first rather than report a rescan that never happened.
+        const blocker = attachmentBlocker(await m.attachmentStatus(ctx));
+        if (blocker !== null) {
+          showToast(blocker);
+          return;
+        }
+        await m.refreshAttachments(ctx);
+        showToast(t('attachment.rescanned'));
+      }),
   },
   {
     id: 'settings',
