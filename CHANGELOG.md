@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Long paragraphs serialize in linear time.** Milkdown's serializer
+  rebuilt a paragraph's child list with `concat` per child, so every visual
+  edit took time quadratic in the number of inline nodes: 10,000 `[[a]] `
+  chips took 1.6 s, and a paragraph of many `a *b* ` marks was hit too.
+  `patches/@milkdown__transformer.patch` (`patchedDependencies`) appends
+  into one array instead; the output is unchanged. `serializerScaling.test.ts`
+  times twice the input against the input (no absolute limits) for both
+  shapes, and fails without the patch.
 - **Obsidian notes: embeds, wikilinks and a vault attachment folder.**
   Notes written in Obsidian open with their pictures, PDFs, audio and
   embedded notes shown, and editing never touches the syntax.
