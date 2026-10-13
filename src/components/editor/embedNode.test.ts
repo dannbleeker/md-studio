@@ -752,6 +752,34 @@ describe('documents without tokens serialize as they did without this plugin', (
   });
 });
 
+describe('an escaped pipe in a table cell next to a mark', () => {
+  const cells = (md: string): number[] => {
+    const counts: number[] = [];
+    parse(md).descendants((node) => {
+      if (node.type.name === 'table_row') counts.push(node.childCount);
+    });
+    return counts;
+  };
+
+  it('keeps the row at two cells', () => {
+    for (const mark of ['**z**', '~~z~~', '[z](u)', '*z*']) {
+      const md = `| a | b |\n| - | - |\n| x \\| y ${mark} | q |\n`;
+      const out = serialize(parse(md));
+      expect(cells(out), mark).toEqual([2]);
+      expect(out, mark).toContain(`x \\| y ${mark} | q |`);
+    }
+  });
+
+  it('leaves a pipe that is already escaped, and text outside cells, as it was', () => {
+    expect(serialize(parse('| a |\n| - |\n| x \\| y |\n'))).toContain('| x \\| y |');
+    // An escaped backslash and then a pipe: the pipe still has to be escaped once.
+    expect(serialize(parse('| a |\n| - |\n| x \\\\\\| y **z** |\n'))).toContain(
+      'x \\\\\\| y **z**'
+    );
+    expect(serialize(parse('x | y **z**\n'))).toBe('x | y **z**\n');
+  });
+});
+
 describe('plain text copies', () => {
   it('carry the token of an embed in a partial selection', () => {
     const view = load('hello ![[pic.png]] and [[Other]] end\n\nsecond\n');
@@ -948,5 +976,38 @@ describe('code conversions of a chip can be undone by the opposite action', () =
     run(toggleInlineCodeCommand.key);
     expect(raws(view.state.doc)).toEqual(['![[a.png]]']);
     expect(mdOf(view)).toBe('see ![[a.png]] here\n');
+  });
+});
+
+describe('converting a block with thousands of chips', () => {
+  it('stays quick in both directions', () => {
+    const view = load(`${'![[a.png]] '.repeat(8000)}\n`);
+    expect(raws(view.state.doc)).toHaveLength(8000);
+    selectContent(view, 0);
+    const started = performance.now();
+    run(createCodeBlockCommand.key);
+    const toCode = performance.now() - started;
+    expect(embedProblems(view.state.doc)).toEqual([]);
+    expect(view.state.doc.child(0).type.name).toBe('code_block');
+    const back = performance.now();
+    run(turnIntoTextCommand.key);
+    expect(performance.now() - back).toBeLessThan(500);
+    expect(toCode).toBeLessThan(500);
+    expect(raws(view.state.doc)).toHaveLength(8000);
+  });
+
+  it('keeps the caret in the same text when chips around it change', () => {
+    const view = load('a [[N]] bcd [[M]] e\n');
+    const upTo = () =>
+      view.state.doc.textBetween(1, view.state.selection.head, '', (leaf) =>
+        String(leaf.attrs.raw ?? '')
+      );
+    caretAt(view, 6);
+    expect(upTo()).toBe('a [[N]] b');
+    run(createCodeBlockCommand.key);
+    expect(upTo()).toBe('a [[N]] b');
+    run(turnIntoTextCommand.key);
+    expect(upTo()).toBe('a [[N]] b');
+    expect(raws(view.state.doc)).toEqual(['[[N]]', '[[M]]']);
   });
 });

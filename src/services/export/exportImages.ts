@@ -140,8 +140,13 @@ function isBitmap(bytes: Uint8Array): boolean {
   );
 }
 
-const SVG_ROOT =
-  /^\uFEFF?\s*(?:<\?xml[^>]{0,200}\?>\s*)?(?:<!--[\s\S]{0,500}?-->\s*)*(?:<!DOCTYPE[^>]{0,300}>\s*)?(?:<!--[\s\S]{0,500}?-->\s*)*<svg[\s>]/i;
+// Each comment stops at its first `-->`: a lazy body could end at any later one, and
+// a run of adjacent comments then tiles in 2^n ways when the root element never comes.
+const COMMENTS = String.raw`(?:<!--(?:(?!-->)[\s\S]){0,500}-->\s*)*`;
+const SVG_ROOT = new RegExp(
+  String.raw`^\uFEFF?\s*(?:<\?xml[^>]{0,200}\?>\s*)?${COMMENTS}(?:<!DOCTYPE[^>]{0,300}>\s*)?${COMMENTS}<svg[\s>]`,
+  'i'
+);
 const SVG_CLOSE = /<\/svg\s*>\s*$/i;
 
 /** An SVG document: its root element comes first and it is closed, so a text file with `<svg>` in it is not one. */

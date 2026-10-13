@@ -500,6 +500,49 @@ describe('expandEmbeds: speed', () => {
   });
 });
 
+describe('expandEmbeds: long neighbour lines', () => {
+  const files: Files = { 'a.png': null };
+
+  it('reads each neighbour line once, however many tokens sit between them', async () => {
+    const quotes = '>'.repeat(20_000);
+    const md = `${quotes}x\n${'![[a.png]]'.repeat(2000)}\n${quotes}x`;
+    const start = performance.now();
+    const out = await expandEmbeds(md, 'h.md', fakeEnv(files));
+    expect(performance.now() - start).toBeLessThan(400);
+    expect(out).toContain('![a.png](attachment:a.png)');
+  });
+
+  it('is quick next to a long run of blanks or list markers', async () => {
+    for (const lead of [' '.repeat(40_000), '- '.repeat(20_000)]) {
+      const start = performance.now();
+      await expandEmbeds(`${lead}x\n${'![[a.png]]'.repeat(4000)}\n`, 'h.md', fakeEnv(files));
+      expect(performance.now() - start).toBeLessThan(400);
+    }
+  });
+
+  it('keeps a long run of blanks around an unchanged table-cell image linear', async () => {
+    const blanks = ' '.repeat(64_000);
+    for (const row of [
+      `| ![a|5](${blanks}http://x/y.png) |`,
+      `| ![a|5](http://x/y.png${blanks}) |`,
+    ]) {
+      const start = performance.now();
+      const out = await expandEmbeds(`| h |\n| - |\n${row}\n`, 'h.md', fakeEnv(files));
+      expect(performance.now() - start).toBeLessThan(400);
+      expect(out).toContain('http://x/y.png');
+    }
+  });
+
+  it('still joins the lines of a table-cell replacement into one', async () => {
+    const out = await expandEmbeds(
+      '| h |\n| - |\n| ![[Multi]] |\n',
+      'h.md',
+      fakeEnv({ 'Multi.md': 'one  \n two' })
+    );
+    expect(out.split('\n')).toHaveLength(4);
+  });
+});
+
 describe('expandEmbeds: crafted container prefixes', () => {
   const vault = (note: string): Files => ({ 'N.md': note, 'a.png': null });
 

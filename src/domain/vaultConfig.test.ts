@@ -114,6 +114,15 @@ describe('attachmentDirectory', () => {
     }
   });
 
+  it('ignores slashes around the folder, however many, in linear time', () => {
+    const folder = `a${'/'.repeat(80_000)}b`;
+    const started = performance.now();
+    expect(attachmentDirectory(cfg({ attachmentFolderPath: folder }), 'n.md')).toBe('a/b');
+    expect(performance.now() - started).toBeLessThan(500);
+    expect(attachmentDirectory(cfg({ attachmentFolderPath: '//Att//' }), 'n.md')).toBe('Att');
+    expect(attachmentDirectory(cfg({ attachmentFolderPath: '///' }), 'n.md')).toBe('');
+  });
+
   it('uses the note folder for "." and "./"', () => {
     for (const folder of ['.', './']) {
       expect(attachmentDirectory(cfg({ attachmentFolderPath: folder }), 'n.md')).toBe('');

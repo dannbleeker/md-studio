@@ -162,6 +162,20 @@
     other documents' first (a single document with over 4,000 distinct
     embeds loses its oldest); the banner's not-found count can outlast a
     corrected typo until a rescan or reload.
+  - Super-linear work, round two: the HTML export's SVG check no longer
+    backtracks exponentially on a run of `<!---->` comments;
+    `expandEmbeds` reads each neighbour line once per token line, bounds
+    the quote loop, and joins table-cell lines in one pass; a note embedded
+    many times is analysed once (`transclusion.ts` keeps the last four
+    analyses and each heading's plain text); `renderCost.ts` also refuses
+    notes with over 1,500 nested, quoted or setext lines in one container
+    run, or more than 32 markers on one line; converting a block with
+    thousands of chips to code and back makes one replace per textblock and
+    maps the caret through the fixes; the attachment folder is no longer
+    trimmed with a quadratic regex; footnote references are found by a scan
+    that skips a failed run of `[^`.
+  - A `\|` in a table cell followed by a mark (`| x \| y **z** |`) keeps its
+    escape when a visual edit rewrites the row; the row used to gain a cell.
 
 - **Book and guide PDFs.** Pages are numbered (the book's cover excepted),
   the book's contents list each chapter's page with a dotted leader, and

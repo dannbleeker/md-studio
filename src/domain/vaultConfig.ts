@@ -100,7 +100,7 @@ export function attachmentDirectory(config: VaultConfig | null, notePath: string
   if (folder === '/' || folder === '') return '';
   if (folder === '.' || folder === './') return noteFolder;
   if (folder.startsWith('./')) return joinPath(noteFolder, folder.slice(2)) ?? '';
-  return joinPath(folder.replace(/^\/+|\/+$/g, '')) ?? '';
+  return joinPath(folder) ?? '';
 }
 
 export type AttachmentOrigin = 'paste' | 'drop';

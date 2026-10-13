@@ -538,3 +538,25 @@ describe('hiding block ids stays linear', () => {
     expect(ms).toBeLessThan(1000);
   });
 });
+
+describe('selectNoteContent: many embeds of one large note', () => {
+  const section = (i: number) =>
+    `## Section ${i} ^s${i}\n\nSome paragraph with [[Link ${i}]] and **bold**.\n\n- item one\n- item two\n  - nested\n\n> quote ^q${i}\n\n`;
+  const big = Array.from({ length: 2000 }, (_, i) => section(i)).join('');
+
+  it('analyses a note once, however often a fragment of it is embedded', () => {
+    const started = performance.now();
+    for (let i = 0; i < 300; i++) {
+      expect(selectNoteContent(big, 'Nope')).toBeNull();
+      expect(select(big, 'Section 1999')).toContain('Section 1999');
+      expect(select(big, '^q1999')).toContain('quote');
+    }
+    expect(performance.now() - started).toBeLessThan(1500);
+  });
+
+  it('does not serve one note the analysis of another', () => {
+    expect(select('# A\n\none\n', 'A')).toBe('# A\n\none');
+    expect(select('# A\n\ntwo\n', 'A')).toBe('# A\n\ntwo');
+    expect(select('# A\n\none\n', 'A')).toBe('# A\n\none');
+  });
+});

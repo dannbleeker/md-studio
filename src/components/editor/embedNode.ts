@@ -2,7 +2,8 @@ import { remarkStringifyOptionsCtx } from '@milkdown/kit/core';
 import type { Ctx, MilkdownPlugin } from '@milkdown/kit/ctx';
 import { codeBlockSchema } from '@milkdown/kit/preset/commonmark';
 import type { Mark, NodeType, Node as PmNode } from '@milkdown/kit/prose/model';
-import { Plugin, type Transaction } from '@milkdown/kit/prose/state';
+import { Plugin, TextSelection, type Transaction } from '@milkdown/kit/prose/state';
+import { StepMap } from '@milkdown/kit/prose/transform';
 import type { RemarkPlugin } from '@milkdown/kit/transformer';
 import { $nodeSchema, $prose } from '@milkdown/kit/utils';
 import { EMBED_NODE_NAME, findWikiRefs, parseWikiRef } from '@/domain/embeds';
@@ -59,6 +60,12 @@ const embedSchema = $nodeSchema(EMBED_NODE_NAME, () => ({
   },
 }));
 
+/** `|` that is not escaped yet, written as `\\|`. */
+const escapeBarePipes = (value: string): string =>
+  value.replace(/(\\*)\|/g, (whole, slashes: string) =>
+    slashes.length % 2 === 1 ? whole : `${slashes}\\|`
+  );
+
 /**
  * Writes an `obsidianEmbed` node as its source text. A token never needs escaping, except
  * for a bare pipe in a table cell: a chip copied, dragged or edited into a cell from a
@@ -71,11 +78,9 @@ const embedHandler = (
   state?: { stack: string[] }
 ): string => {
   const value = String(node.value ?? '');
-  if (!state?.stack.includes('tableCell')) return value;
-  return value.replace(/(\\*)\|/g, (whole, slashes: string) =>
-    slashes.length % 2 === 1 ? whole : `${slashes}\\|`
-  );
+  return state?.stack.includes('tableCell') ? escapeBarePipes(value) : value;
 };
+
 embedHandler.peek = (node: { value?: unknown }): string => String(node.value ?? '').charAt(0);
 
 /**
@@ -85,7 +90,9 @@ embedHandler.peek = (node: { value?: unknown }): string => String(node.value ?? 
  * enough to hit that. Applied by the visual pane's editor config, because
  * Milkdown's own handlers win over any remark plugin's. Only text directly
  * before or after a token takes the new path; everything else keeps Milkdown's
- * handler, so a document without tokens serializes as it always did.
+ * handler, so a document without tokens serializes as it always did. The one
+ * exception is a pipe left bare in a table cell, which splits the cell and is
+ * written escaped instead.
  */
 export function configureEmbedStringify(ctx: Ctx): void {
   ctx.update(remarkStringifyOptionsCtx, (options) => {
@@ -99,8 +106,14 @@ export function configureEmbedStringify(ctx: Ctx): void {
           const at = siblings.indexOf(node);
           const isToken = (n: { type: string } | undefined) => n?.type === MDAST_TYPE;
           // Text right after a token matters too: a `(` there would turn `]` + `(...)` into a link.
-          if (fallback && !isToken(siblings[at + 1]) && !isToken(siblings[at - 1]))
-            return fallback(node, parent, state, info);
+          if (fallback && !isToken(siblings[at + 1]) && !isToken(siblings[at - 1])) {
+            const written = fallback(node, parent, state, info);
+            // Text that ends in whitespace skips the escapes, so a pipe in a cell would split
+            // it (`x \\| y **z**`). A pipe that is bare there is never right; others are left.
+            return state.stack.includes('tableCell') && written.includes('|')
+              ? escapeBarePipes(written)
+              : written;
+          }
           // Trailing whitespace is split off and written as typed: letting `safe`
           // see it at the end of a line would encode it as `&#x20;`. Everything
           // before it still goes through `safe`, so `\|`, `\[` and block markers
@@ -140,8 +153,8 @@ const codeBlockKeepsEmbeds = codeBlockSchema.extendSchema((prev) => (ctx) => ({
   content: `(text|${EMBED_NODE_NAME})*`,
 }));
 
-/** What `fixEmbeds` puts in place of the range `from`..`to`. */
-type Fix = { from: number; to: number; node: PmNode };
+/** What `fixEmbeds` puts in place of the range `from`..`to` of the textblock at `block`. */
+type Fix = { block: number; from: number; to: number; node: PmNode };
 
 /**
  * Whether the old document held only code between `from` and `to`. Positions are
@@ -213,6 +226,7 @@ function tokensFromCode(
     const raw = text.slice(ref.start, ref.end);
     if (parseWikiRef(raw)?.raw !== raw || !wasCode(before, trs, first, last + 1)) continue;
     out.push({
+      block: blockPos,
       from: first,
       to: last + 1,
       node: type.create({ raw }, null, embedMarks(marks[ref.start] ?? [])),
@@ -250,9 +264,12 @@ function fixEmbeds(
   const from = $lo.parent.isTextblock ? $lo.start() : lo;
   const to = $hi.parent.isTextblock ? $hi.end() : hi;
   const fixes: Fix[] = [];
+  // Children are visited right after their textblock.
+  let block = -1;
   doc.nodesBetween(from, to, (node, pos, parent) => {
+    if (node.isTextblock) block = pos;
     if (node.isTextblock && !node.type.spec.code) {
-      fixes.push(...tokensFromCode(before, trs, node, pos, type));
+      for (const fix of tokensFromCode(before, trs, node, pos, type)) fixes.push(fix);
       return true;
     }
     if (node.type !== type || !parent) return true;
@@ -260,6 +277,7 @@ function fixEmbeds(
     if (code || embedMarks(node.marks).length !== node.marks.length) {
       const raw = String(node.attrs.raw ?? '');
       fixes.push({
+        block,
         from: pos,
         to: pos + node.nodeSize,
         node:
@@ -274,10 +292,63 @@ function fixEmbeds(
     return false;
   });
   if (fixes.length === 0) return null;
-  // Back to front, so earlier positions stay valid.
-  fixes.sort((x, y) => y.from - x.from);
-  for (const fix of fixes) tr.replaceWith(fix.from, fix.to, fix.node);
+  applyFixes(tr, fixes);
   return tr;
+}
+
+/**
+ * Puts the fixes in. A replace copies the children of its textblock, so one per chip is
+ * quadratic in a paragraph of thousands; the fixes of one textblock are made in a single
+ * replace of the span they cover instead, built in one walk over its children. That replace
+ * would move a caret in the text between two fixes to its edge, so the selection is mapped
+ * through the fixes alone.
+ */
+function applyFixes(tr: Transaction, fixes: Fix[]): void {
+  const { doc, selection } = tr;
+  fixes.sort((x, y) => x.from - y.from);
+  const groups: Fix[][] = [];
+  for (const fix of fixes) {
+    const group = groups[groups.length - 1];
+    if (group && group[0]?.block === fix.block) group.push(fix);
+    else groups.push([fix]);
+  }
+  // Back to front, so earlier positions stay valid.
+  for (let g = groups.length - 1; g >= 0; g--) {
+    const group = groups[g] ?? [];
+    const first = group[0];
+    const last = group[group.length - 1];
+    const block = first ? doc.nodeAt(first.block) : null;
+    if (!first || !last || !block) continue;
+    if (group.length === 1) {
+      tr.replaceWith(first.from, last.to, first.node);
+      continue;
+    }
+    const content: PmNode[] = [];
+    let cursor = first.from;
+    let next = 0;
+    block.forEach((child, offset) => {
+      const start = first.block + 1 + offset;
+      const end = start + child.nodeSize;
+      if (end <= cursor || start >= last.to) return;
+      // A fix may begin or end inside a text child, and a child may hold several.
+      for (let fix = group[next]; fix && fix.from < end; fix = group[++next]) {
+        if (fix.from > cursor) content.push(child.cut(cursor - start, fix.from - start));
+        content.push(fix.node);
+        cursor = fix.to;
+      }
+      if (cursor < end) content.push(cursor > start ? child.cut(cursor - start) : child);
+      cursor = Math.max(cursor, end);
+    });
+    tr.replaceWith(first.from, last.to, content);
+  }
+  if (selection instanceof TextSelection && groups.some((group) => group.length > 1)) {
+    const map = new StepMap(
+      fixes.flatMap((fix) => [fix.from, fix.to - fix.from, fix.node.nodeSize])
+    );
+    tr.setSelection(
+      TextSelection.create(tr.doc, map.map(selection.anchor), map.map(selection.head))
+    );
+  }
 }
 
 const embedGuard = $prose(

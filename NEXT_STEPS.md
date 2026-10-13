@@ -103,13 +103,21 @@
   - [ ] The `codeRegions.ts` table-row delimiter regex backtracks on a very
         long line of pipes and spaces (about 2 s for 80 KB). Make it linear
         by trimming the row first.
-  - [ ] **Base Milkdown bug, not from this feature:** the text handler
-        returns text that ends in whitespace unescaped, so a `\|` in a table
-        cell followed by a mark (`| x \| y **z** | q |`) is written as a bare
-        pipe and the row gains a cell. Plain Milkdown does the same on main.
-        Fixing it changes output for documents without tokens, so do it in a
-        separate change, e.g. by wrapping the text handler so that inside a
-        `tableCell` the pipe is always escaped.
+  - [x] **Pipe in a table cell next to a mark:** Milkdown's text handler
+        returns text that ends in whitespace unescaped, so `| x \| y **z** |`
+        was written with a bare pipe and the row gained a cell (plain
+        Milkdown does the same on main). The text handler in
+        `configureEmbedStringify` now escapes a pipe left bare in a
+        `tableCell`; any output that was well-formed is unchanged.
+  - [ ] **Serializing a paragraph with thousands of chips is quadratic:**
+        `@milkdown/transformer`'s `#maybeMergeChildren` rebuilds the child
+        array with `concat` per child (also hit by a paragraph of many inline
+        marks on main). A paragraph of 10,000 `[[a]] ` tokens (64 KB, no blank
+        line) takes 1.6 s per visual edit; 8,000 characters take 30 ms. The
+        fix lives in the library: a `pnpm patch` of that method to `push`
+        into one array. Not done here because it adds `patchedDependencies`
+        and a lockfile change, which CI cannot be checked against from this
+        branch.
   - [ ] **Manual check against a real vault:** open a real Obsidian vault
         (thousands of files, nested folders, PDFs, audio) in Chrome or
         Edge and go through the embed forms in Appendix B, pasting and

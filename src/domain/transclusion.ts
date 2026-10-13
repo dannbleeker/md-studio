@@ -71,7 +71,7 @@ export function selectNoteContent(
   const target = parseTarget(fragment);
   // Obsidian hides `^id` markers in reading view, so none of them belong in the shown text.
   if (target.kind === 'whole') return { markdown: hideBlockIds(stripFrontMatterText(markdown)) };
-  const doc = analyse(markdown);
+  const doc = analysed(markdown);
   const text = target.kind === 'block' ? blockById(doc, target.id) : sectionText(doc, target.path);
   return text === null ? null : { markdown: hideBlockIds(text) };
 }
@@ -100,6 +100,8 @@ interface Doc {
   fenceOf: Int32Array;
   /** Per line: 1 when the line really starts a list item (see markItems). */
   item: Uint8Array;
+  /** `plainHeading` of each heading, filled on first use: it is the costly part of a lookup. */
+  plain: (string | undefined)[];
 }
 
 const ATX_LINE = /^ {0,3}#{1,6}(?:[ \t]|$)/;
@@ -269,6 +271,25 @@ function plainHeading(text: string): string {
   );
 }
 
+/** The analyses of the notes embedded most recently: one note is often embedded many times. */
+const recent: { text: string; doc: Doc }[] = [];
+const RECENT_NOTES = 4;
+
+/** `analyse`, reused for the same text. A Doc is never mutated, so sharing it is safe. */
+function analysed(markdown: string): Doc {
+  const at = recent.findIndex((entry) => entry.text === markdown);
+  const hit = recent[at];
+  if (hit) {
+    // Most recent last, so the oldest is the one dropped.
+    recent.push(...recent.splice(at, 1));
+    return hit.doc;
+  }
+  const doc = analyse(markdown);
+  recent.push({ text: markdown, doc });
+  if (recent.length > RECENT_NOTES) recent.shift();
+  return doc;
+}
+
 /**
  * Splits the note once and records the fenced code and top-level headings.
  * Front matter is skipped by the same rule findHeadings uses, so line numbers
@@ -301,7 +322,7 @@ function analyse(markdown: string): Doc {
   // An unclosed fence runs to the end of the note, as CommonMark has it.
   if (fence !== null) fences.push({ start: open, end: lines.length - 1 });
   const item = markItems(lines, bodyStart, fenceOf);
-  return { lines, bodyStart, headings: findHeadings(markdown), fences, fenceOf, item };
+  return { lines, bodyStart, headings: findHeadings(markdown), fences, fenceOf, item, plain: [] };
 }
 
 /**
@@ -658,7 +679,7 @@ function itemOwned(doc: Doc): Uint8Array {
  */
 function hideBlockIds(text: string): string {
   if (!text.includes('^')) return text;
-  const doc = analyse(text);
+  const doc = analysed(text);
   const out: string[] = [];
   let changed = false;
   let owned: Uint8Array | null = null;
@@ -701,7 +722,12 @@ function headingSpan(doc: Doc, path: readonly string[]): Span | null {
       const heading = doc.headings[k];
       if (!heading || heading.line <= scope) continue;
       if (heading.line >= scopeEnd) break;
-      if (plainHeading(heading.text) === wanted) {
+      let plain = doc.plain[k];
+      if (plain === undefined) {
+        plain = plainHeading(heading.text);
+        doc.plain[k] = plain;
+      }
+      if (plain === wanted) {
         found = k;
         break;
       }

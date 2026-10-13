@@ -228,6 +228,11 @@ describe('loadExportImages', () => {
         [bytes('ftypavif', 4), 'image/avif', 'a.avif'],
         [bmp(), 'image/bmp', 'a.bmp'],
         [bytes('<svg xmlns="http://www.w3.org/2000/svg"></svg>'), 'image/svg+xml', 'a.svg'],
+        [
+          bytes('\uFEFF<?xml version="1.0"?><!-- c --><!DOCTYPE svg><!-- d -->\n<svg></svg>'),
+          'image/svg+xml',
+          'a.svg',
+        ],
       ];
       for (const [data, mime, name] of cases) {
         read.mockResolvedValue({ bytes: data, type: '' });
@@ -269,6 +274,21 @@ describe('loadExportImages', () => {
         });
         expect(images.size).toBe(0);
       }
+    });
+
+    it('rejects a run of adjacent comments that is not an svg without backtracking', async () => {
+      vi.stubGlobal('createImageBitmap', vi.fn());
+      read.mockResolvedValue({
+        bytes: new TextEncoder().encode(`${'<!---->'.repeat(140)}x`),
+        type: '',
+      });
+      const started = performance.now();
+      const images = await loadExportImages('![x](attachment:a.png)', ctx, {
+        keepPastedRasters: true,
+        attachments,
+      });
+      expect(performance.now() - started).toBeLessThan(500);
+      expect(images.get('attachment:a.png')?.mime).not.toBe('image/svg+xml');
     });
 
     it('reads only image files for a plain relative link, and not oversized ones', async () => {

@@ -271,7 +271,11 @@ function tableRows(lines: readonly string[]): boolean[] {
 
 function startsItem(line: string): boolean {
   let rest = line;
-  for (let m = QUOTE.exec(rest); m; m = QUOTE.exec(rest)) rest = rest.slice(m[0].length);
+  for (let depth = 0; depth < MAX_DEPTH; depth++) {
+    const m = QUOTE.exec(rest);
+    if (!m) break;
+    rest = rest.slice(m[0].length);
+  }
   return ITEM.test(rest);
 }
 
@@ -437,6 +441,8 @@ async function expand(level: Level, run: Run): Promise<string> {
   const pieces: string[] = [];
   // Many tokens on one line share its prefix: read it once.
   const prefixes = new Map<number, Prefix>();
+  // Likewise the verdict on the lines around it: it reads the neighbours in full.
+  const edges = new Map<number, { startsBlock: boolean; endsBlock: boolean }>();
   let cursor = 0;
   for (const token of tokens) {
     const index = lineIndexAt(lines.starts, token.start);
@@ -455,21 +461,27 @@ async function expand(level: Level, run: Run): Promise<string> {
       token.start - lineStart === prefix.length &&
       line.slice(token.end - lineStart).trim() === '' &&
       token.end - lineStart <= line.length;
-    const nextRest = lines.text[index + 1];
-    const before = index === 0 ? undefined : lines.text[index - 1];
-    const closesFrontMatter = fm >= 0 && (lines.starts[index - 1] ?? 0) <= fm && lineStart > fm;
-    const startsBlock =
-      index === 0 ||
-      isBare(before) ||
-      item ||
-      endsOwnBlock(before, fenced[index - 1] === true, closesFrontMatter);
-    const endsBlock =
-      isBare(nextRest) ||
-      (nextRest !== undefined && startsItem(nextRest)) ||
-      opensOwnBlock(nextRest, fenced[index + 1] === true);
+    let edge = edges.get(index);
+    if (!edge) {
+      const nextRest = lines.text[index + 1];
+      const before = index === 0 ? undefined : lines.text[index - 1];
+      const closesFrontMatter = fm >= 0 && (lines.starts[index - 1] ?? 0) <= fm && lineStart > fm;
+      edge = {
+        startsBlock:
+          index === 0 ||
+          isBare(before) ||
+          item ||
+          endsOwnBlock(before, fenced[index - 1] === true, closesFrontMatter),
+        endsBlock:
+          isBare(nextRest) ||
+          (nextRest !== undefined && startsItem(nextRest)) ||
+          opensOwnBlock(nextRest, fenced[index + 1] === true),
+      };
+      edges.set(index, edge);
+    }
     const site: Site = {
       prefix,
-      alone: fills && startsBlock && endsBlock && !table && !odd && !deep,
+      alone: fills && edge.startsBlock && edge.endsBlock && !table && !odd && !deep,
       table,
     };
     const replacement = await replaceToken(token, site, level, run, eol);
@@ -495,7 +507,11 @@ async function replaceToken(
       : null;
   if (out === null) return null;
   // A table row is one line, and a raw pipe would end the cell.
-  return site.table ? out.replace(/\s*\r?\n\s*/g, ' ').replace(/\|/g, '\\|') : out;
+  // (One pass over each whitespace run: a pattern with `\s*` on both sides of the break is
+  // quadratic on a long run of blanks.)
+  return site.table
+    ? out.replace(/\s+/g, (ws) => (ws.includes('\n') ? ' ' : ws)).replace(/\|/g, '\\|')
+    : out;
 }
 
 async function replaceWiki(

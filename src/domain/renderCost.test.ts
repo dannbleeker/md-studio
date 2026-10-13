@@ -47,4 +47,34 @@ describe('tooCostlyToRender', () => {
     expect(tooCostlyToRender(`|${' a |'.repeat(3300)}\n|${' - |'.repeat(3300)}`)).toBe(true);
     expect(tooCostlyToRender(`|${' a |'.repeat(40)}\n|${' - |'.repeat(40)}`)).toBe(false);
   });
+
+  it('refuses a long run of the structures the parser takes quadratic time on', () => {
+    // Each of these is slow only when it goes on for thousands of lines: 50,000 characters
+    // took 5 to 35 seconds to parse.
+    for (const unit of [
+      'a\n---\n',
+      'a\n===\n',
+      '- > a\n',
+      '- a\n  - b\n',
+      '> a\nb\n',
+      '1. a\n   1. b\n',
+    ]) {
+      expect(tooCostlyToRender(unit.repeat(Math.ceil(50_000 / unit.length)))).toBe(true);
+    }
+  });
+
+  it('refuses one line of list markers nested far past real documents', () => {
+    for (const unit of ['1. ', '2020. ', '- ', '> ', '- > ']) {
+      expect(tooCostlyToRender(unit.repeat(2000))).toBe(true);
+    }
+    expect(tooCostlyToRender('- '.repeat(10))).toBe(false);
+  });
+
+  it('accepts structure that stays shallow, or that blank lines keep apart', () => {
+    // A long outline, one separate quote or setext heading after another: nothing builds up.
+    expect(tooCostlyToRender('- a\n  - b\n'.repeat(500))).toBe(false);
+    expect(tooCostlyToRender('> quote\n\n'.repeat(3000))).toBe(false);
+    expect(tooCostlyToRender('Heading\n-------\n\ntext\n\n'.repeat(3000))).toBe(false);
+    expect(tooCostlyToRender('> a\nb\n\nc\n\n'.repeat(3000))).toBe(false);
+  });
 });
