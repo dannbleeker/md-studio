@@ -40,7 +40,7 @@
     "appLines": 16308,
     "testLines": 16070,
     "tests": 1277,
-    "coverageLines": null,
+    "coverageLines": 88.92,
     "eagerGzipBytes": 468593,
     "bookWords": 26071
   }
