@@ -1,7 +1,9 @@
 # Keeps the GitHub Actions in .github/workflows current, including the
 # third-party actions pinned to a commit SHA (Dependabot updates the SHA
-# and its version comment together). Updates come weekly, grouped into one
-# pull request.
+# and its version comment together), and the npm packages in package.json /
+# pnpm-lock.yaml. Updates come weekly, grouped to keep the number of pull
+# requests down; security updates are separate and are switched on in the
+# repository settings (Dependabot alerts / security updates).
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -13,3 +15,44 @@ updates:
         patterns: ['*']
     commit-message:
       prefix: ci
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    # A package published this week is not adopted until it has been out a
+    # week. Security updates ignore this delay.
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 8
+    # A dependency joins the FIRST group that matches it, so the specific
+    # groups come before the minor/patch catch-all. Major versions of
+    # anything not named here arrive as one pull request each.
+    groups:
+      # Milkdown, its ProseMirror and remark packages must move together. The
+      # serializer is patched (patches/@milkdown__transformer.patch, see
+      # CLAUDE.md): if a bump stops the patch applying, this is the pull
+      # request where CI says so.
+      milkdown:
+        patterns: ['@milkdown/*', 'prosemirror-*', 'remark-*']
+      # The CodeMirror packages and the Lezer parser they share.
+      codemirror:
+        patterns: ['codemirror', '@codemirror/*', '@lezer/*']
+      react:
+        patterns: ['react', 'react-dom', '@types/react', '@types/react-dom']
+      # @vitest/coverage-v8 is pinned to vitest's exact version.
+      vitest:
+        patterns: ['vitest', '@vitest/*']
+      stryker:
+        patterns: ['@stryker-mutator/*']
+      # A new Playwright brings a new Chromium, which can shift the visual
+      # snapshots (e2e/visual.spec.ts-snapshots): review it on its own and
+      # refresh them with the "Update visual snapshots" workflow if needed.
+      playwright:
+        patterns: ['@playwright/test']
+      npm-minor-patch:
+        patterns: ['*']
+        update-types: ['minor', 'patch']
+    commit-message:
+      prefix: chore
+      include: scope
