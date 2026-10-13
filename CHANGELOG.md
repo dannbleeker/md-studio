@@ -176,6 +176,15 @@
     that skips a failed run of `[^`.
   - A `\|` in a table cell followed by a mark (`| x \| y **z** |`) keeps its
     escape when a visual edit rewrites the row; the row used to gain a cell.
+  - Click selection (`editor/clickSelection.ts`): the visual pane adopts the
+    click's selection one task after it gains focus. ProseMirror's own focus
+    handler checks the DOM selection 20 ms later and, when its stored one
+    differs (after a text-side update replaced the blocks it sits at the end
+    of the document), writes that back over the click, so a key pressed
+    more than 20 ms after a click acted at the end. It made the e2e test
+    "keys pressed before the browser reports a click act where the user
+    clicked" fail in about 30% of full-file runs on this branch (about 1 in
+    10 on main); it now passes 12 of 12.
 
 - **Book and guide PDFs.** Pages are numbered (the book's cover excepted),
   the book's contents list each chapter's page with a dotted leader, and

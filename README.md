@@ -26,6 +26,10 @@ mece-studio.
 - **Export** to HTML, PDF, Word (DOCX) or plain text.
 - Find & replace in either pane, and an outline of the document's headings.
 - A formatting toolbar in the visual view, and image paste/drop.
+- **Obsidian notes.** Open a vault note and its `![[images]]` (with sizes),
+  PDFs, audio, video and embedded notes are shown, wikilinks stay intact in
+  both panes, and pasted or dropped files go where the vault's settings say.
+  See the user guide.
 - Command palette (Ctrl+K), light/dark/system theme, print.
 - Works offline once loaded, and updates itself when a new version is
   deployed.
