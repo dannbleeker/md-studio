@@ -5,12 +5,12 @@
     {
       "category": "App code",
       "files": 100,
-      "lines": 16286
+      "lines": 16308
     },
     {
       "category": "Unit tests",
-      "files": 81,
-      "lines": 15901
+      "files": 82,
+      "lines": 16070
     },
     {
       "category": "E2E tests",
@@ -34,15 +34,20 @@
     }
   ],
   "tests": {
-    "files": 77,
-    "total": 1272,
-    "passed": 1269,
-    "failed": 3,
+    "files": 78,
+    "total": 1277,
+    "passed": 1277,
+    "failed": 0,
     "e2eSpecs": 15
   },
-  "coverage": null,
+  "coverage": {
+    "lines": 88.92,
+    "statements": 87.17,
+    "functions": 80.34,
+    "branches": 83.69
+  },
   "bundle": {
-    "eagerGzipBytes": 468461,
+    "eagerGzipBytes": 468593,
     "eager": [
       "codemirror",
       "embeds",
@@ -56,36 +61,36 @@
       "ui"
     ],
     "chunks": {
-      "AttachmentBanner": 1515,
-      "FindBar": 2541,
-      "FormatToolbar": 1061,
-      "OutlinePanel": 920,
+      "AttachmentBanner": 1518,
+      "FindBar": 2545,
+      "FormatToolbar": 1067,
+      "OutlinePanel": 921,
       "USER_GUIDE": 4962,
-      "attachments": 6223,
+      "attachments": 6226,
       "codemirror": 215708,
       "decode": 22186,
       "docx": 116035,
-      "embedExport": 3395,
-      "embedLinks": 1283,
-      "embedRender": 4202,
+      "embedExport": 3397,
+      "embedLinks": 1285,
+      "embedRender": 4205,
       "embeds": 4350,
-      "exportImages": 2177,
+      "exportImages": 2182,
       "fences": 189,
       "frontMatter": 605,
-      "html": 2259,
+      "html": 2262,
       "i18n": 4635,
-      "images": 1279,
-      "index": 33726,
+      "images": 1283,
+      "index": 33827,
       "markdownPdf": 179127,
       "marked.esm": 13334,
-      "milkdown": 140239,
-      "noteRenderer": 3006,
+      "milkdown": 140270,
+      "noteRenderer": 3008,
       "plainText": 1025,
       "react": 67523,
       "rolldown-runtime": 627,
-      "transclusion": 3276,
+      "transclusion": 3275,
       "ui": 859,
-      "vaultConfig": 1626,
+      "vaultConfig": 1625,
       "vaultIndex": 1648,
       "welcome.en": 989,
       "workbox-window.prod.es5": 2199
@@ -98,7 +103,7 @@
     "words": 26071
   },
   "git": {
-    "commits": 109,
+    "commits": 114,
     "firstCommit": "2026-10-02",
     "lastCommit": "2026-10-13",
     "activeDays": 7
