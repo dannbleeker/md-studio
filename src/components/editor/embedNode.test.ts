@@ -28,7 +28,7 @@ import type { EditorView } from '@milkdown/kit/prose/view';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { findWikiRefs } from '@/domain/embeds';
 import { OBSIDIAN_SAMPLE } from '../../../test/fixtures/obsidianNote';
-import { configureEmbedStringify, embeds, remarkEmbeds } from './embedNode';
+import { configureEmbedStringify, embeds, indexInParent, remarkEmbeds } from './embedNode';
 import { frontMatter, remarkFrontMatter } from './frontMatter';
 import { imageTitleFix } from './imageTitleFix';
 import { keepSourceStyle } from './keepSourceStyle';
@@ -1009,5 +1009,35 @@ describe('converting a block with thousands of chips', () => {
     run(turnIntoTextCommand.key);
     expect(upTo()).toBe('a [[N]] b');
     expect(raws(view.state.doc)).toEqual(['[[N]]', '[[M]]']);
+  });
+});
+
+describe('finding a node among its siblings', () => {
+  // The text handler asks for every text node's position; a map answers that in constant
+  // time, so it has to agree with indexOf for every list, long or short.
+  it('gives what indexOf gives, for lists on both sides of the map threshold', () => {
+    let seed = 7;
+    const rand = (n: number): number => {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      return seed % n;
+    };
+    for (const length of [0, 1, 5, 31, 32, 33, 200]) {
+      const pool = Array.from({ length: Math.max(1, Math.floor(length / 2)) }, (_, i) => ({ i }));
+      // A pool smaller than the list repeats nodes, so the first of a repeat has to win.
+      const siblings: unknown[] = Array.from({ length }, () => pool[rand(pool.length)]);
+      const probes: unknown[] = [...pool, { i: -1 }, undefined, 'x'];
+      for (const node of probes)
+        expect(indexInParent(siblings, node), `length ${length}`).toBe(siblings.indexOf(node));
+    }
+  });
+
+  it('still answers after the list changes under it', () => {
+    const nodes = Array.from({ length: 40 }, (_, i) => ({ i }));
+    const siblings: unknown[] = [...nodes];
+    expect(indexInParent(siblings, nodes[30])).toBe(30);
+    siblings.splice(0, 5);
+    expect(indexInParent(siblings, nodes[30])).toBe(25);
+    siblings.unshift(nodes[30]);
+    expect(indexInParent(siblings, nodes[30])).toBe(0);
   });
 });

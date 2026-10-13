@@ -15,11 +15,12 @@ import { frontMatter, remarkFrontMatter } from './frontMatter';
 import { imageTitleFix } from './imageTitleFix';
 
 // Milkdown's SerializerState rebuilt a paragraph's child list with `concat` per child, which
-// is quadratic. patches/@milkdown__transformer.patch appends into one array instead. These
-// tests fail if the patch is dropped (for example by a Milkdown upgrade that leaves it
-// unapplied). They compare the time at n and 2n and never an absolute figure: a linear
-// serializer takes about twice as long for twice the input, a quadratic one about four times.
-// The documents are built from the schema, not parsed, so only the serializer is timed.
+// is quadratic. patches/@milkdown__transformer.patch appends into one array instead, and the
+// text handler of `configureEmbedStringify` finds a node's position with a map instead of a
+// search per text node. These tests fail if either goes (for example by a Milkdown upgrade that
+// leaves the patch unapplied). They compare the time at n and 2n and never an absolute figure:
+// a linear serializer takes about twice as long for twice the input, a quadratic one about four
+// times. The documents are built from the schema, not parsed, so only the serializer is timed.
 
 let editor: Editor;
 
@@ -74,24 +75,25 @@ const paragraphOf = (kind: Kind, n: number): Node =>
     return schema.node('doc', null, schema.node('paragraph', null, children));
   });
 
-/** Best of a few runs, so a garbage collection pause in one run does not decide the test. */
-const bestTime = (fn: () => void, runs = 3): number => {
-  let best = Number.POSITIVE_INFINITY;
-  for (let i = 0; i < runs; i++) {
-    const started = performance.now();
-    fn();
-    best = Math.min(best, performance.now() - started);
-  }
-  return best;
+/**
+ * CPU time of this process, not the wall clock: on a busy machine (CI runs the test files in
+ * parallel) waiting for a processor inflates one run and not another, and the ratio with it.
+ */
+const timeOf = (fn: () => void): number => {
+  const before = process.cpuUsage();
+  fn();
+  const used = process.cpuUsage(before);
+  return (used.user + used.system) / 1000;
 };
 
 // Large enough that a quadratic merge dominates the fixed per-node cost: without the patch
-// twice the input took about 5 (chips) and 4.3 (marks) times as long, with it about 2.3.
+// twice the input took about 5 (chips) and 4 (marks) times as long, with it about 2.
 const N = 6000;
 // Linear is about 2 and quadratic about 4; 3 leaves room for noise on either side.
 const LIMIT = 3;
 // Without the patch the large input takes seconds per run, which must fail the ratio, not time out.
 const TIMEOUT = 60_000;
+const RUNS = 5;
 
 /** Serializing time for 2N units over the time for N units. */
 const growth = (kind: Kind): number => {
@@ -99,7 +101,16 @@ const growth = (kind: Kind): number => {
   const large = paragraphOf(kind, 2 * N);
   // Warm up, so the first run's compilation is not counted against the small input.
   serialize(small);
-  return bestTime(() => serialize(large)) / bestTime(() => serialize(small));
+  // The runs alternate, so a slow stretch lands on both sizes; each takes its best run.
+  let smallest = Number.POSITIVE_INFINITY;
+  let largest = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < RUNS; i++) {
+    const forSmall = timeOf(() => serialize(small));
+    const forLarge = timeOf(() => serialize(large));
+    smallest = Math.min(smallest, forSmall);
+    largest = Math.min(largest, forLarge);
+  }
+  return largest / smallest;
 };
 
 describe('serializing a long paragraph stays linear', () => {

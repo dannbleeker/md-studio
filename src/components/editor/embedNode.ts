@@ -83,6 +83,28 @@ const embedHandler = (
 
 embedHandler.peek = (node: { value?: unknown }): string => String(node.value ?? '').charAt(0);
 
+/** Sibling lists shorter than this are searched directly; a map costs more than it saves. */
+const INDEX_MAP_FROM = 32;
+const positions = new WeakMap<object, Map<unknown, number>>();
+
+/**
+ * `siblings.indexOf(node)`, without the quadratic cost: the text handler asks once per text
+ * node, so a paragraph of thousands of chips or marks searched the list thousands of times.
+ * The positions of one list are read once; the first of a repeated node wins, as with
+ * `indexOf`, and a node the map does not place falls back to it.
+ */
+export function indexInParent(siblings: readonly unknown[], node: unknown): number {
+  if (siblings.length < INDEX_MAP_FROM) return siblings.indexOf(node);
+  let known = positions.get(siblings);
+  if (!known) {
+    known = new Map();
+    for (let i = siblings.length - 1; i >= 0; i--) known.set(siblings[i], i);
+    positions.set(siblings, known);
+  }
+  const at = known.get(node);
+  return at !== undefined && siblings[at] === node ? at : siblings.indexOf(node);
+}
+
 /**
  * Milkdown's text handler returns text that ends in whitespace unescaped
  * when it has no `*_\`, which skips every escape in it (a marker at the
@@ -103,7 +125,7 @@ export function configureEmbedStringify(ctx: Ctx): void {
         ...options.handlers,
         text: (node, parent, state, info) => {
           const siblings = parent?.children ?? [];
-          const at = siblings.indexOf(node);
+          const at = indexInParent(siblings, node);
           const isToken = (n: { type: string } | undefined) => n?.type === MDAST_TYPE;
           // Text right after a token matters too: a `(` there would turn `]` + `(...)` into a link.
           if (fallback && !isToken(siblings[at + 1]) && !isToken(siblings[at - 1])) {
