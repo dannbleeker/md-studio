@@ -12,6 +12,15 @@
   once the merge was fixed); the output is unchanged. `serializerScaling.test.ts`
   compares CPU time for twice the input with the input (no absolute limits)
   for both shapes, and fails without the patch.
+- **Dependabot also watches the npm packages.** `.github/dependabot.yml` gets
+  a weekly npm entry next to the one for GitHub Actions. Packages that must
+  move together are grouped (Milkdown with its ProseMirror and remark
+  packages, CodeMirror with Lezer, React, Vitest with its coverage package,
+  Stryker, Playwright), every other minor and patch update is one pull
+  request, and a new major version is its own. A release is not adopted until
+  it is a week old (security updates are exempt). Playwright and Milkdown stay
+  in groups of their own because a bump can shift the visual snapshots or stop
+  the serializer patch applying.
 - **Obsidian notes: embeds, wikilinks and a vault attachment folder.**
   Notes written in Obsidian open with their pictures, PDFs, audio and
   embedded notes shown, and editing never touches the syntax.
