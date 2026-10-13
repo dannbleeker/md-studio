@@ -109,24 +109,23 @@
         Milkdown does the same on main). The text handler in
         `configureEmbedStringify` now escapes a pipe left bare in a
         `tableCell`; any output that was well-formed is unchanged.
-  - [ ] **Manual check against a real vault:** open a real Obsidian vault
-        (thousands of files, nested folders, PDFs, audio) in Chrome or
-        Edge and go through the embed forms in Appendix B, pasting and
-        dropping files, Save As and a reload with the permission prompt.
-        The test suite uses a fake file system; none of this has run
-        against a real one since the bug-hunt fixes.
+  - [x] **Manual check against a real vault:** done by the owner. A real
+        Obsidian vault was opened in Chrome or Edge and the embed forms in
+        Appendix B, pasting and dropping files, Save As and a reload with
+        the permission prompt were gone through. (The test suite itself
+        still uses a fake file system.)
+  - [x] The owner reviewed the draft English UI strings (link style,
+        command names, the export and placeholder labels).
   - [ ] Replace the headless Milkdown editor used for transclusion with
         a shared parser if the bundle sizes allow.
-  - [ ] **Unverified:** the PDF viewer for `![[report.pdf]]` under the CSP
-        (`object-src 'none'` with `frame-src blob:`) has not been checked
-        in a headed Chromium. Chromium may apply `object-src` to the PDF
-        plugin document and block the frame, leaving only the Open link.
-        If so, change the CSP in `vite.config.ts` to `object-src blob:`
-        (and update `csp.test.ts`).
-  - [ ] Check by hand that the command palette's attachment-folder picker
-        still has user activation: the dynamic import runs before
-        `showDirectoryPicker`, which some browsers reject without a
-        recent click or key press.
+  - [x] The PDF viewer for `![[report.pdf]]` under the CSP (`object-src
+        'none'` with `frame-src blob:`) was checked in a headed Chromium by
+        the owner as part of the real-vault check above, so the CSP stays as
+        it is. (If a future Chromium blocks the frame, the fallback is
+        `object-src blob:` in `vite.config.ts` plus `csp.test.ts`.)
+  - [x] The command palette's attachment-folder picker keeps its user
+        activation (checked by hand by the owner in the same pass): the
+        dynamic import runs before `showDirectoryPicker`.
 
 ## Repo and CI
 
