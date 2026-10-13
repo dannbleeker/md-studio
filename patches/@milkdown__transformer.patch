@@ -1,0 +1,66 @@
+diff --git a/lib/index.js b/lib/index.js
+index a3ad082c8dee919a34c4d977fe80df065d59def0..f842a144ac4f7597482d6b26e620dcf05b5a991a 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -192,6 +192,34 @@ var SerializerStackElement = class SerializerStackElement extends StackElement {
+ //#endregion
+ //#region src/serializer/state.ts
+ var isFragment = (x) => Object.prototype.hasOwnProperty.call(x, "size");
++// md-studio patch: the stock merge rebuilt the sibling array with `concat` for
++// every child (and again, in full, for every merge), which is quadratic in the
++// number of children. This appends into one array and keeps a merged node's own
++// children array open for further merges (`owned` holds the nodes made here, which
++// are safe to mutate). The output is the same node tree as before.
++var appendMerging = (list, child, owned) => {
++	const last = list.at(-1);
++	if (last && last.isMark && child.isMark) {
++		const { children: currChildren, ...currRest } = child;
++		const { children: prevChildren, ...prevRest } = last;
++		if (child.type === last.type && currChildren && prevChildren && JSON.stringify(currRest) === JSON.stringify(prevRest)) {
++			let target = last;
++			if (!owned.has(last)) {
++				const normalized = [];
++				for (const c of prevChildren) appendMerging(normalized, c, owned);
++				target = {
++					...prevRest,
++					children: normalized
++				};
++				owned.add(target);
++				list[list.length - 1] = target;
++			}
++			for (const c of currChildren) appendMerging(target.children, c, owned);
++			return;
++		}
++	}
++	list.push(child);
++};
+ var SerializerState = class extends Stack {
+ 	#openMarks;
+ 	static {
+@@ -249,22 +277,10 @@ var SerializerState = class extends Stack {
+ 		this.#maybeMergeChildren = (node) => {
+ 			const { children } = node;
+ 			if (!children) return node;
+-			node.children = children.reduce((nextChildren, child, index) => {
+-				if (index === 0) return [child];
+-				const last = nextChildren.at(-1);
+-				if (last && last.isMark && child.isMark) {
+-					const { children: currChildren, ...currRest } = child;
+-					const { children: prevChildren, ...prevRest } = last;
+-					if (child.type === last.type && currChildren && prevChildren && JSON.stringify(currRest) === JSON.stringify(prevRest)) {
+-						const next = {
+-							...prevRest,
+-							children: [...prevChildren, ...currChildren]
+-						};
+-						return nextChildren.slice(0, -1).concat(this.#maybeMergeChildren(next));
+-					}
+-				}
+-				return nextChildren.concat(child);
+-			}, []);
++			const owned = new WeakSet();
++			const merged = [];
++			for (const child of children) appendMerging(merged, child, owned);
++			node.children = merged;
+ 			return node;
+ 		};
+ 		this.#createMarkdownNode = (element) => {

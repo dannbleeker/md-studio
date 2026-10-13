@@ -81,6 +81,9 @@
     ],
     "overrides": {
       "qs": "^6.16.0"
+    },
+    "patchedDependencies": {
+      "@milkdown/transformer": "patches/@milkdown__transformer.patch"
     }
   }
 }

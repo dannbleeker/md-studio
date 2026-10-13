@@ -179,6 +179,10 @@ that keep it safe:
   `dateTimeFormat()`, not a bare `Intl.DateTimeFormat`.
 - `pnpm verify` must be green before pushing. It is the CI gate.
 - Bundle growth: re-pin `bundle-budget.json` deliberately and say why.
+- `patches/` holds a `pnpm patch` of `@milkdown/transformer` (the serializer's
+  child merge, quadratic upstream). A Milkdown upgrade must re-create it with
+  `pnpm patch @milkdown/transformer`; `serializerScaling.test.ts` fails if the
+  patch stops applying.
 
 ## Commands
 

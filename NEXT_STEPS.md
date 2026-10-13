@@ -109,15 +109,6 @@
         Milkdown does the same on main). The text handler in
         `configureEmbedStringify` now escapes a pipe left bare in a
         `tableCell`; any output that was well-formed is unchanged.
-  - [ ] **Serializing a paragraph with thousands of chips is quadratic:**
-        `@milkdown/transformer`'s `#maybeMergeChildren` rebuilds the child
-        array with `concat` per child (also hit by a paragraph of many inline
-        marks on main). A paragraph of 10,000 `[[a]] ` tokens (64 KB, no blank
-        line) takes 1.6 s per visual edit; 8,000 characters take 30 ms. The
-        fix lives in the library: a `pnpm patch` of that method to `push`
-        into one array. Not done here because it adds `patchedDependencies`
-        and a lockfile change, which CI cannot be checked against from this
-        branch.
   - [ ] **Manual check against a real vault:** open a real Obsidian vault
         (thousands of files, nested folders, PDFs, audio) in Chrome or
         Edge and go through the embed forms in Appendix B, pasting and

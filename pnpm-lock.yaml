@@ -7,6 +7,11 @@ settings:
 overrides:
   qs: ^6.16.0
 
+patchedDependencies:
+  '@milkdown/transformer':
+    hash: 2ea5c82851be77b0f9ea634959f79406b15c6c7f00a5a01dbba4194a96f24564
+    path: patches/@milkdown__transformer.patch
+
 importers:
 
   .:
@@ -5506,7 +5511,7 @@ snapshots:
       '@milkdown/preset-commonmark': 7.22.2
       '@milkdown/preset-gfm': 7.22.2
       '@milkdown/prose': 7.22.2
-      '@milkdown/transformer': 7.22.2
+      '@milkdown/transformer': 7.22.2(patch_hash=2ea5c82851be77b0f9ea634959f79406b15c6c7f00a5a01dbba4194a96f24564)
       '@milkdown/utils': 7.22.2
       '@types/lodash-es': 4.17.12
       clsx: 2.1.1
@@ -5524,7 +5529,7 @@ snapshots:
       '@milkdown/ctx': 7.22.2
       '@milkdown/exception': 7.22.2
       '@milkdown/prose': 7.22.2
-      '@milkdown/transformer': 7.22.2
+      '@milkdown/transformer': 7.22.2(patch_hash=2ea5c82851be77b0f9ea634959f79406b15c6c7f00a5a01dbba4194a96f24564)
       remark-parse: 11.0.0
       remark-stringify: 11.0.0
       unified: 11.0.5
@@ -5558,7 +5563,7 @@ snapshots:
       '@milkdown/preset-commonmark': 7.22.2
       '@milkdown/preset-gfm': 7.22.2
       '@milkdown/prose': 7.22.2
-      '@milkdown/transformer': 7.22.2
+      '@milkdown/transformer': 7.22.2(patch_hash=2ea5c82851be77b0f9ea634959f79406b15c6c7f00a5a01dbba4194a96f24564)
       '@milkdown/utils': 7.22.2
     transitivePeerDependencies:
       - '@codemirror/language'
@@ -5602,7 +5607,7 @@ snapshots:
       '@milkdown/core': 7.22.2
       '@milkdown/ctx': 7.22.2
       '@milkdown/prose': 7.22.2
-      '@milkdown/transformer': 7.22.2
+      '@milkdown/transformer': 7.22.2(patch_hash=2ea5c82851be77b0f9ea634959f79406b15c6c7f00a5a01dbba4194a96f24564)
       '@milkdown/utils': 7.22.2
     transitivePeerDependencies:
       - supports-color
@@ -5690,7 +5695,7 @@ snapshots:
       '@milkdown/ctx': 7.22.2
       '@milkdown/exception': 7.22.2
       '@milkdown/prose': 7.22.2
-      '@milkdown/transformer': 7.22.2
+      '@milkdown/transformer': 7.22.2(patch_hash=2ea5c82851be77b0f9ea634959f79406b15c6c7f00a5a01dbba4194a96f24564)
       '@milkdown/utils': 7.22.2
       remark-inline-links: 7.0.0
       unist-util-visit: 5.1.0
@@ -5705,7 +5710,7 @@ snapshots:
       '@milkdown/exception': 7.22.2
       '@milkdown/preset-commonmark': 7.22.2
       '@milkdown/prose': 7.22.2
-      '@milkdown/transformer': 7.22.2
+      '@milkdown/transformer': 7.22.2(patch_hash=2ea5c82851be77b0f9ea634959f79406b15c6c7f00a5a01dbba4194a96f24564)
       '@milkdown/utils': 7.22.2
       prosemirror-safari-ime-span: 1.0.2
       remark-gfm: 4.0.1
@@ -5729,7 +5734,7 @@ snapshots:
       prosemirror-transform: 1.12.2
       prosemirror-view: 1.42.6
 
-  '@milkdown/transformer@7.22.2':
+  '@milkdown/transformer@7.22.2(patch_hash=2ea5c82851be77b0f9ea634959f79406b15c6c7f00a5a01dbba4194a96f24564)':
     dependencies:
       '@milkdown/exception': 7.22.2
       '@milkdown/prose': 7.22.2
@@ -5744,7 +5749,7 @@ snapshots:
       '@milkdown/ctx': 7.22.2
       '@milkdown/exception': 7.22.2
       '@milkdown/prose': 7.22.2
-      '@milkdown/transformer': 7.22.2
+      '@milkdown/transformer': 7.22.2(patch_hash=2ea5c82851be77b0f9ea634959f79406b15c6c7f00a5a01dbba4194a96f24564)
       nanoid: 6.0.1
     transitivePeerDependencies:
       - supports-color
