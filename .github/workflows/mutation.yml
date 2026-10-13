@@ -66,5 +66,16 @@ jobs:
             echo "Mutation score unchanged."
           else
             git commit -m "chore(stats): refresh mutation score [skip ci]"
-            git push
+            # The run takes ~12 minutes and the Stats bot commits to main after every
+            # push, so main has usually moved by now: rebase onto it and retry.
+            pushed=false
+            for attempt in 1 2 3 4 5; do
+              if git pull --rebase --autostash origin main && git push; then
+                pushed=true; echo "pushed on attempt $attempt"; break
+              fi
+              echo "push attempt $attempt rejected; retrying in 5s…"; sleep 5
+            done
+            if [[ "$pushed" != true ]]; then
+              echo "::error::mutation score push failed after 5 attempts"; exit 1
+            fi
           fi

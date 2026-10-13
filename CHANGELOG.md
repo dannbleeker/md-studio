@@ -8,6 +8,10 @@
   ceilings) failed there, which aborts the job. Those tests are now tagged
   `stress` and `vitest.mutation.config.ts` leaves them out; the normal test
   run still runs every one of them.
+- **The mutation score is pushed even when main has moved.** The job takes
+  about 14 minutes and the Stats bot commits to `main` after every push, so
+  the final `git push` was rejected and the run failed after finishing. It now
+  rebases onto `main` and retries, like `stats.yml`.
 - **Vitest stays on 4.1.** The 5.0 update briefly merged, but Stryker 10 (the
   latest) kills no mutants under vitest 5 (its test-name filter no longer
   matches, so the run reports a score of 0). `vitest` and `@vitest/coverage-v8`
