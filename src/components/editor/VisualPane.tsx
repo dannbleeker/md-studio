@@ -20,6 +20,7 @@ import { search } from 'prosemirror-search';
 import { useEffect, useRef } from 'react';
 import { EMBED_NODE_NAME } from '@/domain/embeds';
 import { dropEmptyLineMarkers } from '@/domain/emptyLines';
+import { headingSlug, linkTarget } from '@/domain/linkTarget';
 import { t } from '@/i18n';
 import { perfMeasure } from '@/services/perfMarks';
 import { useStore } from '@/store';
@@ -39,6 +40,35 @@ import { imageNodeView } from './imageView';
 import { keepSourceStyle } from './keepSourceStyle';
 import type { ScrollAdapter } from './scrollAdapter';
 import { createVisualSync, type SyncState } from './visualSync';
+
+/**
+ * Following a link: plain click in Read view, Ctrl/Cmd+click while editing
+ * (a plain click there places the caret). Without this the browser would
+ * navigate the app itself away in a non-editable view.
+ */
+const followLinks = new Plugin({
+  props: {
+    handleDOMEvents: {
+      click: (view, event) => {
+        const anchor = (event.target as HTMLElement | null)?.closest<HTMLAnchorElement>('a[href]');
+        if (!anchor || !view.dom.contains(anchor)) return false;
+        const reading = useStore.getState().viewMode === 'read';
+        if (!reading && !(event.ctrlKey || event.metaKey)) return false;
+        event.preventDefault();
+        const target = linkTarget(anchor.getAttribute('href') ?? '');
+        if (target.kind === 'external') {
+          window.open(target.url, '_blank', 'noopener,noreferrer');
+        } else if (target.kind === 'anchor') {
+          const heading = visualHeadings(view.dom).find(
+            (h) => headingSlug(h.textContent ?? '') === target.slug.toLowerCase()
+          );
+          heading?.scrollIntoView({ block: 'start' });
+        }
+        return true;
+      },
+    },
+  },
+});
 
 type Props = { onAdapter: (adapter: ScrollAdapter | null) => void };
 
@@ -95,6 +125,7 @@ export function VisualPane({ onAdapter }: Props) {
             }),
             visualPaneImagePlugin(() => editor),
             clickSelection,
+            followLinks,
           ]);
           ctx.update(remarkPluginsCtx, (plugins) => [
             ...plugins,
@@ -111,6 +142,8 @@ export function VisualPane({ onAdapter }: Props) {
           ctx.update(editorViewOptionsCtx, (prev) => ({
             ...prev,
             attributes: { 'aria-label': t('pane.visual'), spellcheck: 'true' },
+            // Read view shows the document without letting it be changed.
+            editable: () => useStore.getState().viewMode !== 'read',
           }));
           ctx.get(listenerCtx).markdownUpdated((listenerCtx) => {
             // Already flushed, or fired after a load (another tab, a reload
@@ -185,6 +218,8 @@ export function VisualPane({ onAdapter }: Props) {
 
     const unsubscribe = useStore.subscribe((state, prev) => {
       sync.onChange(read(state), read(prev));
+      // ProseMirror only re-reads `editable` when its props are set.
+      if ((state.viewMode === 'read') !== (prev.viewMode === 'read')) editors.visual?.setProps({});
       printFrontMatter(state.settings.exportFrontMatter);
       if (state.loadId !== prev.loadId) {
         restoreScroll(scrollEl, state.restoreView?.visualScroll ?? 0);

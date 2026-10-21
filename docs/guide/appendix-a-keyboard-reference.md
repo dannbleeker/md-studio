@@ -5,7 +5,7 @@ This appendix lists every shortcut in MD Studio, grouped by what you are doing. 
 Three notes apply throughout:
 
 - **On macOS, Cmd replaces Ctrl.** Ctrl+S is Cmd+S, Ctrl+K is Cmd+K, and so on.
-- **Ctrl+1, Ctrl+2 and Ctrl+3 work in the installed app.** In a normal browser tab they switch browser tabs instead, so use the toolbar or the command palette there. Installing MD Studio is covered in [Chapter 1](01-your-first-document.md).
+- **Ctrl+1 to Ctrl+4 work in the installed app.** In a normal browser tab they switch browser tabs instead, so use the toolbar or the command palette there. Installing MD Studio is covered in [Chapter 1](01-your-first-document.md).
 - **Ctrl+W and Ctrl+Tab always belong to the browser.** That is why closing and switching MD Studio's own tabs uses Alt instead.
 
 If you remember only one shortcut, make it **Ctrl+K**. The command palette lists every command by name, with its shortcut beside it, so it teaches you the rest.
@@ -47,6 +47,7 @@ You can also reorder tabs by dragging them.
 | Ctrl+1 | **Split** view: Markdown source and formatted document side by side. |
 | Ctrl+2 | **Text** view: Markdown source only. |
 | Ctrl+3 | **Visual** view: formatted document only. |
+| Ctrl+4 | **Read** view: formatted document only, not editable; links open when clicked. |
 | Ctrl+Shift+O | Show or hide the **Outline**. |
 | Ctrl+, | Open **Settings**. |
 

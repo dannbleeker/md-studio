@@ -2,7 +2,7 @@ import type { ExportFormat, HtmlTheme } from '@/domain/exportFormats';
 import type { LinkStyle } from '@/domain/vaultConfig';
 import { isLocale, type LocalePreference } from '@/i18n/locales';
 
-export type ViewMode = 'split' | 'text' | 'visual';
+export type ViewMode = 'split' | 'text' | 'visual' | 'read';
 export type ThemePreference = 'system' | 'light' | 'dark';
 export type FontSize = 'small' | 'medium' | 'large';
 
@@ -55,7 +55,7 @@ export const DEFAULT_SETTINGS: Settings = {
   attachmentRules: 'vault',
 };
 
-const VIEW_MODES: readonly ViewMode[] = ['split', 'text', 'visual'];
+const VIEW_MODES: readonly ViewMode[] = ['split', 'text', 'visual', 'read'];
 const THEMES: readonly ThemePreference[] = ['system', 'light', 'dark'];
 export const FONT_SIZES: readonly FontSize[] = ['small', 'medium', 'large'];
 const EXPORT_FORMATS: readonly ExportFormat[] = ['html', 'pdf', 'docx', 'txt'];

@@ -21,6 +21,7 @@ import {
   setSearchState,
 } from 'prosemirror-search';
 import { EMBED_NODE_NAME, parseWikiRef } from '@/domain/embeds';
+import type { ViewMode } from '@/store/settings';
 import { editors } from '../editor/editorRegistry';
 
 /**
@@ -262,9 +263,9 @@ function visualEngine(): Engine | null {
 }
 
 /** The pane find acts on: the one in view, or in split view the one last worked in. */
-export function findTarget(viewMode: 'split' | 'text' | 'visual'): FindTarget {
+export function findTarget(viewMode: ViewMode): FindTarget {
   if (viewMode === 'split') return editors.lastFocused;
-  return viewMode;
+  return viewMode === 'text' ? 'text' : 'visual';
 }
 
 export function engineFor(target: FindTarget): Engine | null {

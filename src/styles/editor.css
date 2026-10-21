@@ -5,7 +5,8 @@
   grid-template-columns: 1fr 1fr;
 }
 .split[data-view="text"],
-.split[data-view="visual"] {
+.split[data-view="visual"],
+.split[data-view="read"] {
   grid-template-columns: 1fr;
 }
 .pane {
