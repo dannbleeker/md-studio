@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Read view, and links that open.** A fourth view (Ctrl+4, *View: read* in
+  the palette) shows only the visual pane, not editable, and a click on a link
+  opens it: web, mail and phone links in a new tab, `#heading` links scroll to
+  the heading. While editing, Ctrl/Cmd+click does the same. Relative paths and
+  `javascript:` links do nothing (`domain/linkTarget.ts`).
+- **No scrollbar in the tab bar.** The active tab's `-1px` overlap made the
+  bar overflow vertically, which `overflow-x: auto` turned into a scrollbar.
+  The bar's bottom line is now an inset shadow.
 - **Mutation run works again.** The weekly `mutation.yml` job stopped at
   Stryker's first test run since the embeds landed: instrumented code is
   several times slower, and the speed tests (huge inputs, absolute time

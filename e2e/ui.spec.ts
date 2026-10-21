@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { newDocument, setText } from './helpers';
+import { newDocument, setText, visualPane } from './helpers';
 
 test('the toolbar fits a 360 px phone without sideways scrolling', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 740 });
@@ -96,4 +96,31 @@ test('a dialog with a radio group starts on the checked option, so Space keeps i
   await expect(pdf).toBeFocused();
   await page.keyboard.press('Space');
   await expect(pdf).toBeChecked();
+});
+
+test('the tab bar has no scrollbar of its own with a few tabs open', async ({ page }) => {
+  await newDocument(page);
+  await setText(page, 'Text');
+  await page.getByRole('button', { name: 'New', exact: true }).click();
+  const bar = page.locator('.tab-bar');
+  await expect(bar).toBeVisible();
+  const overflow = await bar.evaluate((el) => ({
+    y: el.scrollHeight - el.clientHeight,
+    x: el.scrollWidth - el.clientWidth,
+  }));
+  expect(overflow).toEqual({ y: 0, x: 0 });
+});
+
+test('Read view is not editable and links in it open', async ({ page }) => {
+  await newDocument(page);
+  await setText(page, '[site](https://example.com/x)');
+  await page.getByRole('button', { name: 'Read', exact: true }).click();
+  const pane = visualPane(page);
+  await expect(pane).toHaveAttribute('contenteditable', 'false');
+  await expect(page.getByTestId('text-editor')).toBeHidden();
+  const popup = page.waitForEvent('popup');
+  await pane.getByRole('link', { name: 'site' }).click();
+  expect((await popup).url()).toBe('https://example.com/x');
+  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  await expect(pane).toHaveAttribute('contenteditable', 'true');
 });

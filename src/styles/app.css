@@ -179,9 +179,12 @@ body {
   min-height: 34px;
   padding: 4px 0.75rem 0;
   overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: thin;
   background: var(--surface-2);
-  border-bottom: 1px solid var(--border);
+  /* Not a border: the active tab covers this line, and a tab hanging over
+     the bar's edge would make the bar scroll vertically. */
+  box-shadow: inset 0 -1px 0 var(--border);
 }
 .tab {
   position: relative;
@@ -202,8 +205,6 @@ body {
   background: var(--surface);
   border-color: var(--border);
   color: var(--text);
-  /* Covers the bar's bottom border so the active tab joins the editor. */
-  margin-bottom: -1px;
 }
 /* Where a dragged tab will land. */
 .tab[data-drop]::before {

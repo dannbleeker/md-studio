@@ -111,7 +111,7 @@ export function SplitView() {
         className="pane pane-text"
         data-pane="text"
         aria-label={t('pane.text')}
-        hidden={viewMode === 'visual'}
+        hidden={viewMode === 'visual' || viewMode === 'read'}
       >
         <TextPane onAdapter={setText} />
       </section>
@@ -121,9 +121,11 @@ export function SplitView() {
         aria-label={t('pane.visual')}
         hidden={viewMode === 'text'}
       >
-        <LazyBoundary fallback={<div className="format-toolbar" aria-hidden="true" />}>
-          <FormatToolbar />
-        </LazyBoundary>
+        {viewMode === 'read' ? null : (
+          <LazyBoundary fallback={<div className="format-toolbar" aria-hidden="true" />}>
+            <FormatToolbar />
+          </LazyBoundary>
+        )}
         <VisualPane onAdapter={setVisual} />
       </section>
     </div>

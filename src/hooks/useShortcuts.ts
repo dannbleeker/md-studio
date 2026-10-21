@@ -50,6 +50,7 @@ export function useShortcuts(): void {
       else if (mod && !e.shiftKey && key === '1') s.setViewMode('split');
       else if (mod && !e.shiftKey && key === '2') s.setViewMode('text');
       else if (mod && !e.shiftKey && key === '3') s.setViewMode('visual');
+      else if (mod && !e.shiftKey && key === '4') s.setViewMode('read');
       else handled = false;
       if (handled) {
         e.preventDefault();

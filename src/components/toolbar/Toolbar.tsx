@@ -8,7 +8,7 @@ import { useStore } from '@/store';
 import type { ViewMode } from '@/store/settings';
 import { useUiStore } from '@/store/ui';
 
-const VIEWS: ViewMode[] = ['split', 'text', 'visual'];
+const VIEWS: ViewMode[] = ['split', 'text', 'visual', 'read'];
 
 export function Toolbar() {
   const fileName = useStore((s) => s.doc.fileName);

@@ -51,7 +51,7 @@ export function OutlinePanel() {
   const minLevel = useMemo(() => Math.min(...headings.map((h) => h.level), 6), [headings]);
   const [active, setActive] = useState(-1);
   // In visual-only view the text pane is hidden and never scrolls; follow the visual pane.
-  const visualOnly = useStore((s) => s.viewMode === 'visual');
+  const visualOnly = useStore((s) => s.viewMode === 'visual' || s.viewMode === 'read');
 
   useEffect(() => {
     const scroller = visualOnly ? visualScroller() : editors.text?.scrollDOM;

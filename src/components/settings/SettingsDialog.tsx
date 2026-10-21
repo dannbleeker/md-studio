@@ -8,7 +8,7 @@ import { useUiStore } from '@/store/ui';
 import { Dialog } from '../ui/Dialog';
 
 const THEMES: ThemePreference[] = ['system', 'light', 'dark'];
-const VIEWS: ViewMode[] = ['split', 'text', 'visual'];
+const VIEWS: ViewMode[] = ['split', 'text', 'visual', 'read'];
 const LINK_STYLES: Settings['linkStyle'][] = ['auto', 'wikilink', 'markdown'];
 const ATTACHMENT_RULES: Settings['attachmentRules'][] = ['vault', 'images'];
 

@@ -97,9 +97,11 @@ The view mode switch decides which panes you see.
 | **Split** | Ctrl+1 | Markdown source on the left, the formatted document on the right |
 | **Text** | Ctrl+2 | Markdown source only |
 | **Visual** | Ctrl+3 | Formatted document only |
+| **Read** | Ctrl+4 | Formatted document only, not editable; links open when clicked |
 
-The command palette has the same three as *View: split*, *View: text only* and
-*View: visual only*. In an ordinary browser tab, Ctrl+1 to Ctrl+3 switch the
+The command palette has the same four as *View: split*, *View: text only*,
+*View: visual only* and *View: read*. In Visual view, Ctrl+click follows a link.
+In an ordinary browser tab, Ctrl+1 to Ctrl+4 switch the
 browser's own tabs, so use the toolbar or the palette there. In the installed
 app (Chapter 1) the shortcuts work.
 
