@@ -88,6 +88,8 @@ test('focus mode hides the chrome and Escape brings it back', async ({ page }) =
 test('reading keys scroll and step between headings', async ({ page }) => {
   const filler = Array.from({ length: 30 }, (_, i) => `paragraph ${i}`).join('\n\n');
   await readView(page, `# One\n\n${filler}\n\n# Two\n\n${filler}\n\n# Three\n\n${filler}`);
+  // The pane renders after a short pause: wait for the last heading, or j has nothing to scroll.
+  await expect(page.getByRole('heading', { name: 'Three' })).toBeAttached();
   const scroller = page.locator('.pane-visual .pane-scroll');
   const top = () => scroller.evaluate((el) => el.scrollTop);
   await page.locator('body').click({ position: { x: 5, y: 300 } });
