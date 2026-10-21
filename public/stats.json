@@ -1,21 +1,21 @@
 {
-  "generatedAt": "2026-10-19",
+  "generatedAt": "2026-10-21",
   "version": "0.1.0",
   "code": [
     {
       "category": "App code",
-      "files": 100,
-      "lines": 16308
+      "files": 101,
+      "lines": 16393
     },
     {
       "category": "Unit tests",
-      "files": 82,
-      "lines": 16090
+      "files": 83,
+      "lines": 16122
     },
     {
       "category": "E2E tests",
       "files": 16,
-      "lines": 2655
+      "lines": 2682
     },
     {
       "category": "Scripts",
@@ -25,29 +25,24 @@
     {
       "category": "Styles",
       "files": 6,
-      "lines": 1304
+      "lines": 1306
     },
     {
       "category": "Book",
       "files": 13,
-      "lines": 2502
+      "lines": 2505
     }
   ],
   "tests": {
-    "files": 78,
-    "total": 1277,
-    "passed": 1277,
-    "failed": 0,
+    "files": 79,
+    "total": 1282,
+    "passed": 1279,
+    "failed": 3,
     "e2eSpecs": 15
   },
-  "coverage": {
-    "lines": 88.9,
-    "statements": 87.15,
-    "functions": 80.27,
-    "branches": 83.67
-  },
+  "coverage": null,
   "bundle": {
-    "eagerGzipBytes": 468598,
+    "eagerGzipBytes": 468963,
     "eager": [
       "codemirror",
       "embeds",
@@ -62,33 +57,33 @@
     ],
     "chunks": {
       "AttachmentBanner": 1519,
-      "FindBar": 2545,
-      "FormatToolbar": 1068,
-      "OutlinePanel": 922,
+      "FindBar": 2552,
+      "FormatToolbar": 1064,
+      "OutlinePanel": 928,
       "USER_GUIDE": 4962,
-      "attachments": 6229,
+      "attachments": 6226,
       "codemirror": 215708,
       "decode": 15623,
       "docx": 116036,
-      "embedExport": 3398,
+      "embedExport": 3399,
       "embedLinks": 1285,
       "embedRender": 4206,
       "embeds": 4350,
-      "exportImages": 2182,
+      "exportImages": 2180,
       "fences": 189,
       "frontMatter": 605,
       "html": 2263,
-      "i18n": 4635,
-      "images": 1283,
-      "index": 33832,
+      "i18n": 4658,
+      "images": 1282,
+      "index": 34174,
       "markdownPdf": 179127,
       "marked.esm": 13428,
       "milkdown": 140270,
-      "noteRenderer": 3007,
+      "noteRenderer": 3006,
       "plainText": 1023,
       "react": 67523,
       "rolldown-runtime": 627,
-      "transclusion": 3279,
+      "transclusion": 3274,
       "ui": 859,
       "vaultConfig": 1627,
       "vaultIndex": 1648,
@@ -100,12 +95,12 @@
   "book": {
     "chapters": 11,
     "written": 11,
-    "words": 26071
+    "words": 26109
   },
   "git": {
-    "commits": 133,
+    "commits": 135,
     "firstCommit": "2026-10-02",
-    "lastCommit": "2026-10-18",
-    "activeDays": 8
+    "lastCommit": "2026-10-21",
+    "activeDays": 10
   }
 }
