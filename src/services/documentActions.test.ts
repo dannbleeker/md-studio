@@ -20,6 +20,7 @@ vi.mock('./attachments', () => ({ adoptAttachmentFolder }));
 
 const handles = new Map<string, FileSystemFileHandle>();
 vi.mock('./handleStore', () => ({
+  FOLDER_OWNER: 'folder-mode',
   getHandle: async (id: string) => handles.get(id) ?? null,
   // Like the real store: the same file keeps its id.
   putHandle: async (h: FileSystemFileHandle) => {
