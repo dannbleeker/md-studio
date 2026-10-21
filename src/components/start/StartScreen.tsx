@@ -12,14 +12,17 @@ import {
   openWelcome,
   switchTab,
 } from '@/services/documentActions';
-import { folderSupported, openFolder } from '@/services/folder';
 import { BOOK_EPUB, BOOK_PDF, DASHBOARD, GUIDE_PDF } from '@/services/links';
 import { syncedTabs, useStore } from '@/store';
 
 /** Picks a folder, then shows the editor with the folder panel open to choose a note from. */
 async function openFolderFromStart(): Promise<void> {
+  const { openFolder } = await import('@/services/folder');
   if (await openFolder()) useStore.getState().setScreen('editor');
 }
+
+/** Folders need the File System Access API's directory picker. */
+const canOpenFolder = (): boolean => typeof window.showDirectoryPicker === 'function';
 
 export function StartScreen() {
   const recents = useStore((s) => s.recents);
@@ -61,7 +64,7 @@ export function StartScreen() {
         <button type="button" className="start-card" onClick={() => void openDocument()}>
           <strong>{t('start.open')}</strong>
         </button>
-        {folderSupported() ? (
+        {canOpenFolder() ? (
           <button type="button" className="start-card" onClick={() => void openFolderFromStart()}>
             <strong>{t('start.openFolder')}</strong>
           </button>

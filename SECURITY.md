@@ -78,6 +78,15 @@ to:
   embedded notes. The scanners and exporters are written to be linear-time
   and have scaling tests for crafted input; the one known exception, in
   Milkdown's serializer, is listed in `NEXT_STEPS.md`.
+- **Math and diagrams.** Formulas are typeset by KaTeX with `trust` off, as
+  MathML, from the TeX text only: a formula cannot produce a link, an image
+  or a style. Mermaid runs at its `strict` security level with plain SVG
+  labels, and its drawing is shown through an `<img>` (a `data:` URL), where
+  nothing in it can run or reach the page. Both load only for a document that
+  uses them. The math scanner and the diagram size are bounded (a formula is
+  at most 1,000 characters inline and 20,000 displayed; a diagram at most
+  20,000) and the scanner is linear with scaling tests. See
+  `src/domain/math.ts`, `mathRender.ts` and `mermaidRender.ts`.
 - **Files** are opened only when you pick or drop them, and written only
   through a handle you granted, after the browser's permission prompt.
 - **Service worker** precaches the app's own build output (the user guide

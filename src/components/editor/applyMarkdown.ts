@@ -2,6 +2,7 @@ import { type Editor, editorViewCtx, parserCtx } from '@milkdown/kit/core';
 import { Mark, type Node } from '@milkdown/kit/prose/model';
 import { changedRegion } from '@/domain/changedRegion';
 import { actsAtDistance, hasReferenceDefinition } from '@/domain/referenceDefinitions';
+import { parseWithMath } from './mathNode';
 
 /**
  * Bringing the visual pane up to date with new Markdown.
@@ -26,7 +27,7 @@ import { actsAtDistance, hasReferenceDefinition } from '@/domain/referenceDefini
 export function applyFull(editor: Editor, markdown: string): void {
   editor.action((ctx) => {
     const view = ctx.get(editorViewCtx);
-    const next = ctx.get(parserCtx)(markdown);
+    const next = parseWithMath(ctx.get(parserCtx))(markdown);
     if (!next) return;
     const current = view.state.doc;
     const cur = current.childCount;
@@ -108,10 +109,12 @@ export function applyIncremental(editor: Editor, oldMd: string, newMd: string): 
   // resolves against definitions elsewhere: parsing the region alone would
   // get either wrong.
   if (actsAtDistance(region.oldText) || actsAtDistance(region.newText)) return false;
+  // Display math may run across blank lines, so a region could cut one in two.
+  if (region.oldText.includes('$$') || region.newText.includes('$$')) return false;
   if (hasReferenceDefinition(newMd) && /\[[^\]]*\]/.test(region.newText)) return false;
   return editor.action((ctx) => {
     const view = ctx.get(editorViewCtx);
-    const parse = ctx.get(parserCtx);
+    const parse = parseWithMath(ctx.get(parserCtx));
     const oldDoc = parse(region.oldText);
     const newDoc = parse(region.newText);
     if (!oldDoc || !newDoc) return false;

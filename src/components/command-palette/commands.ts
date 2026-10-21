@@ -12,7 +12,6 @@ import {
   saveDocument,
 } from '@/services/documentActions';
 import { exportDocument } from '@/services/export';
-import { openFolder } from '@/services/folder';
 import { BOOK_EPUB, BOOK_PDF, DASHBOARD, GUIDE_PDF } from '@/services/links';
 import { goBack, goForward } from '@/services/noteHistory';
 import { useStore } from '@/store';
@@ -136,7 +135,12 @@ export const COMMANDS: readonly Command[] = [
     shortcut: 'Ctrl+4',
     run: () => state().setViewMode('read'),
   },
-  { id: 'open-folder', label: 'cmd.openFolder', run: () => void openFolder() },
+  {
+    id: 'open-folder',
+    label: 'cmd.openFolder',
+    // Loaded on first use: most sessions never open a folder.
+    run: () => void import('@/services/folder').then((m) => m.openFolder()),
+  },
   {
     id: 'toggle-folder',
     editorOnly: true,

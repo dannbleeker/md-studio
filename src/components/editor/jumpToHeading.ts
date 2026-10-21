@@ -1,7 +1,7 @@
 import { EditorView } from '@codemirror/view';
 import type { Heading } from '@/domain/headings';
 import { editors, visualHeadings } from './editorRegistry';
-import { expandAllFolds } from './readDecorations';
+import { expandAllFolds } from './readFolds';
 
 /**
  * Brings the `index`-th heading to the top of both panes and puts the text

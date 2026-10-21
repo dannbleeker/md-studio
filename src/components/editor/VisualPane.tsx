@@ -20,6 +20,7 @@ import { search } from 'prosemirror-search';
 import { useEffect, useRef } from 'react';
 import { EMBED_NODE_NAME } from '@/domain/embeds';
 import { dropEmptyLineMarkers } from '@/domain/emptyLines';
+import { withMathPlaceholders } from '@/domain/mathPlaceholder';
 import { rememberPosition } from '@/domain/readPositions';
 import { buildAnchors, fromAnchorPosition, toAnchorPosition } from '@/domain/scrollMap';
 import { t } from '@/i18n';
@@ -40,11 +41,13 @@ import { visualPaneImagePlugin } from './imageSupport';
 import { imageTitleFix } from './imageTitleFix';
 import { imageNodeView } from './imageView';
 import { keepSourceStyle } from './keepSourceStyle';
-import { readClicks } from './readClicks';
-import { readDecorations } from './readDecorations';
-import { readHover } from './readHover';
+import { remarkMath } from './mathNode';
+import { loadReadExtras, readHost } from './readHost';
 import type { ScrollAdapter } from './scrollAdapter';
 import { createVisualSync, type SyncState } from './visualSync';
+
+/** Read view's extras load after the first paint, so typing never waits for them. */
+const READ_EXTRAS_DELAY_MS = 1500;
 
 type Props = { onAdapter: (adapter: ScrollAdapter | null) => void };
 
@@ -82,7 +85,7 @@ export function VisualPane({ onAdapter }: Props) {
       Editor.make()
         .config((ctx) => {
           ctx.set(rootCtx, rootEl);
-          ctx.set(defaultValueCtx, initial);
+          ctx.set(defaultValueCtx, withMathPlaceholders(initial));
           // Match highlighting and search state for the app's find bar.
           // + the format toolbar's view of the selection, after every change
           // (a mark toggle changes formatting without moving the selection).
@@ -101,15 +104,14 @@ export function VisualPane({ onAdapter }: Props) {
             }),
             visualPaneImagePlugin(() => editor),
             clickSelection,
-            readClicks,
-            readHover,
-            readDecorations,
+            readHost,
           ]);
           ctx.update(remarkPluginsCtx, (plugins) => [
             ...plugins,
             remarkFrontMatter,
             imageTitleFix,
             remarkEmbeds,
+            remarkMath,
           ]);
           configureEmbedStringify(ctx);
           ctx.update(nodeViewCtx, (views) => {
@@ -173,6 +175,11 @@ export function VisualPane({ onAdapter }: Props) {
         } else if (next && !resumedOnCreate && mountedAt.restoreView === null) {
           resumedOnCreate = true;
           resume(useStore.getState().handleId);
+        }
+        // Link clicks, hover cards and the rest of Read view arrive once the page is up.
+        if (next && !failed) {
+          if (useStore.getState().viewMode === 'read') void loadReadExtras().catch(() => {});
+          else setTimeout(() => void loadReadExtras().catch(() => {}), READ_EXTRAS_DELAY_MS);
         }
         // The placeholder stays unregistered, so the format toolbar and
         // find bar can't act on it.
@@ -265,6 +272,7 @@ export function VisualPane({ onAdapter }: Props) {
               scrollEl.scrollTop
             );
         // ProseMirror only re-reads `editable` (and its decorations) when its props are set.
+        if (state.viewMode === 'read') void loadReadExtras().catch(() => {});
         editors.visual?.setProps({});
         if (where !== null) {
           editors.linkedScrollPausedUntil = performance.now() + 400;

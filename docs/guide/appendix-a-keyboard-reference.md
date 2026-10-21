@@ -47,11 +47,25 @@ You can also reorder tabs by dragging them.
 | Ctrl+1 | **Split** view: Markdown source and formatted document side by side. |
 | Ctrl+2 | **Text** view: Markdown source only. |
 | Ctrl+3 | **Visual** view: formatted document only. |
-| Ctrl+4 | **Read** view: formatted document only, not editable; links open when clicked. |
+| Ctrl+4 | **Read** view: formatted document only, not editable, laid out for reading. |
 | Ctrl+Shift+O | Show or hide the **Outline**. |
 | Ctrl+, | Open **Settings**. |
 
 **Linked scroll** has no shortcut. Toggle it with the toolbar button, in Settings, or with *Toggle linked scroll* in the command palette.
+
+## Reading
+
+These work in Read view only, when no dialog is open and no text field has focus.
+
+| Key | Action |
+| --- | --- |
+| J or K | Scroll down or up a little. |
+| Space or Shift+Space | Page down or up. |
+| G or Shift+G | Jump to the start or the end. |
+| [ or ] | Previous or next heading. |
+| / | Open the find bar (without replace). |
+| F | **Focus** mode: only the page. Escape brings the toolbar back. |
+| Alt+Left or Alt+Right | **Back** or **Forward** through the notes you opened by following links or from the folder panel. |
 
 ## Command palette
 

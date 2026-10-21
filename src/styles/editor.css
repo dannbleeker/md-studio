@@ -905,3 +905,46 @@
     display: none;
   }
 }
+
+/* Math (KaTeX as MathML). */
+.md-math {
+  font-size: 1.08em;
+}
+.md-math math {
+  font-family: "Latin Modern Math", "STIX Two Math", "Cambria Math", "Noto Sans Math", math, serif;
+}
+.md-math:not(.md-math-ready) {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  color: var(--text-muted);
+}
+.md-math-display {
+  display: block;
+  margin: 0.9em 0;
+  overflow-x: auto;
+  text-align: center;
+}
+.md-math-display math {
+  font-size: 1.15em;
+}
+
+/* Mermaid diagrams (Read view). */
+.read-diagram {
+  margin: 1rem 0;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+.read-diagram img {
+  max-width: 100%;
+  height: auto;
+  cursor: zoom-in;
+}
+.read-diagram.is-error {
+  padding: 0.5rem 0.8rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+.read-diagram.is-ready + pre {
+  display: none;
+}

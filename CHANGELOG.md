@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Math and diagrams.** `$x^2$` and `$$...$$` are typeset (KaTeX, as MathML,
+  loaded on first use) in every view; the formula stays one lossless unit
+  holding its exact source (`domain/math.ts`, `mathPlaceholder.ts`,
+  `mathNode.ts`). Pandoc's rules keep prices as text. A ```mermaid block is
+  drawn as a diagram in Read view (Mermaid, strict security level, shown
+  through an `<img>`), click for full size. Mermaid and its dependencies are
+  lazy and left out of the precache (`diagram-` chunks, cached on first use).
+  The `index` and `i18n` budgets are re-pinned for the reader, folder mode and
+  math code on the start-up path; the Read view extras are now a lazy chunk.
 - **Folder mode.** "Open folder" (start screen, palette, or the Folder button)
   picks a folder of notes and shows them as a tree with a filter box, beside
   the editors. The open note is highlighted; "Linked from" lists the notes of

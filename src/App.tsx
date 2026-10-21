@@ -1,10 +1,9 @@
-import { lazy, useEffect } from 'react';
+import { lazy, useEffect, useState } from 'react';
 import { ConfirmDialogHost } from './components/ConfirmDialogHost';
 import { CommandPalette } from './components/command-palette/CommandPalette';
 import { SplitView } from './components/editor/SplitView';
 import { ExportDialog } from './components/export/ExportDialog';
 import { PromptDialogHost } from './components/PromptDialogHost';
-import { ReaderDialog } from './components/settings/ReaderDialog';
 import { SettingsDialog } from './components/settings/SettingsDialog';
 import { StartScreen } from './components/start/StartScreen';
 import { TabBar } from './components/tabs/TabBar';
@@ -18,7 +17,6 @@ import { useReadViewRefresh } from './hooks/useReadViewRefresh';
 import { useShortcuts } from './hooks/useShortcuts';
 import { useTheme } from './hooks/useTheme';
 import { t } from './i18n';
-import { restoreFolder, watchFolder } from './services/folder';
 import { useStore } from './store';
 import { useUiStore } from './store/ui';
 
@@ -31,6 +29,9 @@ const AttachmentBanner = lazy(() =>
   import('./components/attachments/AttachmentBanner').then((m) => ({
     default: m.AttachmentBanner,
   }))
+);
+const ReaderDialog = lazy(() =>
+  import('./components/settings/ReaderDialog').then((m) => ({ default: m.ReaderDialog }))
 );
 const FolderPanel = lazy(() =>
   import('./components/folder/FolderPanel').then((m) => ({ default: m.FolderPanel }))
@@ -48,6 +49,12 @@ export function App() {
   const fontSize = useStore((s) => s.settings.fontSize);
   const lineNumbers = useStore((s) => s.settings.lineNumbers);
   const focusMode = useUiStore((s) => s.focusMode);
+  const readerOpen = useUiStore((s) => s.readerOpen);
+  // Loaded on the first open, then kept so closing it hands focus back as a dialog does.
+  const [readerSeen, setReaderSeen] = useState(false);
+  useEffect(() => {
+    if (readerOpen) setReaderSeen(true);
+  }, [readerOpen]);
   useLocale();
   useTheme();
   useShortcuts();
@@ -57,8 +64,12 @@ export function App() {
 
   // The folder of last time comes back (without a prompt) and keeps its list current.
   useEffect(() => {
-    watchFolder();
-    void restoreFolder();
+    // After the first paint, and only where folders work: the service is a lazy chunk.
+    if (typeof window.showDirectoryPicker !== 'function') return;
+    void import('./services/folder').then((m) => {
+      m.watchFolder();
+      void m.restoreFolder();
+    });
   }, []);
 
   // Escape leaves focus mode, unless a dialog is open (it takes Escape first).
@@ -121,7 +132,11 @@ export function App() {
         </button>
       ) : null}
       <SettingsDialog />
-      <ReaderDialog />
+      {readerSeen ? (
+        <LazyBoundary>
+          <ReaderDialog />
+        </LazyBoundary>
+      ) : null}
       <ExportDialog />
       <CommandPalette />
       <ConfirmDialogHost />

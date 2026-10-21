@@ -6,6 +6,7 @@ import {
   placeDefinitions,
   splitDefinitions,
 } from '@/domain/referenceDefinitions';
+import { parseWithMath } from './mathNode';
 
 /**
  * Canonical form of a block = Milkdown's own parse + serialize, cached by
@@ -23,7 +24,7 @@ const MAX_CACHE = 4000;
  */
 export function keepSourceStyle(ctx: Ctx, oldMd: string, newMd: string): string {
   try {
-    const parse = ctx.get(parserCtx);
+    const parse = parseWithMath(ctx.get(parserCtx));
     const serialize = ctx.get(serializerCtx);
 
     const canonical = (source: string): string => {

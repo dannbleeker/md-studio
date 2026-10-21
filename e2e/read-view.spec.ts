@@ -125,3 +125,54 @@ test('/ opens Find in Read view', async ({ page }) => {
   await expect(page.getByRole('searchbox')).toHaveValue('fgj');
   await expect(page.locator('.toolbar')).toBeVisible();
 });
+
+test('math is typeset, in every view, and the source is left as written', async ({ page }) => {
+  const md = 'Inline $a*b*c$ and $x_1 + y_2$.\n\n$$\n\\int_0^1 f(x)\\,dx\n$$\n\nPrice: $5 and $10.';
+  const pane = await readView(page, md);
+  await expect(pane.locator('.md-math-ready')).toHaveCount(3);
+  await expect(pane.locator('.md-math-display math')).toHaveCount(1);
+  // Prices are text, and the formula's own characters never became emphasis.
+  await expect(pane.getByText('Price: $5 and $10.')).toBeVisible();
+  await expect(pane.locator('em')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Text', exact: true }).click();
+  expect((await page.locator('.cm-content').innerText()).replace(/ /g, ' ')).toContain(
+    'Inline $a*b*c$ and $x_1 + y_2$.'
+  );
+});
+
+test('a mermaid block is drawn as a diagram in Read view only', async ({ page }) => {
+  const pane = await readView(page, '```mermaid\ngraph TD\n  A[Start] --> B[End]\n```');
+  const diagram = pane.locator('.read-diagram.is-ready img');
+  await expect(diagram).toBeVisible({ timeout: 15_000 });
+  await expect(pane.locator('pre').first()).toBeHidden();
+  expect(await diagram.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(20);
+  // A click shows it full size.
+  await diagram.click();
+  await expect(page.locator('.lightbox')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  await expect(pane.locator('.read-diagram')).toHaveCount(0);
+  await expect(pane.locator('pre').first()).toBeVisible();
+});
+
+test('a diagram that cannot be drawn leaves its source on the page', async ({ page }) => {
+  const pane = await readView(page, '```mermaid\nthis is not a diagram (((\n```');
+  await expect(pane.locator('.read-diagram.is-error')).toBeVisible({ timeout: 15_000 });
+  await expect(pane.locator('pre').first()).toBeVisible();
+});
+
+test('jumping to a heading unfolds a fold that hides it', async ({ page }) => {
+  const filler = Array.from({ length: 25 }, (_, i) => `line ${i}`).join('\n\n');
+  const pane = await readView(
+    page,
+    `# A\n\n${filler}\n\n## Hidden child\n\nchild text\n\n# B\n\ntail`
+  );
+  await pane.locator('.read-fold').first().click();
+  await expect(pane.getByText('child text')).toBeHidden();
+  await page.getByRole('button', { name: 'Outline', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: 'Outline' })
+    .getByRole('button', { name: 'Hidden child' })
+    .click();
+  await expect(pane.getByText('child text')).toBeVisible();
+});
