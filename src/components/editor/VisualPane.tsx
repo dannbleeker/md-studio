@@ -141,7 +141,11 @@ export function VisualPane({ onAdapter }: Props) {
           });
           ctx.update(editorViewOptionsCtx, (prev) => ({
             ...prev,
-            attributes: { 'aria-label': t('pane.visual'), spellcheck: 'true' },
+            // A function, so Read view can switch the red squiggles off.
+            attributes: () => ({
+              'aria-label': t('pane.visual'),
+              spellcheck: useStore.getState().viewMode === 'read' ? 'false' : 'true',
+            }),
             // Read view shows the document without letting it be changed.
             editable: () => useStore.getState().viewMode !== 'read',
           }));

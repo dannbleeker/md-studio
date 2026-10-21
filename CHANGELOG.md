@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Read view can't be edited through Find.** Ctrl+H in Read view opens the
+  find bar without the replace row (and its toggle is hidden), and replace
+  actions are ignored there. Read view also turns spell-check off in the
+  visual pane.
 - **Read view, and links that open.** A fourth view (Ctrl+4, *View: read* in
   the palette) shows only the visual pane, not editable, and a click on a link
   opens it: web, mail and phone links in a new tab, `#heading` links scroll to

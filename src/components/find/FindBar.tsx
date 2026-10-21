@@ -12,8 +12,9 @@ const EMPTY: MatchInfo = { total: 0, current: 0, valid: true };
  * current one is selected and scrolled to.
  */
 export function FindBar() {
-  const withReplace = useUiStore((s) => s.findWithReplace);
   const viewMode = useStore((s) => s.viewMode);
+  // Read view shows the document without changing it: find only.
+  const withReplace = useUiStore((s) => s.findWithReplace) && viewMode !== 'read';
   const setFind = useUiStore((s) => s.setFind);
   const request = useUiStore((s) => s.findRequest);
   const input = useRef<HTMLInputElement>(null);
@@ -56,10 +57,11 @@ export function FindBar() {
     (action: 'next' | 'prev' | 'replace' | 'replaceAll') => {
       const engine = engineFor(target);
       if (!engine) return;
+      if (viewMode === 'read' && (action === 'replace' || action === 'replaceAll')) return;
       engine[action]();
       setInfo(engine.info());
     },
-    [target]
+    [target, viewMode]
   );
 
   const close = () => {
@@ -162,16 +164,18 @@ export function FindBar() {
         >
           .*
         </button>
-        <button
-          type="button"
-          className="btn-icon"
-          onClick={() => setFind(true, !withReplace)}
-          title={t('find.toggleReplace')}
-          aria-label={t('find.toggleReplace')}
-          aria-expanded={withReplace}
-        >
-          ⇄
-        </button>
+        {viewMode === 'read' ? null : (
+          <button
+            type="button"
+            className="btn-icon"
+            onClick={() => setFind(true, !withReplace)}
+            title={t('find.toggleReplace')}
+            aria-label={t('find.toggleReplace')}
+            aria-expanded={withReplace}
+          >
+            ⇄
+          </button>
+        )}
         <button type="button" className="btn-icon" onClick={close} aria-label={t('find.close')}>
           ×
         </button>

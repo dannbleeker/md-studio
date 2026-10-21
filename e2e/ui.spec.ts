@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { newDocument, setText, visualPane } from './helpers';
+import { newDocument, setText, textContent, visualPane } from './helpers';
 
 test('the toolbar fits a 360 px phone without sideways scrolling', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 740 });
@@ -123,4 +123,24 @@ test('Read view is not editable and links in it open', async ({ page }) => {
   expect((await popup).url()).toBe('https://example.com/x');
   await page.getByRole('button', { name: 'Visual', exact: true }).click();
   await expect(pane).toHaveAttribute('contenteditable', 'true');
+});
+
+test('Read view cannot change the document', async ({ page }) => {
+  await newDocument(page);
+  const source = '# Title\n\n- [ ] task\n\nSome words';
+  await setText(page, source);
+  await page.getByRole('button', { name: 'Read', exact: true }).click();
+  const pane = visualPane(page);
+
+  // Keys, the task checkbox and the replace bar all leave the Markdown alone.
+  await pane.getByText('Some words').click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('XYZ');
+  await pane.locator('li[data-item-type="task"]').click({ position: { x: 5, y: 8 } });
+  await page.keyboard.press('ControlOrMeta+H');
+  await expect(page.getByRole('search')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Replace all' })).toHaveCount(0);
+  await page.waitForTimeout(500);
+  await page.getByRole('button', { name: 'Text', exact: true }).click();
+  expect(await textContent(page)).toBe(source);
 });
