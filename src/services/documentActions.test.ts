@@ -140,6 +140,24 @@ describe('recent files with handles', () => {
   });
 });
 
+describe('Open files in Read view', () => {
+  beforeEach(() => {
+    resetStoreForTest();
+    useStore.getState().setViewMode('split');
+  });
+
+  it('opens a file in Read view when the setting is on', async () => {
+    useStore.getState().updateSettings({ openInReadView: true });
+    await openDroppedFile(new File(['# Hi'], 'hi.md'));
+    expect(useStore.getState().viewMode).toBe('read');
+  });
+
+  it('leaves the view alone when it is off', async () => {
+    await openDroppedFile(new File(['# Hi'], 'hi.md'));
+    expect(useStore.getState().viewMode).toBe('split');
+  });
+});
+
 describe('opening a file that is already open', () => {
   beforeEach(() => resetStoreForTest());
   const fileNames = () => useStore.getState().tabs.map((t) => t.doc.fileName);

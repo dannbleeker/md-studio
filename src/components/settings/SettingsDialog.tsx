@@ -108,6 +108,14 @@ export function SettingsDialog() {
         <label className="checkbox">
           <input
             type="checkbox"
+            checked={settings.openInReadView}
+            onChange={(e) => update({ openInReadView: e.target.checked })}
+          />
+          {t('settings.openInReadView')}
+        </label>
+        <label className="checkbox">
+          <input
+            type="checkbox"
             checked={settings.lineWrapping}
             onChange={(e) => update({ lineWrapping: e.target.checked })}
           />

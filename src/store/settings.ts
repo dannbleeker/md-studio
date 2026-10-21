@@ -5,6 +5,10 @@ import { isLocale, type LocalePreference } from '@/i18n/locales';
 export type ViewMode = 'split' | 'text' | 'visual' | 'read';
 export type ThemePreference = 'system' | 'light' | 'dark';
 export type FontSize = 'small' | 'medium' | 'large';
+export type ReadWidth = 'narrow' | 'medium' | 'wide';
+export type ReadFont = 'sans' | 'serif';
+export type ReadSpacing = 'compact' | 'normal' | 'relaxed';
+export type ReadTheme = 'match' | 'sepia';
 
 export type Settings = {
   theme: ThemePreference;
@@ -34,6 +38,13 @@ export type Settings = {
   linkStyle: LinkStyle;
   /** Where pasted and dropped files are saved: the vault's folder rule, or images/ beside the note. */
   attachmentRules: AttachmentRules;
+  /** Files opened from disk, by drop, or from the recent list show in Read view. */
+  openInReadView: boolean;
+  /** Read view's page: column width, typeface, line spacing and colours. */
+  readWidth: ReadWidth;
+  readFont: ReadFont;
+  readSpacing: ReadSpacing;
+  readTheme: ReadTheme;
 };
 
 type AttachmentRules = 'vault' | 'images';
@@ -53,6 +64,11 @@ export const DEFAULT_SETTINGS: Settings = {
   exportFrontMatter: false,
   linkStyle: 'auto',
   attachmentRules: 'vault',
+  openInReadView: false,
+  readWidth: 'medium',
+  readFont: 'sans',
+  readSpacing: 'normal',
+  readTheme: 'match',
 };
 
 const VIEW_MODES: readonly ViewMode[] = ['split', 'text', 'visual', 'read'];
@@ -62,6 +78,10 @@ const EXPORT_FORMATS: readonly ExportFormat[] = ['html', 'pdf', 'docx', 'txt'];
 const HTML_THEMES: readonly HtmlTheme[] = ['auto', 'light', 'dark'];
 const LINK_STYLES: readonly LinkStyle[] = ['wikilink', 'markdown', 'auto'];
 const ATTACHMENT_RULES: readonly AttachmentRules[] = ['vault', 'images'];
+export const READ_WIDTHS: readonly ReadWidth[] = ['narrow', 'medium', 'wide'];
+export const READ_FONTS: readonly ReadFont[] = ['sans', 'serif'];
+export const READ_SPACINGS: readonly ReadSpacing[] = ['compact', 'normal', 'relaxed'];
+export const READ_THEMES: readonly ReadTheme[] = ['match', 'sepia'];
 
 const oneOf = <T>(allowed: readonly T[], value: unknown, fallback: T): T =>
   allowed.includes(value as T) ? (value as T) : fallback;
@@ -85,5 +105,10 @@ export function sanitizeSettings(raw: Record<string, unknown>): Settings {
     exportFrontMatter: bool(raw.exportFrontMatter, d.exportFrontMatter),
     linkStyle: oneOf(LINK_STYLES, raw.linkStyle, d.linkStyle),
     attachmentRules: oneOf(ATTACHMENT_RULES, raw.attachmentRules, d.attachmentRules),
+    openInReadView: bool(raw.openInReadView, d.openInReadView),
+    readWidth: oneOf(READ_WIDTHS, raw.readWidth, d.readWidth),
+    readFont: oneOf(READ_FONTS, raw.readFont, d.readFont),
+    readSpacing: oneOf(READ_SPACINGS, raw.readSpacing, d.readSpacing),
+    readTheme: oneOf(READ_THEMES, raw.readTheme, d.readTheme),
   };
 }

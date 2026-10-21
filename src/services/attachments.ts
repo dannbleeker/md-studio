@@ -1246,7 +1246,7 @@ async function readFound(
 export async function readNoteText(
   ctx: DocContext,
   target: string,
-  opts?: { fromNotePath?: string | null }
+  opts?: { fromNotePath?: string | null; markdown?: boolean }
 ): Promise<NoteRead> {
   const from = opts?.fromNotePath;
   if (target === '' && from === undefined) {
@@ -1265,6 +1265,7 @@ export async function readNoteText(
   }
   const found = await find(ctx, target, {
     note: true,
+    ...(opts?.markdown ? { markdown: true } : {}),
     ...(from === undefined ? {} : { fromNotePath: from }),
   });
   if (found.kind === 'unavailable') return { state: 'unavailable', reason: found.reason };

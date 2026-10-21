@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Read view as a reader.** An "Open files in Read view" setting (off by
+  default) shows files opened from disk, by drop or from the recent list in
+  Read view. Where the reader stopped is remembered per file across sessions.
+  Reading controls (the Aa button): width, typeface, line spacing and a sepia
+  page. Focus mode (Focus button, `f`, Escape to leave) hides everything but
+  the page. Plain keys read the page: `j`/`k` and Space scroll, `g`/`G` jump
+  to the ends, `[`/`]` step between headings, `/` opens Find. Hovering a link
+  to a note shows the start of that note, and a footnote reference shows the
+  footnote. Headings get a "copy a link to this section" button. YAML front
+  matter shows as a card (title, tags, fields). Obsidian callouts
+  (`> [!warning] Title`) get a frame, a colour and a title.
 - **Read view grows up.** Links to other notes open in a tab: relative
   `[text](other.md)` links and `[[wikilinks]]` (through the attachments
   folder, with a clear message when it is not chosen). Headings fold, code

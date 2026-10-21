@@ -3,6 +3,7 @@ import { headingSlug, type LinkTarget, linkTarget, wikilinkTarget } from '@/doma
 import { useStore } from '@/store';
 import { visualHeadings } from './editorRegistry';
 import { openLightbox } from './lightbox';
+import { showFor } from './readHover';
 
 /** The note-link service loads on first use: most sessions never follow one. */
 const noteLinks = () => import('@/services/noteLinks');
@@ -46,6 +47,13 @@ export const readClicks = new Plugin({
         if (chip && wants && !chip.closest('.md-transclusion')) {
           event.preventDefault();
           follow(wikilinkTarget(chip.title), view.dom);
+          return true;
+        }
+        // A tap on a footnote reference shows its text at once (touch has no hover).
+        const ref = el.closest('sup[data-type="footnote_reference"]');
+        if (reading && ref && view.dom.contains(ref)) {
+          event.preventDefault();
+          showFor(view, ref, 0);
           return true;
         }
         const img = el.closest('img');

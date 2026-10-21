@@ -53,6 +53,10 @@ type Dialogs = {
   findWithReplace: boolean;
   /** Bumped by every Ctrl+F / Ctrl+H, so an open find bar refocuses and retargets. */
   findRequest: number;
+  /** The reading controls (width, typeface, spacing, colours) of Read view. */
+  readerOpen: boolean;
+  /** Only the document shows: no toolbar, tabs or side panels. Never saved. */
+  focusMode: boolean;
   /**
    * Tabs whose attachment notice the user dismissed, keyed by tab id, so
    * closing it for one note leaves the notice on for the others.
@@ -67,6 +71,8 @@ const CLOSED: Dialogs = {
   findOpen: false,
   findWithReplace: false,
   findRequest: 0,
+  readerOpen: false,
+  focusMode: false,
   attachmentBannerDismissed: {},
 };
 
@@ -78,6 +84,8 @@ type UiState = Dialogs & {
   setSettingsOpen: (open: boolean) => void;
   setPaletteOpen: (open: boolean) => void;
   setExportOpen: (open: boolean) => void;
+  setReaderOpen: (open: boolean) => void;
+  setFocusMode: (on: boolean) => void;
   setFind: (open: boolean, withReplace?: boolean) => void;
 };
 
@@ -90,6 +98,8 @@ export const useUiStore = create<UiState>()((set) => ({
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
   setExportOpen: (exportOpen) => set({ exportOpen }),
+  setReaderOpen: (readerOpen) => set({ readerOpen }),
+  setFocusMode: (focusMode) => set({ focusMode }),
   setFind: (findOpen, withReplace) =>
     set((s) => ({
       findOpen,

@@ -17,7 +17,8 @@ export function Toolbar() {
   const linkedScroll = useStore((s) => s.settings.linkedScroll);
   const showOutline = useStore((s) => s.settings.showOutline);
   const { setViewMode, updateSettings, setScreen } = useStore.getState();
-  const { setSettingsOpen, setPaletteOpen, setExportOpen } = useUiStore.getState();
+  const { setSettingsOpen, setPaletteOpen, setExportOpen, setReaderOpen, setFocusMode } =
+    useUiStore.getState();
   const isMobile = useIsMobile();
 
   return (
@@ -77,6 +78,27 @@ export function Toolbar() {
             />
             {t('toolbar.linkedScroll')}
           </label>
+        ) : null}
+        {viewMode === 'read' ? (
+          <>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setReaderOpen(true)}
+              title={t('toolbar.readerTitle')}
+              aria-label={t('toolbar.readerTitle')}
+            >
+              {t('toolbar.reader')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setFocusMode(true)}
+              title={t('toolbar.focusTitle')}
+            >
+              {t('toolbar.focus')}
+            </button>
+          </>
         ) : null}
         <button
           type="button"

@@ -135,6 +135,18 @@ export const COMMANDS: readonly Command[] = [
     run: () => state().setViewMode('read'),
   },
   {
+    id: 'focus-mode',
+    editorOnly: true,
+    label: 'cmd.focus',
+    run: () => ui().setFocusMode(true),
+  },
+  {
+    id: 'reader-controls',
+    editorOnly: true,
+    label: 'cmd.reader',
+    run: () => ui().setReaderOpen(true),
+  },
+  {
     id: 'linked-scroll',
     label: 'cmd.toggleLinkedScroll',
     run: () => state().updateSettings({ linkedScroll: !state().settings.linkedScroll }),
