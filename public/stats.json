@@ -4,18 +4,18 @@
   "code": [
     {
       "category": "App code",
-      "files": 101,
-      "lines": 16393
+      "files": 106,
+      "lines": 16768
     },
     {
       "category": "Unit tests",
-      "files": 83,
-      "lines": 16122
+      "files": 84,
+      "lines": 16228
     },
     {
       "category": "E2E tests",
       "files": 16,
-      "lines": 2682
+      "lines": 2772
     },
     {
       "category": "Scripts",
@@ -25,24 +25,29 @@
     {
       "category": "Styles",
       "files": 6,
-      "lines": 1306
+      "lines": 1411
     },
     {
       "category": "Book",
       "files": 13,
-      "lines": 2505
+      "lines": 2521
     }
   ],
   "tests": {
-    "files": 79,
-    "total": 1282,
-    "passed": 1279,
-    "failed": 3,
+    "files": 80,
+    "total": 1290,
+    "passed": 1290,
+    "failed": 0,
     "e2eSpecs": 15
   },
-  "coverage": null,
+  "coverage": {
+    "lines": 86.75,
+    "statements": 85.09,
+    "functions": 78.63,
+    "branches": 81.8
+  },
   "bundle": {
-    "eagerGzipBytes": 468963,
+    "eagerGzipBytes": 472264,
     "eager": [
       "codemirror",
       "embeds",
@@ -56,37 +61,37 @@
       "ui"
     ],
     "chunks": {
-      "AttachmentBanner": 1519,
-      "FindBar": 2552,
-      "FormatToolbar": 1064,
-      "OutlinePanel": 928,
+      "AttachmentBanner": 1501,
+      "FindBar": 2591,
+      "FormatToolbar": 1067,
+      "OutlinePanel": 929,
       "USER_GUIDE": 4962,
-      "attachments": 6226,
+      "attachments": 6257,
       "codemirror": 215708,
       "decode": 15623,
       "docx": 116036,
-      "embedExport": 3399,
-      "embedLinks": 1285,
-      "embedRender": 4206,
+      "embedExport": 3381,
+      "embedLinks": 1286,
+      "embedRender": 4202,
       "embeds": 4350,
-      "exportImages": 2180,
+      "exportImages": 2182,
       "fences": 189,
       "frontMatter": 605,
-      "html": 2263,
-      "i18n": 4658,
+      "html": 2261,
+      "i18n": 4814,
       "images": 1282,
-      "index": 34174,
+      "index": 37003,
       "markdownPdf": 179127,
       "marked.esm": 13428,
-      "milkdown": 140270,
-      "noteRenderer": 3006,
+      "milkdown": 140586,
+      "noteLinks": 545,
+      "noteRenderer": 2999,
       "plainText": 1023,
       "react": 67523,
       "rolldown-runtime": 627,
-      "transclusion": 3274,
+      "transclusion": 3273,
       "ui": 859,
-      "vaultConfig": 1627,
-      "vaultIndex": 1648,
+      "vaultConfig": 1610,
       "welcome.en": 989,
       "workbox-window.prod.es5": 2199
     },
@@ -95,10 +100,10 @@
   "book": {
     "chapters": 11,
     "written": 11,
-    "words": 26109
+    "words": 26289
   },
   "git": {
-    "commits": 135,
+    "commits": 138,
     "firstCommit": "2026-10-02",
     "lastCommit": "2026-10-21",
     "activeDays": 10
