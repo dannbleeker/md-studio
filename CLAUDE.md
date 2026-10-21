@@ -59,9 +59,10 @@ src/
   components/  editor/ (TextPane, VisualPane + visualSync, SplitView,
                sync helpers; embedNode, embedView, embedRender,
                noteRenderer, imageView, mediaRenderers for embeds; mathNode,
-               mathRender; the Read view extras in readPlugins: readClicks,
-               readHover, readDecorations + readCallouts / readFrontMatter /
-               readMermaid, lightbox) · folder/ (FolderPanel) ·
+               mathRender; Read view: readHost + readFolds (eager) and the
+               lazy readImpl: readClicks, readHover, readDecorations +
+               readCallouts / readFrontMatter / readMermaid, lightbox) ·
+               folder/ (FolderPanel) ·
                attachments/ (folder banner) ·
                start/ · tabs/ · find/ · outline/ · export/ · settings/ ·
                command-palette/ · toolbar/ · toast/ · ui/ (Dialog,
@@ -184,10 +185,15 @@ that keep it safe:
   document content: folds, copy and link buttons, callouts, the front matter
   card, diagrams. The raw block or marker is hidden by CSS, so a file is
   never changed by looking at it. Keep it that way.
-- **The extras are a lazy chunk** (`readPlugins`), put into the live editor
-  with `state.reconfigure` by `VisualPane.installReadPlugins`, 1.5 s after
-  the page is up or at once in Read view. Anything the eager code needs from
-  them goes through a string (the folds' plugin key, `readFolds.ts`).
+- **The extras are a lazy chunk** (`readImpl`) behind a small eager host
+  plugin (`readHost`, in the editor from the start: fold state, plus
+  decoration and event hooks that delegate once the chunk has loaded, 1.5 s
+  after the page is up or at once in Read view). Do not add plugins to a
+  live editor with `state.reconfigure`: it recreates every plugin view and
+  broke the front matter handling. Until the chunk arrives a click on a link
+  in Read view is swallowed, never left to the browser. Anything the eager
+  code needs from the extras goes through a string (the folds' plugin key,
+  `readFolds.ts`).
 - **Math is a placeholder step, not a parser.** Before every parse the visual
   pane replaces each `$...$` / `$$...$$` span (found by `domain/math.ts`,
   code-aware, Pandoc rules) with an inert word that spells out the span
