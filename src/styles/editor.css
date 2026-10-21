@@ -490,3 +490,108 @@
 .visual-doc .md-transcluded-footnote-body > p {
   margin: 0;
 }
+
+/* Read view: the page only, laid out for reading. */
+.split[data-view="read"] .visual-doc {
+  max-width: 42rem;
+  padding-top: 2.5rem;
+}
+.split[data-view="read"] .visual-doc .ProseMirror {
+  font-size: calc(1.06rem * var(--editor-scale, 1));
+  line-height: 1.8;
+  caret-color: transparent;
+  cursor: default;
+}
+.split[data-view="read"] .visual-doc a,
+.split[data-view="read"] .visual-doc .md-wikilink {
+  cursor: pointer;
+}
+.split[data-view="read"] .visual-doc img:not(.image-blocked) {
+  cursor: zoom-in;
+}
+.read-folded {
+  display: none;
+}
+.read-fold,
+.read-copy {
+  font: inherit;
+  color: var(--text-faint);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  user-select: none;
+}
+.read-fold {
+  margin-right: 0.35em;
+  padding: 0 0.2em;
+  border-radius: 4px;
+  font-size: 0.8em;
+  vertical-align: middle;
+}
+.read-fold:hover,
+.read-copy:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+.read-fold:focus-visible,
+.read-copy:focus-visible {
+  outline: 2px solid var(--accent);
+}
+.visual-doc pre:has(.read-copy) {
+  position: relative;
+}
+.read-copy {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.5rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+.read-badge {
+  margin-left: 0.5rem;
+  padding: 0.05rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgb(0 0 0 / 0.85);
+  cursor: zoom-out;
+}
+.lightbox-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.lightbox-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 1rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.15);
+  color: #fff;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+@media print {
+  .visual-doc .read-fold,
+  .visual-doc .read-copy {
+    display: none;
+  }
+  .visual-doc .read-folded {
+    display: block;
+  }
+}

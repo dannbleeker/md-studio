@@ -20,7 +20,7 @@ import { search } from 'prosemirror-search';
 import { useEffect, useRef } from 'react';
 import { EMBED_NODE_NAME } from '@/domain/embeds';
 import { dropEmptyLineMarkers } from '@/domain/emptyLines';
-import { headingSlug, linkTarget } from '@/domain/linkTarget';
+import { buildAnchors, fromAnchorPosition, toAnchorPosition } from '@/domain/scrollMap';
 import { t } from '@/i18n';
 import { perfMeasure } from '@/services/perfMarks';
 import { useStore } from '@/store';
@@ -38,37 +38,10 @@ import { visualPaneImagePlugin } from './imageSupport';
 import { imageTitleFix } from './imageTitleFix';
 import { imageNodeView } from './imageView';
 import { keepSourceStyle } from './keepSourceStyle';
+import { readClicks } from './readClicks';
+import { readDecorations } from './readDecorations';
 import type { ScrollAdapter } from './scrollAdapter';
 import { createVisualSync, type SyncState } from './visualSync';
-
-/**
- * Following a link: plain click in Read view, Ctrl/Cmd+click while editing
- * (a plain click there places the caret). Without this the browser would
- * navigate the app itself away in a non-editable view.
- */
-const followLinks = new Plugin({
-  props: {
-    handleDOMEvents: {
-      click: (view, event) => {
-        const anchor = (event.target as HTMLElement | null)?.closest<HTMLAnchorElement>('a[href]');
-        if (!anchor || !view.dom.contains(anchor)) return false;
-        const reading = useStore.getState().viewMode === 'read';
-        if (!reading && !(event.ctrlKey || event.metaKey)) return false;
-        event.preventDefault();
-        const target = linkTarget(anchor.getAttribute('href') ?? '');
-        if (target.kind === 'external') {
-          window.open(target.url, '_blank', 'noopener,noreferrer');
-        } else if (target.kind === 'anchor') {
-          const heading = visualHeadings(view.dom).find(
-            (h) => headingSlug(h.textContent ?? '') === target.slug.toLowerCase()
-          );
-          heading?.scrollIntoView({ block: 'start' });
-        }
-        return true;
-      },
-    },
-  },
-});
 
 type Props = { onAdapter: (adapter: ScrollAdapter | null) => void };
 
@@ -125,7 +98,8 @@ export function VisualPane({ onAdapter }: Props) {
             }),
             visualPaneImagePlugin(() => editor),
             clickSelection,
-            followLinks,
+            readClicks,
+            readDecorations,
           ]);
           ctx.update(remarkPluginsCtx, (plugins) => [
             ...plugins,
@@ -220,10 +194,38 @@ export function VisualPane({ onAdapter }: Props) {
       rootEl.classList.toggle('print-front-matter', include);
     printFrontMatter(useStore.getState().settings.exportFrontMatter);
 
+    const headingOffsets = () => {
+      const pm = rootEl.querySelector('.ProseMirror');
+      if (!pm) return [];
+      const base = scrollEl.getBoundingClientRect().top - scrollEl.scrollTop;
+      return visualHeadings(pm).map((el) => el.getBoundingClientRect().top - base);
+    };
+
     const unsubscribe = useStore.subscribe((state, prev) => {
       sync.onChange(read(state), read(prev));
-      // ProseMirror only re-reads `editable` when its props are set.
-      if ((state.viewMode === 'read') !== (prev.viewMode === 'read')) editors.visual?.setProps({});
+      if ((state.viewMode === 'read') !== (prev.viewMode === 'read')) {
+        // Read view lays the page out differently: keep the same heading on top.
+        const where = isHidden(scrollEl)
+          ? null
+          : toAnchorPosition(
+              buildAnchors(headingOffsets(), scrollEl.scrollHeight),
+              scrollEl.scrollTop
+            );
+        // ProseMirror only re-reads `editable` (and its decorations) when its props are set.
+        editors.visual?.setProps({});
+        if (where !== null) {
+          editors.linkedScrollPausedUntil = performance.now() + 400;
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => {
+              if (isHidden(scrollEl)) return;
+              scrollEl.scrollTop = fromAnchorPosition(
+                buildAnchors(headingOffsets(), scrollEl.scrollHeight),
+                where
+              );
+            })
+          );
+        }
+      }
       printFrontMatter(state.settings.exportFrontMatter);
       if (state.loadId !== prev.loadId) {
         restoreScroll(scrollEl, state.restoreView?.visualScroll ?? 0);
@@ -250,15 +252,7 @@ export function VisualPane({ onAdapter }: Props) {
       isHidden(scrollEl) ? {} : { visualScroll: scrollEl.scrollTop }
     );
 
-    onAdapter({
-      scroller: scrollEl,
-      headingOffsets: () => {
-        const pm = rootEl.querySelector('.ProseMirror');
-        if (!pm) return [];
-        const base = scrollEl.getBoundingClientRect().top - scrollEl.scrollTop;
-        return visualHeadings(pm).map((el) => el.getBoundingClientRect().top - base);
-      },
-    });
+    onAdapter({ scroller: scrollEl, headingOffsets });
 
     return () => {
       // Whatever unmounts the pane, an edit still in its debounce is reported, not lost.

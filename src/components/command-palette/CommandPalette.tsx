@@ -33,6 +33,7 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
   const [active, setActive] = useState(0);
   const markdown = useStore((s) => s.doc.markdown);
   const inEditor = useStore((s) => s.screen === 'editor');
+  const reading = useStore((s) => s.viewMode === 'read');
   // A leading "#" searches the document's headings instead of commands.
   const headingMode = query.startsWith('#');
 
@@ -52,7 +53,9 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
       }));
       return fuzzyFilter(items, query.slice(1).trim(), (item) => item.text);
     }
-    const items = COMMANDS.filter((c) => inEditor || !c.editorOnly).map((c) => ({
+    const items = COMMANDS.filter(
+      (c) => (inEditor || !c.editorOnly) && !(reading && c.hideInRead)
+    ).map((c) => ({
       id: c.id,
       text: t(c.label),
       ...(c.shortcut ? { hint: forPlatform(c.shortcut, isMac()) } : {}),
@@ -70,7 +73,7 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
       },
     }));
     return fuzzyFilter(items, query, (item) => item.text);
-  }, [headingMode, inEditor, markdown, query, onDone]);
+  }, [headingMode, inEditor, reading, markdown, query, onDone]);
 
   // Keep the keyboard selection visible in a long list.
   useEffect(() => {

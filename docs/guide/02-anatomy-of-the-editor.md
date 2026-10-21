@@ -97,13 +97,29 @@ The view mode switch decides which panes you see.
 | **Split** | Ctrl+1 | Markdown source on the left, the formatted document on the right |
 | **Text** | Ctrl+2 | Markdown source only |
 | **Visual** | Ctrl+3 | Formatted document only |
-| **Read** | Ctrl+4 | Formatted document only, not editable; links open when clicked |
+| **Read** | Ctrl+4 | Formatted document only, not editable, laid out for reading |
 
 The command palette has the same four as *View: split*, *View: text only*,
 *View: visual only* and *View: read*. In Visual view, Ctrl+click follows a link.
 In an ordinary browser tab, Ctrl+1 to Ctrl+4 switch the
 browser's own tabs, so use the toolbar or the palette there. In the installed
 app (Chapter 1) the shortcuts work.
+
+Read view is for reading rather than writing. The document cannot be changed
+there: typing, paste, undo and the replace half of Find are all switched off,
+and the page is set in a narrower, more open column. Links work with a plain
+click. A web link opens in a new tab, a `#heading` link scrolls to its
+heading, and a link to another note, `[text](other.md)` or `[[Other note]]`,
+opens that note in a tab. Notes are found through the attachments folder, so
+choose it first (the notice above the editor offers to). In Visual view the
+same links open with Ctrl+click.
+
+Every heading in Read view has a small arrow that folds its section away, every
+code block has a Copy button, and a click on an image shows it full size until
+you press Escape or click again. A file that changes on disk, say because
+another program saved it, reloads by itself as long as you have no unsaved
+changes. Save is left out of the toolbar and the palette in Read view, and
+Save as stays.
 
 Switching views only hides a pane. Both editors keep running, so switching is
 instant, and a pane you bring back is already up to date with what you typed

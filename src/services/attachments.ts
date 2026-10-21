@@ -1274,6 +1274,28 @@ export async function readNoteText(
   return readFound(found.g.handleId, found.located, found.g);
 }
 
+export type NoteHandle =
+  | { state: 'ok'; handle: FileSystemFileHandle; path: string }
+  | { state: 'scanning' }
+  | { state: 'missing' }
+  | { state: 'unavailable'; reason: AttachmentUnavailable };
+
+/** The file of the note a link names, for opening it in a tab. Never prompts. */
+export async function resolveNoteHandle(
+  ctx: DocContext,
+  target: string,
+  opts?: { markdown?: boolean }
+): Promise<NoteHandle> {
+  const found = await find(ctx, target, {
+    note: true,
+    ...(opts?.markdown ? { markdown: true } : {}),
+  });
+  if (found.kind === 'unavailable') return { state: 'unavailable', reason: found.reason };
+  if (found.kind === 'scanning') return { state: 'scanning' };
+  if (found.kind === 'missing') return { state: 'missing' };
+  return { state: 'ok', handle: found.located.handle, path: found.located.path };
+}
+
 /** Cached note text for a first synchronous frame; may be older than the file. */
 export function peekNoteRead(
   ctx: DocContext,

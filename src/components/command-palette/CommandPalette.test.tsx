@@ -46,6 +46,15 @@ describe('CommandPalette', () => {
     await vi.waitFor(() => expect(useStore.getState().viewMode).toBe('visual'));
   });
 
+  it('hides Save in Read view but keeps Save as', () => {
+    useStore.getState().setViewMode('read');
+    render(<CommandPalette />);
+    const labels = screen.getAllByRole('option').map((o) => o.textContent ?? '');
+    // Each option's text ends with its shortcut hint.
+    expect(labels.some((l) => l.startsWith('Save') && !l.startsWith('Save as'))).toBe(false);
+    expect(labels.some((l) => l.startsWith('Save as…'))).toBe(true);
+  });
+
   it('offers no command for a document the start screen hides', () => {
     useStore.getState().setScreen('start');
     render(<CommandPalette />);

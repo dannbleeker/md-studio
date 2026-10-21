@@ -32,6 +32,7 @@ export const en = {
   'view.text': 'Text',
   'view.visual': 'Visual',
   'view.read': 'Read',
+  'toolbar.readOnly': 'Read-only',
   'pane.text': 'Markdown source',
   'pane.visual': 'Visual editor',
   'pane.frontMatter': 'Front matter',
@@ -202,6 +203,14 @@ export const en = {
   'attachment.rescanNoFolder':
     'No attachment folder is chosen for this document yet. Use Choose attachment folder first.',
   'embed.loading': 'Loading…',
+  'link.noteMissing': 'Could not find the note {name}.',
+  'link.noteUnavailable':
+    'To open linked notes, choose the attachments folder first (see the notice above the editor).',
+  'link.scanning': 'Still scanning the folder. Try the link again in a moment.',
+  'read.fold': 'Fold or unfold this section',
+  'read.copy': 'Copy',
+  'lightbox.label': 'Image',
+  'lightbox.close': 'Close image',
   'embed.missing': 'Not found: {name}',
   'embed.missingHint':
     'If your vault is in a parent folder, choose that folder as the attachment folder.',
@@ -254,6 +263,8 @@ export const en = {
   'toast.recentCopy':
     'Opened the saved copy of {name}. Allow file access to work on the file itself.',
   'toast.openFailed': 'Could not open that file.',
+  'toast.codeCopied': 'Copied the code',
+  'toast.copyFailed': 'Could not copy to the clipboard.',
   'toast.visualFailed':
     'This document is nested too deeply for the visual pane. Edit it in the Markdown pane.',
   'toast.saveFailed': 'Could not save the file.',

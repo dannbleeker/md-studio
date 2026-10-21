@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import { newDocument, setText, textContent, visualPane } from './helpers';
 
 test('the toolbar fits a 360 px phone without sideways scrolling', async ({ page }) => {
@@ -143,4 +143,74 @@ test('Read view cannot change the document', async ({ page }) => {
   await page.waitForTimeout(500);
   await page.getByRole('button', { name: 'Text', exact: true }).click();
   expect(await textContent(page)).toBe(source);
+});
+
+const PIXEL =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+async function readView(page: Page, markdown: string) {
+  await newDocument(page);
+  await setText(page, markdown);
+  await page.getByRole('button', { name: 'Read', exact: true }).click();
+  return visualPane(page);
+}
+
+test('Read view shows a read-only marker and no Save', async ({ page }) => {
+  await readView(page, 'Hello');
+  await expect(page.getByText('Read-only', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeVisible();
+});
+
+test('headings fold in Read view, and code blocks get a copy button', async ({ page }) => {
+  const pane = await readView(
+    page,
+    '# A\n\ntext a\n\n## B\n\ntext b\n\n# C\n\ntext c\n\n```\ncode\n```'
+  );
+  await expect(pane.locator('.read-copy')).toHaveCount(1);
+  await pane.locator('.read-fold').first().click();
+  await expect(pane.getByText('text a')).toBeHidden();
+  await expect(pane.getByText('text b')).toBeHidden();
+  await expect(pane.getByText('text c')).toBeVisible();
+  await pane.locator('.read-fold').first().click();
+  await expect(pane.getByText('text b')).toBeVisible();
+
+  // Folds and copy buttons belong to Read view only.
+  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  await expect(pane.locator('.read-fold, .read-copy')).toHaveCount(0);
+});
+
+test('an image opens full size in Read view and Escape closes it', async ({ page }) => {
+  const pane = await readView(page, `![dot](${PIXEL})`);
+  await pane.getByRole('img', { name: 'dot' }).click();
+  await expect(page.locator('.lightbox')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.lightbox')).toHaveCount(0);
+});
+
+test('a link to another note explains what is needed when no folder is chosen', async ({
+  page,
+}) => {
+  const pane = await readView(page, 'See [[Other note]] and [more](other.md).');
+  await pane.getByRole('link', { name: 'more' }).click();
+  await expect(page.getByText(/choose the attachments folder first/)).toBeVisible();
+  await pane.locator('.md-wikilink').click();
+  await expect(page.getByText(/choose the attachments folder first/).first()).toBeVisible();
+});
+
+test('Ctrl+Z in Read view undoes nothing', async ({ page }) => {
+  await newDocument(page);
+  await setText(page, 'Hello');
+  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  await visualPane(page).getByText('Hello').click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('X');
+  await page.waitForTimeout(500);
+  await page.getByRole('button', { name: 'Read', exact: true }).click();
+  await visualPane(page).getByText('HelloX').click();
+  await page.keyboard.press('ControlOrMeta+Z');
+  await page.waitForTimeout(300);
+  await page.getByRole('button', { name: 'Text', exact: true }).click();
+  expect((await textContent(page)).trim()).toBe('HelloX');
 });
