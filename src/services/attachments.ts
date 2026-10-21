@@ -1297,6 +1297,26 @@ export async function resolveNoteHandle(
   return { state: 'ok', handle: found.located.handle, path: found.located.path };
 }
 
+/**
+ * Folder mode: lists the files of a folder the user opened to browse, using
+ * the same scan (and cap) as a note's vault folder. Needs read permission
+ * already; never prompts. A finished scan is reused unless `force`.
+ */
+export async function scanFolder(
+  root: FileSystemDirectoryHandle,
+  force = false
+): Promise<{ paths: readonly string[]; truncated: boolean }> {
+  const rs = await rootStateFor(root);
+  await ensureScan(rs, force);
+  return { paths: rs.index?.paths ?? [], truncated: rs.truncated };
+}
+
+/** The file at a vault-relative path of a folder, or null. */
+export const fileInFolder = (
+  root: FileSystemDirectoryHandle,
+  path: string
+): Promise<FileSystemFileHandle | null> => fileAt(root, path);
+
 /** Cached note text for a first synchronous frame; may be older than the file. */
 export function peekNoteRead(
   ctx: DocContext,

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Folder mode.** "Open folder" (start screen, palette, or the Folder button)
+  picks a folder of notes and shows them as a tree with a filter box, beside
+  the editors. The open note is highlighted; "Linked from" lists the notes of
+  the folder that link to it (wikilinks and Markdown links, code ignored).
+  Notes opened from the folder find it as their attachments folder, so links
+  and images resolve with no further prompt. Following a link or opening from
+  the tree is recorded: Back and Forward buttons (and Alt+Left / Alt+Right)
+  step through those notes. The folder is remembered; after a restart the
+  panel asks once for access again. Needs a browser with the File System
+  Access API.
 - **Read view as a reader.** An "Open files in Read view" setting (off by
   default) shows files opened from disk, by drop or from the recent list in
   Read view. Where the reader stopped is remembered per file across sessions.

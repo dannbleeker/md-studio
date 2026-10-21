@@ -18,6 +18,7 @@ import { useReadViewRefresh } from './hooks/useReadViewRefresh';
 import { useShortcuts } from './hooks/useShortcuts';
 import { useTheme } from './hooks/useTheme';
 import { t } from './i18n';
+import { restoreFolder, watchFolder } from './services/folder';
 import { useStore } from './store';
 import { useUiStore } from './store/ui';
 
@@ -31,6 +32,9 @@ const AttachmentBanner = lazy(() =>
     default: m.AttachmentBanner,
   }))
 );
+const FolderPanel = lazy(() =>
+  import('./components/folder/FolderPanel').then((m) => ({ default: m.FolderPanel }))
+);
 const OutlinePanel = lazy(() =>
   import('./components/outline/OutlinePanel').then((m) => ({ default: m.OutlinePanel }))
 );
@@ -38,6 +42,7 @@ const OutlinePanel = lazy(() =>
 export function App() {
   const screen = useStore((s) => s.screen);
   const showOutline = useStore((s) => s.settings.showOutline);
+  const showFolder = useStore((s) => s.settings.showFolder);
   const findOpen = useUiStore((s) => s.findOpen);
   const manyTabs = useStore((s) => s.tabs.length > 1);
   const fontSize = useStore((s) => s.settings.fontSize);
@@ -49,6 +54,12 @@ export function App() {
   useFileDrop();
   useReadViewRefresh();
   useReadKeys();
+
+  // The folder of last time comes back (without a prompt) and keeps its list current.
+  useEffect(() => {
+    watchFolder();
+    void restoreFolder();
+  }, []);
 
   // Escape leaves focus mode, unless a dialog is open (it takes Escape first).
   useEffect(() => {
@@ -76,6 +87,11 @@ export function App() {
           {/* Only with two or more open documents. */}
           {manyTabs ? <TabBar /> : null}
           <div className="workspace">
+            {showFolder ? (
+              <LazyBoundary>
+                <FolderPanel />
+              </LazyBoundary>
+            ) : null}
             {showOutline ? (
               <LazyBoundary>
                 <OutlinePanel />

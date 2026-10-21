@@ -1,9 +1,10 @@
+import { headingPlainText } from '@/components/editor/editorRegistry';
 import { headingSlug } from '@/domain/linkTarget';
 import { type NotePreview, notePreview } from '@/domain/notePreview';
 import { t } from '@/i18n';
 import { showToast } from '@/store/ui';
 import { currentDocContext, readNoteText, resolveNoteHandle } from './attachments';
-import { openHandle } from './documentActions';
+import { navigateToNote } from './noteHistory';
 
 /** Scrolls the visual pane to the heading with this slug (after a note opened, say). */
 export function scrollToHeadingSlug(slug: string): boolean {
@@ -14,7 +15,7 @@ export function scrollToHeadingSlug(slug: string): boolean {
     pm.querySelectorAll<HTMLElement>(
       ':scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6'
     )
-  ).find((h) => headingSlug(h.textContent ?? '') === wanted);
+  ).find((h) => headingSlug(headingPlainText(h)) === wanted);
   heading?.scrollIntoView({ block: 'start' });
   return heading !== undefined;
 }
@@ -36,7 +37,7 @@ export async function followNoteLink(target: {
   if (res.state === 'scanning') return void showToast(t('link.scanning'));
   if (res.state === 'missing') return void showToast(t('link.noteMissing', { name }));
   if (res.state === 'unavailable') return void showToast(t('link.noteUnavailable'));
-  await openHandle(res.handle);
+  await navigateToNote(res.handle);
   const { fragment } = target;
   if (fragment) {
     // The tab switch shows the note a moment later; best effort.

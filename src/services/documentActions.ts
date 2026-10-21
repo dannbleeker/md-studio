@@ -10,7 +10,7 @@ import { syncedTabs, useStore } from '@/store';
 import { flushEditors } from '@/store/flush';
 import { requestConfirm, showToast } from '@/store/ui';
 import { type OpenedFile, openFile, readFile, readHandle, saveFile } from './fileSystem';
-import { ensurePermission, getHandle, pruneHandles, putHandle } from './handleStore';
+import { ensurePermission, FOLDER_OWNER, getHandle, pruneHandles, putHandle } from './handleStore';
 import { loadTabs, type RecentEntry } from './storage';
 
 /** Asks before closing a tab whose changes are not saved to disk. */
@@ -57,11 +57,13 @@ async function load(file: OpenedFile) {
 async function forgetUnusedHandles() {
   const state = useStore.getState();
   // Saved tabs count too: another window of the app may still use them.
-  const keep = new Set(
-    [...state.recents, ...syncedTabs(state), ...(loadTabs()?.tabs ?? [])].flatMap((r) =>
+  const keep = new Set([
+    // The opened folder (folder mode) is no document's, and stays.
+    FOLDER_OWNER,
+    ...[...state.recents, ...syncedTabs(state), ...(loadTabs()?.tabs ?? [])].flatMap((r) =>
       r.handleId ? [r.handleId] : []
-    )
-  );
+    ),
+  ]);
   await pruneHandles(keep);
 }
 

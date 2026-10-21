@@ -15,6 +15,8 @@ export type Settings = {
   linkedScroll: boolean;
   defaultViewMode: ViewMode;
   showOutline: boolean;
+  /** The folder panel (notes of the opened folder, links to this note) beside the editors. */
+  showFolder: boolean;
   language: LocalePreference;
   /** Text size of both editors. */
   fontSize: FontSize;
@@ -54,6 +56,7 @@ export const DEFAULT_SETTINGS: Settings = {
   linkedScroll: true,
   defaultViewMode: 'split',
   showOutline: false,
+  showFolder: false,
   language: 'system',
   fontSize: 'medium',
   lineWrapping: true,
@@ -95,6 +98,7 @@ export function sanitizeSettings(raw: Record<string, unknown>): Settings {
     linkedScroll: bool(raw.linkedScroll, d.linkedScroll),
     defaultViewMode: oneOf(VIEW_MODES, raw.defaultViewMode, d.defaultViewMode),
     showOutline: bool(raw.showOutline, d.showOutline),
+    showFolder: bool(raw.showFolder, d.showFolder),
     language: raw.language === 'system' || isLocale(raw.language) ? raw.language : d.language,
     fontSize: oneOf(FONT_SIZES, raw.fontSize, d.fontSize),
     lineWrapping: bool(raw.lineWrapping, d.lineWrapping),

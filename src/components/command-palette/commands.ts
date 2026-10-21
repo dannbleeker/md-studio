@@ -12,7 +12,9 @@ import {
   saveDocument,
 } from '@/services/documentActions';
 import { exportDocument } from '@/services/export';
+import { openFolder } from '@/services/folder';
 import { BOOK_EPUB, BOOK_PDF, DASHBOARD, GUIDE_PDF } from '@/services/links';
+import { goBack, goForward } from '@/services/noteHistory';
 import { useStore } from '@/store';
 import { showToast, useUiStore } from '@/store/ui';
 
@@ -134,6 +136,15 @@ export const COMMANDS: readonly Command[] = [
     shortcut: 'Ctrl+4',
     run: () => state().setViewMode('read'),
   },
+  { id: 'open-folder', label: 'cmd.openFolder', run: () => void openFolder() },
+  {
+    id: 'toggle-folder',
+    editorOnly: true,
+    label: 'cmd.toggleFolder',
+    run: () => state().updateSettings({ showFolder: !state().settings.showFolder }),
+  },
+  { id: 'nav-back', editorOnly: true, label: 'cmd.back', run: () => void goBack() },
+  { id: 'nav-forward', editorOnly: true, label: 'cmd.forward', run: () => void goForward() },
   {
     id: 'focus-mode',
     editorOnly: true,
