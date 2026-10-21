@@ -55,6 +55,8 @@ export type Command = {
    * where it would close, save or export a document the user can't see.
    */
   editorOnly?: boolean;
+  /** Not offered in Read view, where nothing is edited. */
+  hideInRead?: boolean;
 };
 
 const state = () => useStore.getState();
@@ -71,6 +73,7 @@ export const COMMANDS: readonly Command[] = [
   {
     id: 'save',
     editorOnly: true,
+    hideInRead: true,
     label: 'cmd.save',
     shortcut: 'Ctrl+S',
     run: () => void saveDocument(),

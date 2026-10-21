@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { headingSlug, linkTarget } from './linkTarget';
+import { headingSlug, linkTarget, wikilinkTarget } from './linkTarget';
 
 describe('linkTarget', () => {
   it('opens web, mail and phone links outside the app', () => {
@@ -17,9 +17,62 @@ describe('linkTarget', () => {
     expect(linkTarget('#bad%')).toEqual({ kind: 'anchor', slug: 'bad%' });
   });
 
+  it('opens relative Markdown notes, with the heading they name', () => {
+    expect(linkTarget('other.md')).toEqual({
+      kind: 'note',
+      path: 'other.md',
+      fragment: null,
+      markdown: true,
+    });
+    expect(linkTarget('../notes/My%20Note.md#Part%20two')).toEqual({
+      kind: 'note',
+      path: '../notes/My Note.md',
+      fragment: 'Part two',
+      markdown: true,
+    });
+    expect(linkTarget('<a b.markdown>').kind).toBe('note');
+  });
+
   it('ignores everything else', () => {
-    for (const href of ['javascript:alert(1)', 'data:text/html,x', 'notes/other.md', '#', ''])
+    for (const href of [
+      'javascript:alert(1)',
+      'data:text/html,x',
+      'JaVaScRiPt:alert(1)',
+      'file:///etc/passwd',
+      '//evil.example/a.md',
+      'photo.png',
+      'doc.pdf',
+      'noextension',
+      '#',
+      '',
+    ])
       expect(linkTarget(href)).toEqual({ kind: 'none' });
+  });
+});
+
+describe('wikilinkTarget', () => {
+  it('opens the note a wikilink names', () => {
+    expect(wikilinkTarget('[[Note]]')).toEqual({
+      kind: 'note',
+      path: 'Note',
+      fragment: null,
+      markdown: false,
+    });
+    expect(wikilinkTarget('[[Folder/Note#Some Heading|alias]]')).toEqual({
+      kind: 'note',
+      path: 'Folder/Note',
+      fragment: 'Some Heading',
+      markdown: false,
+    });
+  });
+
+  it('scrolls to a heading of the same note', () => {
+    expect(wikilinkTarget('[[#Some Heading]]')).toEqual({ kind: 'anchor', slug: 'some-heading' });
+  });
+
+  it('does nothing for embeds and text that is not a token', () => {
+    expect(wikilinkTarget('![[Note]]')).toEqual({ kind: 'none' });
+    expect(wikilinkTarget('not a token')).toEqual({ kind: 'none' });
   });
 });
 

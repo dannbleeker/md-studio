@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **Read view grows up.** Links to other notes open in a tab: relative
+  `[text](other.md)` links and `[[wikilinks]]` (through the attachments
+  folder, with a clear message when it is not chosen). Headings fold, code
+  blocks get a Copy button and an image opens full size on click (Escape
+  closes). The page is set in a narrower column with a hidden caret, a
+  "Read-only" badge replaces Save in the toolbar, and Save leaves the command
+  palette (Save as stays). The same heading stays on top when switching in
+  and out of Read view, and a saved file that changes on disk reloads on its
+  own every few seconds while reading. Outline and "Go to heading" unfold
+  a fold that hides their target.
+- **Read view can't be edited through Find.** Ctrl+H in Read view opens the
+  find bar without the replace row (and its toggle is hidden), and replace
+  actions are ignored there. Read view also turns spell-check off in the
+  visual pane.
 - **Read view, and links that open.** A fourth view (Ctrl+4, *View: read* in
   the palette) shows only the visual pane, not editable, and a click on a link
   opens it: web, mail and phone links in a new tab, `#heading` links scroll to

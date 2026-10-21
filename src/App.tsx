@@ -12,6 +12,7 @@ import { Toolbar } from './components/toolbar/Toolbar';
 import { LazyBoundary } from './components/ui/LazyBoundary';
 import { useFileDrop } from './hooks/useFileDrop';
 import { useLocale } from './hooks/useLocale';
+import { useReadViewRefresh } from './hooks/useReadViewRefresh';
 import { useShortcuts } from './hooks/useShortcuts';
 import { useTheme } from './hooks/useTheme';
 import { useStore } from './store';
@@ -42,6 +43,7 @@ export function App() {
   useTheme();
   useShortcuts();
   useFileDrop();
+  useReadViewRefresh();
 
   return (
     <div className="app" data-font-size={fontSize} data-line-numbers={lineNumbers || undefined}>

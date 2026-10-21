@@ -1,6 +1,7 @@
 import { EditorView } from '@codemirror/view';
 import type { Heading } from '@/domain/headings';
 import { editors, visualHeadings } from './editorRegistry';
+import { expandAllFolds } from './readDecorations';
 
 /**
  * Brings the `index`-th heading to the top of both panes and puts the text
@@ -18,6 +19,8 @@ export function jumpToHeading(headings: readonly Heading[], index: number): void
       effects: EditorView.scrollIntoView(line.from, { y: 'start', yMargin: 8 }),
     });
   }
+  // A fold in Read view may be hiding the heading.
+  if (editors.visual) expandAllFolds(editors.visual);
   const target = editors.visual ? visualHeadings(editors.visual.dom)[index] : undefined;
   const scroller = target?.closest<HTMLElement>('.pane-scroll');
   if (target && scroller) {
