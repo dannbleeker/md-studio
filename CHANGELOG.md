@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Notes shown inside notes.** A transcluded note (`![[Note]]`) now typesets
+  its formulas, frames its callouts and draws its mermaid diagrams, as the
+  note does on its own. Its text still goes through the allow-list; the
+  formula, callout and diagram steps add only elements this app creates.
 - **Phone layout.** Below 720px the folder and outline panels slide over the
   document as a drawer with a backdrop, and close when a note or heading is
   picked. Rows, toolbar buttons and tabs get larger touch targets (also on

@@ -62,6 +62,8 @@ const FILES: Record<string, string> = {
   'Notes/Beta.md': '# Beta\n\nJust text.',
   'Other/Gamma.md': '# Gamma\n\nLinks to [[Alpha]] too. Data: [the sheet](data.csv).',
   'Other/data.csv': 'a,b\n1,2\n',
+  'Other/Host.md': '# Host\n\n![[Formulas]]\n',
+  'Other/Formulas.md': '> [!warning] Careful\n> Mind the gap, $x^2$ and a price of $5.\n',
   'img/pic.png': 'not a note',
 };
 
@@ -246,4 +248,16 @@ test.describe('on a phone', () => {
     await swipe(260, 60);
     await expect(visualPane(page).locator('h1')).toContainText('Alpha');
   });
+});
+
+test('a note shown inside another typesets its formulas and callouts', async ({ page }) => {
+  await setUp(page);
+  await page.getByRole('button', { name: 'Open folder', exact: true }).click();
+  await panel(page).getByRole('searchbox', { name: 'Filter notes' }).fill('host');
+  await panel(page).getByRole('button', { name: 'Other/Host' }).click();
+  await page.getByRole('button', { name: 'Read', exact: true }).click();
+  const shown = visualPane(page).locator('.md-transclusion');
+  await expect(shown.locator('blockquote.callout-warning .callout-title')).toHaveText('Careful');
+  await expect(shown.locator('math')).toHaveCount(1);
+  await expect(shown).toContainText('a price of $5.');
 });

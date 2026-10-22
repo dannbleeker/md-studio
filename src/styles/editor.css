@@ -805,6 +805,10 @@
 .visual-doc blockquote.callout > p {
   margin: 0.25rem 0;
 }
+.md-transclusion .callout-title {
+  display: block;
+  margin-bottom: 0.25rem;
+}
 
 /* Folder panel: the opened folder's notes beside the editors. */
 .folder-panel {

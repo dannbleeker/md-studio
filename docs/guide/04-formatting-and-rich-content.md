@@ -368,9 +368,12 @@ The text between the signs is TeX. Math follows the usual rule for dollar signs,
 so prices stay prices: an opening `$` is not followed by a space, a closing one is
 not preceded by a space or followed by a digit, and a backslash before a dollar
 sign makes it plain text. Code never holds math. A formula is one unit in the
-visual pane, like an embed: to change it, edit the Markdown pane. Exports
-(HTML, Word and PDF) keep the formula as its TeX text, the same as a tool that
-does not know math.
+visual pane, like an embed: to change it, edit the Markdown pane. A web page
+export carries formulas as MathML, so any browser typesets them; a Word
+document gets each formula as a picture, and a PDF gets display formulas as
+pictures while inline formulas stay as their TeX text. A formula that cannot be
+drawn keeps its TeX text. A note shown inside another with `![[Note]]` typesets
+its formulas too.
 
 A fenced code block whose language is `mermaid` is a diagram:
 
@@ -385,7 +388,9 @@ Read view draws it, and a click on the drawing shows it full size. The other
 views show the code. The diagram engine (Mermaid) is large and loads only when a
 document has a diagram, so the first one takes a moment, and in a browser you
 have never opened a diagram in, it needs a connection once. A diagram that
-cannot be drawn leaves its source on the page with a note.
+cannot be drawn leaves its source on the page with a note. Exports draw the
+diagram too: as a picture in the web page, the Word document and the PDF.
+Callouts and diagrams in a note shown inside another note are drawn as well.
 
 ## Horizontal rules
 
