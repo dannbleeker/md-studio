@@ -216,6 +216,7 @@ export const en = {
     'To open linked files, choose the attachments folder first (see the notice above the editor).',
   'link.scanning': 'Still scanning the folder. Try the link again in a moment.',
   'read.fold': 'Fold or unfold this section',
+  'drawer.close': 'Close the side panel',
   'folder.title': 'Folder',
   'folder.toolbar': 'Folder',
   'folder.unsupported':

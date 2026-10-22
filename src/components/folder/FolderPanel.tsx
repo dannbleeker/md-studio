@@ -15,8 +15,15 @@ import {
   useFolder,
 } from '@/services/folder';
 import { useStore } from '@/store';
+import { closeDrawers } from '../ui/drawers';
 
 const MAX_FILTERED = 100;
+
+/** Opens a note from the panel and, on a phone, slides the panel away. */
+function pick(path: string): void {
+  void openFolderNote(path);
+  closeDrawers();
+}
 
 /** Every folder on the way to `path`, so the open note is visible in the tree. */
 function ancestors(path: string | null): string[] {
@@ -145,7 +152,7 @@ function LinkedFrom({ current }: { current: string | null }) {
                 className="folder-item"
                 style={{ paddingLeft: '0.4rem' }}
                 title={path}
-                onClick={() => void openFolderNote(path)}
+                onClick={() => pick(path)}
               >
                 {path.replace(/\.(?:md|markdown|mdown|mkd)$/i, '')}
               </button>
@@ -207,7 +214,9 @@ export function FolderPanel() {
   const onActivate = (path: string, isDir: boolean) => {
     setActive(path);
     if (isDir) setOpen(path, !expanded.has(path));
-    else void openFolderNote(path);
+    else {
+      pick(path);
+    }
   };
   const onKey = (event: KeyboardEvent<HTMLElement>, path: string) => {
     if (event.ctrlKey || event.metaKey || event.altKey) return;
@@ -216,7 +225,9 @@ export function FolderPanel() {
     event.preventDefault();
     if (move.expand) setOpen(move.expand, true);
     if (move.collapse) setOpen(move.collapse, false);
-    if (move.activate) void openFolderNote(move.activate);
+    if (move.activate) {
+      pick(move.activate);
+    }
     if (move.focus) {
       refocus.current = true;
       setActive(move.focus);
@@ -301,7 +312,7 @@ export function FolderPanel() {
                         style={{ paddingLeft: '0.4rem' }}
                         aria-current={path === current ? 'page' : undefined}
                         title={path}
-                        onClick={() => void openFolderNote(path)}
+                        onClick={() => pick(path)}
                       >
                         {path.replace(/\.(?:md|markdown|mdown|mkd)$/i, '')}
                       </button>

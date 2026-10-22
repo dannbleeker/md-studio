@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Phone layout.** Below 720px the folder and outline panels slide over the
+  document as a drawer with a backdrop, and close when a note or heading is
+  picked. Rows, toolbar buttons and tabs get larger touch targets (also on
+  any coarse pointer). In Read view a quick horizontal swipe goes back or
+  forward through opened notes (`domain/swipe.ts`, ignored over code, tables,
+  formulas and diagrams, or while text is selected).
 - **Folder tree is a real tree.** The folder panel is an ARIA tree
   (`role="tree"`, levels, expanded and selected states) with one row in the tab
   order. Up/Down, Home/End, Right (open, then enter), Left (close, then climb)

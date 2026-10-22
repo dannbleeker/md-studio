@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 
-const QUERY = '(max-width: 720px)';
+export const MOBILE_QUERY = '(max-width: 720px)';
+const QUERY = MOBILE_QUERY;
 
 const subscribe = (onChange: () => void) => {
   const mql = window.matchMedia?.(QUERY);
@@ -8,7 +9,7 @@ const subscribe = (onChange: () => void) => {
   return () => mql?.removeEventListener('change', onChange);
 };
 
-/** Below 720px the split view stacks the panes vertically (see mobile.css). */
+/** Below 720px the split view stacks the panes vertically (see the 720px rules in editor.css). */
 export function useIsMobile(): boolean {
   return useSyncExternalStore(
     subscribe,
@@ -16,3 +17,6 @@ export function useIsMobile(): boolean {
     () => false
   );
 }
+
+/** The same test, read once: for an event handler that cannot subscribe. */
+export const isMobileNow = (): boolean => window.matchMedia?.(MOBILE_QUERY).matches ?? false;

@@ -4,6 +4,7 @@ import { t } from '@/i18n';
 import { useStore } from '@/store';
 import { editors, visualHeadings } from '../editor/editorRegistry';
 import { jumpToHeading } from '../editor/jumpToHeading';
+import { closeDrawers } from '../ui/drawers';
 
 /** Index of the heading at or above the text pane's top line. */
 function activeHeading(lines: number[]): number {
@@ -74,6 +75,7 @@ export function OutlinePanel() {
   const jump = (index: number) => {
     jumpToHeading(headings, index);
     setActive(index);
+    closeDrawers();
   };
 
   return (

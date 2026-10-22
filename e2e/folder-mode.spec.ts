@@ -180,3 +180,70 @@ test('the folder tree works from the keyboard', async ({ page }) => {
   await page.keyboard.press('ArrowLeft');
   await expect(notes).toHaveAttribute('aria-expanded', 'false');
 });
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 360, height: 740 }, hasTouch: true });
+
+  test('the folder is a drawer that closes on a pick, and a swipe goes back', async ({ page }) => {
+    await setUp(page);
+    await page.getByRole('button', { name: 'Open folder', exact: true }).click();
+    const drawer = panel(page);
+    await expect(drawer).toBeVisible();
+    // It slides over the document instead of squeezing it, and the page does not scroll sideways.
+    await expect(drawer).toHaveCSS('position', 'fixed');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      360
+    );
+
+    // A row is a comfortable touch target.
+    const other = drawer.getByRole('treeitem', { name: /Other/ });
+    expect((await other.locator('.folder-item').boundingBox())?.height).toBeGreaterThanOrEqual(40);
+
+    // Tapping the backdrop puts it away.
+    await page
+      .getByRole('button', { name: 'Close the side panel' })
+      .click({ position: { x: 340, y: 400 } });
+    await expect(drawer).toBeHidden();
+    await page.getByRole('button', { name: 'Folder', exact: true }).click();
+    await expect(drawer).toBeVisible();
+
+    // Picking a note opens it and the drawer leaves.
+    await drawer.getByRole('searchbox', { name: 'Filter notes' }).fill('gam');
+    await drawer.getByRole('button', { name: 'Other/Gamma' }).click();
+    await expect(visualPane(page).locator('h1')).toContainText('Gamma');
+    await expect(drawer).toBeHidden();
+
+    // In Read view a link opens Alpha, and a swipe to the right goes back to Gamma.
+    await page.getByRole('button', { name: 'Read', exact: true }).click();
+    // The Read view buttons still fit a 360px toolbar.
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      360
+    );
+    await visualPane(page).locator('.md-wikilink').click();
+    await expect(visualPane(page).locator('h1')).toContainText('Alpha');
+    const swipe = (from: number, to: number) =>
+      page.evaluate(
+        ([a, b]) => {
+          const target = document.querySelector('.ProseMirror p') ?? document.body;
+          const touch = (x: number) =>
+            new Touch({ identifier: 1, target, clientX: x, clientY: 300 });
+          const fire = (type: string, x: number | null) =>
+            target.dispatchEvent(
+              new TouchEvent(type, {
+                bubbles: true,
+                cancelable: true,
+                touches: x === null ? [] : [touch(x)],
+                changedTouches: [touch(x ?? (b as number))],
+              })
+            );
+          fire('touchstart', a as number);
+          fire('touchend', null);
+        },
+        [from, to]
+      );
+    await swipe(60, 240);
+    await expect(visualPane(page).locator('h1')).toContainText('Gamma');
+    await swipe(260, 60);
+    await expect(visualPane(page).locator('h1')).toContainText('Alpha');
+  });
+});

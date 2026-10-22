@@ -958,3 +958,42 @@
 .read-diagram.is-ready + pre {
   display: none;
 }
+
+/* Phones: the side panels slide over the document, and touch targets grow. */
+@media (max-width: 720px) {
+  .folder-panel,
+  .outline {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 40;
+    width: min(85vw, 20rem);
+    box-shadow: 0 0 2rem rgb(0 0 0 / 35%);
+    border-right: 1px solid var(--border);
+  }
+  .drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 39;
+    border: 0;
+    padding: 0;
+    background: rgb(0 0 0 / 40%);
+    cursor: default;
+  }
+}
+@media (pointer: coarse), (max-width: 720px) {
+  .folder-item,
+  .outline-item {
+    padding-block: 0.7rem;
+  }
+  .btn-icon {
+    min-width: 2.5rem;
+  }
+  .toolbar .btn,
+  .toolbar .btn-icon,
+  .segmented button,
+  .tab-bar button {
+    min-height: 2.5rem;
+  }
+}
