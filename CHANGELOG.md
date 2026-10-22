@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Reading keys help.** `?` in Read view (or "Reading keyboard shortcuts" in
+  the palette) lists the plain-letter keys. The list is built from the same
+  table that runs the keys (`readKeyBindings`), so it cannot drift; the dialog
+  is a lazy chunk.
 - **Formulas and diagrams in exports.** HTML keeps formulas as MathML and
   embeds Mermaid diagrams as inline SVG pictures; Word gets both as PNG
   pictures; PDF draws display formulas and diagrams as pictures (inline

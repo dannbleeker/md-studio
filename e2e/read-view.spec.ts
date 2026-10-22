@@ -178,3 +178,21 @@ test('jumping to a heading unfolds a fold that hides it', async ({ page }) => {
     .click();
   await expect(pane.getByText('child text')).toBeVisible();
 });
+
+test('? lists the reading keys and Escape closes the list', async ({ page }) => {
+  await readView(page, 'Just text.');
+  await expect(page.getByTestId('visual-editor').getByText('Just text.')).toBeVisible();
+  await page.locator('body').click({ position: { x: 5, y: 300 } });
+  await page.keyboard.press('?');
+  const dialog = page.getByRole('dialog', { name: 'Reading keys' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText('Next heading')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+
+  // The palette lists it too.
+  await page.keyboard.press('ControlOrMeta+K');
+  await page.getByRole('combobox', { name: 'Commands' }).fill('reading keyboard');
+  await page.keyboard.press('Enter');
+  await expect(dialog).toBeVisible();
+});

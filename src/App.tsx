@@ -33,6 +33,9 @@ const AttachmentBanner = lazy(() =>
 const ReaderDialog = lazy(() =>
   import('./components/settings/ReaderDialog').then((m) => ({ default: m.ReaderDialog }))
 );
+const ReadKeysDialog = lazy(() =>
+  import('./components/settings/ReadKeysDialog').then((m) => ({ default: m.ReadKeysDialog }))
+);
 const FolderPanel = lazy(() =>
   import('./components/folder/FolderPanel').then((m) => ({ default: m.FolderPanel }))
 );
@@ -52,9 +55,14 @@ export function App() {
   const readerOpen = useUiStore((s) => s.readerOpen);
   // Loaded on the first open, then kept so closing it hands focus back as a dialog does.
   const [readerSeen, setReaderSeen] = useState(false);
+  const readKeysOpen = useUiStore((s) => s.readKeysOpen);
+  const [readKeysSeen, setReadKeysSeen] = useState(false);
   useEffect(() => {
     if (readerOpen) setReaderSeen(true);
   }, [readerOpen]);
+  useEffect(() => {
+    if (readKeysOpen) setReadKeysSeen(true);
+  }, [readKeysOpen]);
   useLocale();
   useTheme();
   useShortcuts();
@@ -135,6 +143,11 @@ export function App() {
       {readerSeen ? (
         <LazyBoundary>
           <ReaderDialog />
+        </LazyBoundary>
+      ) : null}
+      {readKeysSeen ? (
+        <LazyBoundary>
+          <ReadKeysDialog />
         </LazyBoundary>
       ) : null}
       <ExportDialog />

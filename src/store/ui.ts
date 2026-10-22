@@ -55,6 +55,8 @@ type Dialogs = {
   findRequest: number;
   /** The reading controls (width, typeface, spacing, colours) of Read view. */
   readerOpen: boolean;
+  /** The list of Read view's keys. */
+  readKeysOpen: boolean;
   /** Only the document shows: no toolbar, tabs or side panels. Never saved. */
   focusMode: boolean;
   /**
@@ -72,6 +74,7 @@ const CLOSED: Dialogs = {
   findWithReplace: false,
   findRequest: 0,
   readerOpen: false,
+  readKeysOpen: false,
   focusMode: false,
   attachmentBannerDismissed: {},
 };
@@ -85,6 +88,7 @@ type UiState = Dialogs & {
   setPaletteOpen: (open: boolean) => void;
   setExportOpen: (open: boolean) => void;
   setReaderOpen: (open: boolean) => void;
+  setReadKeysOpen: (open: boolean) => void;
   setFocusMode: (on: boolean) => void;
   setFind: (open: boolean, withReplace?: boolean) => void;
 };
@@ -99,6 +103,7 @@ export const useUiStore = create<UiState>()((set) => ({
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
   setExportOpen: (exportOpen) => set({ exportOpen }),
   setReaderOpen: (readerOpen) => set({ readerOpen }),
+  setReadKeysOpen: (readKeysOpen) => set({ readKeysOpen }),
   setFocusMode: (focusMode) => set({ focusMode }),
   setFind: (findOpen, withReplace) =>
     set((s) => ({
