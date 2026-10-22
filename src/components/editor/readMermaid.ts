@@ -1,7 +1,7 @@
 import type { Node as PmNode } from '@milkdown/kit/prose/model';
 import { Decoration } from '@milkdown/kit/prose/view';
 import { t } from '@/i18n';
-import { drawDiagram, MAX_DIAGRAM_CHARS, peekDiagram } from './mermaidRender';
+import { drawDiagram, MAX_DIAGRAM_CHARS, peekDiagram } from '@/services/mermaid';
 
 /** Whether the page is drawn dark: the sepia page is light whatever the app's theme. */
 function isDark(): boolean {

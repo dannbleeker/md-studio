@@ -151,3 +151,52 @@ test('front matter is exported in every format once turned on in Settings', asyn
   await page.keyboard.press('Enter');
   expectFrontMatter(await readFile(await (await download).path(), 'utf8'));
 });
+
+test('formulas and diagrams are typeset in HTML, Word and PDF exports', async ({ page }) => {
+  await newDocument(page);
+  await setText(
+    page,
+    [
+      '# Maths',
+      '',
+      'Inline $E = mc^2$ here, and a price of $5.',
+      '',
+      '$$',
+      '\\int_0^1 x\\,dx = \\frac{1}{2}',
+      '$$',
+      '',
+      '```mermaid',
+      'graph TD',
+      '  A[Start] --> B[End]',
+      '```',
+      '',
+    ].join('\n')
+  );
+  const exported = async (label: RegExp) => {
+    await page.getByRole('button', { name: 'Export', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Export' });
+    await dialog.getByRole('radio', { name: label }).check();
+    const download = page.waitForEvent('download');
+    await dialog.getByRole('button', { name: 'Export' }).click();
+    return readFile(await (await download).path());
+  };
+
+  // A web page: MathML for both formulas, the diagram as an inline SVG picture, the price as text.
+  const html = (await exported(/^Web page/)).toString('utf8');
+  expect(html.match(/<math/g)?.length).toBe(2);
+  expect(html).toContain('data:image/svg+xml;base64,');
+  expect(html).toContain('a price of $5.');
+  expect(html).not.toContain('mermaid');
+
+  // Word: three pictures (both formulas and the diagram), and no TeX left in the text.
+  const docx = await exported(/^Word document/);
+  const names = [...docx.toString('latin1').matchAll(/word\/media\/[\w.-]+\.png/g)];
+  expect(new Set(names.map((m) => m[0])).size).toBe(3);
+  const xml = zipEntry(docx, 'word/document.xml');
+  expect(xml).not.toContain('\\int');
+
+  // PDF: a valid file with the display formula and the diagram drawn as pictures.
+  const pdf = await exported(/^PDF/);
+  expect(pdf.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+  expect(pdf.toString('latin1').match(/\/Subtype\s*\/Image/g)?.length).toBe(2);
+});

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Formulas and diagrams in exports.** HTML keeps formulas as MathML and
+  embeds Mermaid diagrams as inline SVG pictures; Word gets both as PNG
+  pictures; PDF draws display formulas and diagrams as pictures (inline
+  formulas stay TeX text, as pictures cannot flow in its text layout). Plain
+  text is unchanged. The work is a lazy chunk used only when the document
+  contains `$` or a mermaid fence (`domain/typesetPlan.ts`,
+  `services/export/typeset.ts`); a formula or diagram that fails to draw
+  keeps its source text.
 - **Math and diagrams.** `$x^2$` and `$$...$$` are typeset (KaTeX, as MathML,
   loaded on first use) in every view; the formula stays one lossless unit
   holding its exact source (`domain/math.ts`, `mathPlaceholder.ts`,

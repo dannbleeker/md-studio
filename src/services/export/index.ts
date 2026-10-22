@@ -19,6 +19,7 @@ import { useStore } from '@/store';
 import { showToast } from '@/store/ui';
 import type { DocContext } from '../attachments';
 import { saveBlobAs } from '../fileSystem';
+import type { ExportImages } from './exportImages';
 
 /** `webImages` defaults to the setting; false keeps web images out of the export. */
 export type ExportOptions = { htmlTheme: HtmlTheme; frontMatter: boolean; webImages?: boolean };
@@ -47,6 +48,10 @@ function hasSizedImage(markdown: string): boolean {
  */
 const mayHaveEmbeds = (markdown: string): boolean =>
   markdown.includes('[[') || hasSizedImage(markdown);
+
+/** Cheap test, so a document without math or diagrams never loads the typesetting code. */
+const mayNeedTypesetting = (markdown: string): boolean =>
+  markdown.includes('$') || /mermaid/i.test(markdown);
 
 /** Only an embed (not a plain wikilink, which prints its own text) needs to look in the vault. */
 const needsVault = (markdown: string): boolean =>
@@ -134,14 +139,21 @@ async function render(
   title: string,
   options: ExportOptions,
   ctx: DocContext,
-  attachments: ReadonlySet<string>
+  attachments: ReadonlySet<string>,
+  typeset: ExportImages = new Map()
 ): Promise<Blob> {
   const { mime } = formatInfo(format);
   const images = async (loadOptions?: { keepPastedRasters?: boolean }) =>
-    (await import('./exportImages')).loadExportImages(markdown, ctx, {
-      ...loadOptions,
-      attachments,
-    });
+    // The typeset pictures after the document's own, which never use the typeset: scheme.
+    new Map([
+      ...(await (
+        await import('./exportImages')
+      ).loadExportImages(markdown, ctx, {
+        ...loadOptions,
+        attachments,
+      })),
+      ...typeset,
+    ]);
   switch (format) {
     case 'html': {
       const { markdownToHtml } = await import('./html');
@@ -184,13 +196,21 @@ export async function exportDocument(format: ExportFormat, options: ExportOption
     const expanded = await expandVaultEmbeds(markdown, ctx);
     if (expanded.unavailable) showToast(t('export.attachmentsUnavailable'));
     // The exporters have no footnote support; see domain/footnotes.ts.
+    const inlined = inlineFootnotes(expanded.markdown);
+    // Formulas and diagrams become pictures (or MathML) where the format can show them.
+    const typeset = mayNeedTypesetting(inlined)
+      ? await (await import('./typeset')).typesetForExport(inlined, format, {
+          dark: options.htmlTheme === 'dark',
+        })
+      : { markdown: inlined, images: new Map() };
     const blob = await render(
       format,
-      inlineFootnotes(expanded.markdown),
+      typeset.markdown,
       title,
       options,
       ctx,
-      expanded.images
+      expanded.images,
+      typeset.images
     );
     const result = await saveBlobAs(blob, name, formatInfo(format));
     if (!result) return;

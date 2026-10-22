@@ -12,6 +12,11 @@ export type ExportImage = ImageInfo & {
    * browser shows (HTML only); width and height are then 0 and unused.
    */
   mime?: string;
+  /**
+   * Markup a web page shows in place of the picture (a typeset formula, as
+   * MathML). HTML only; the bytes are then empty.
+   */
+  html?: string;
   /** Pixel size the Markdown asked for (Obsidian's ![[a.png|300]]). */
   displayWidth?: number;
   displayHeight?: number;
