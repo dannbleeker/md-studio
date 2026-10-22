@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Folder tree is a real tree.** The folder panel is an ARIA tree
+  (`role="tree"`, levels, expanded and selected states) with one row in the tab
+  order. Up/Down, Home/End, Right (open, then enter), Left (close, then climb)
+  and Enter/Space work as in a file manager; the rules are pure and tested in
+  `domain/treeNav.ts`.
 - **Links to files.** In Read view (or Ctrl+click while editing) a link to a
   file that is not a note, `[report](report.pdf)` or `[[report.pdf]]`, finds
   it in the vault folder and opens PDFs, pictures, audio and video in a new

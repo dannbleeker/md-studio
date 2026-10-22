@@ -95,11 +95,11 @@ test('browse a folder, open notes, see what links here, go back', async ({ page 
   await page.getByRole('button', { name: 'Open folder', exact: true }).click();
 
   // The tree lists notes only: folders first, no image.
-  await expect(panel(page).getByRole('button', { name: /Notes/ })).toBeVisible();
-  await expect(panel(page).getByRole('button', { name: /Other/ })).toBeVisible();
+  await expect(panel(page).getByRole('treeitem', { name: /Notes/ })).toBeVisible();
+  await expect(panel(page).getByRole('treeitem', { name: /Other/ })).toBeVisible();
   await expect(panel(page).getByText('pic')).toHaveCount(0);
-  await panel(page).getByRole('button', { name: /Notes/ }).click();
-  await panel(page).getByRole('button', { name: 'Alpha', exact: true }).click();
+  await panel(page).getByRole('treeitem', { name: /Notes/ }).click();
+  await panel(page).getByRole('treeitem', { name: 'Alpha', exact: true }).click();
   await expect(visualPane(page).locator('h1')).toContainText('Alpha');
   await expect(page.locator('.file-name')).toContainText('Alpha.md');
 
@@ -145,4 +145,38 @@ test('a link to a file that is not a note saves it from Read view', async ({ pag
   const download = page.waitForEvent('download');
   await visualPane(page).getByRole('link', { name: 'the sheet' }).click();
   expect((await download).suggestedFilename()).toBe('data.csv');
+});
+
+test('the folder tree works from the keyboard', async ({ page }) => {
+  await setUp(page);
+  await page.getByRole('button', { name: 'Open folder', exact: true }).click();
+  const tree = panel(page).getByRole('tree');
+  const notes = tree.getByRole('treeitem', { name: 'Notes', exact: true });
+  await expect(notes).toHaveAttribute('aria-expanded', 'false');
+
+  // One row is in the tab order; Right opens the folder, Right again enters it.
+  await notes.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(notes).toHaveAttribute('aria-expanded', 'true');
+  await page.keyboard.press('ArrowRight');
+  const alpha = tree.getByRole('treeitem', { name: 'Alpha', exact: true });
+  await expect(alpha).toBeFocused();
+  await expect(alpha).toHaveAttribute('aria-level', '2');
+  await page.keyboard.press('ArrowDown');
+  await expect(tree.getByRole('treeitem', { name: 'Beta', exact: true })).toBeFocused();
+  await page.keyboard.press('Home');
+  await expect(notes).toBeFocused();
+  await page.keyboard.press('End');
+  await expect(tree.getByRole('treeitem').last()).toBeFocused();
+
+  // Enter opens a note; Left from a note climbs to its folder, then closes it.
+  await alpha.focus();
+  await page.keyboard.press('Enter');
+  await expect(visualPane(page).locator('h1')).toContainText('Alpha');
+  await expect(alpha).toHaveAttribute('aria-selected', 'true');
+  await alpha.focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(notes).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
+  await expect(notes).toHaveAttribute('aria-expanded', 'false');
 });

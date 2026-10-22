@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { buildTree, type TreeNode } from '@/domain/folderTree';
 import { fuzzyFilter } from '@/domain/fuzzy';
+import { treeKey, visibleRows } from '@/domain/treeNav';
 import { t } from '@/i18n';
 import { type Backlinks, findBacklinks } from '@/services/backlinks';
 import {
@@ -24,60 +25,72 @@ function ancestors(path: string | null): string[] {
   return parts.slice(0, -1).map((_, i) => parts.slice(0, i + 1).join('/'));
 }
 
-function Tree({
-  nodes,
-  expanded,
-  toggle,
-  current,
-  depth = 0,
-}: {
+type TreeProps = {
   nodes: TreeNode[];
   expanded: ReadonlySet<string>;
-  toggle: (path: string) => void;
   current: string | null;
+  /** The one row in the tab order; the arrow keys move it. */
+  tabbable: string | null;
+  onKey: (event: KeyboardEvent<HTMLElement>, path: string) => void;
+  onActivate: (path: string, isDir: boolean) => void;
   depth?: number;
-}) {
+};
+
+/**
+ * An ARIA tree: one row is in the tab order and the arrow keys move between
+ * rows (see `treeKey`). The row is the `li` itself, so a screen reader reads
+ * "name, expanded, level 2" and a folder's contents are its group.
+ */
+function Tree({ nodes, expanded, current, tabbable, onKey, onActivate, depth = 0 }: TreeProps) {
   return (
-    <ul className="folder-tree">
+    <ul
+      className="folder-tree"
+      role={depth === 0 ? 'tree' : 'group'}
+      aria-label={depth === 0 ? t('folder.title') : undefined}
+    >
       {nodes.map((node) => {
-        const pad = { paddingLeft: `${0.4 + depth * 0.9}rem` };
-        if (node.children) {
-          const open = expanded.has(node.path);
-          return (
-            <li key={node.path}>
-              <button
-                type="button"
-                className="folder-item folder-dir"
-                style={pad}
-                aria-expanded={open}
-                onClick={() => toggle(node.path)}
-              >
-                <span aria-hidden="true">{open ? '▾' : '▸'}</span> {node.name}
-              </button>
-              {open ? (
-                <Tree
-                  nodes={node.children}
-                  expanded={expanded}
-                  toggle={toggle}
-                  current={current}
-                  depth={depth + 1}
-                />
-              ) : null}
-            </li>
-          );
-        }
+        const isDir = node.children !== null;
+        const open = isDir && expanded.has(node.path);
+        const label = isDir ? node.name : node.name.replace(/\.(?:md|markdown|mdown|mkd)$/i, '');
         return (
-          <li key={node.path}>
-            <button
-              type="button"
-              className="folder-item"
-              style={pad}
+          <li
+            key={node.path}
+            role="treeitem"
+            aria-level={depth + 1}
+            aria-label={label}
+            aria-expanded={isDir ? open : undefined}
+            aria-selected={node.path === current}
+            data-path={node.path}
+            tabIndex={node.path === tabbable ? 0 : -1}
+            title={isDir ? undefined : node.path}
+            onKeyDown={(e) => {
+              // Keys of a row inside this one belong to that row.
+              if (e.target === e.currentTarget) onKey(e, node.path);
+            }}
+            onClick={(e) => {
+              if ((e.target as Element).closest('li') === e.currentTarget)
+                onActivate(node.path, isDir);
+            }}
+          >
+            <div
+              className={isDir ? 'folder-item folder-dir' : 'folder-item'}
+              style={{ paddingLeft: `${0.4 + depth * 0.9}rem` }}
               aria-current={node.path === current ? 'page' : undefined}
-              title={node.path}
-              onClick={() => void openFolderNote(node.path)}
             >
-              {node.name.replace(/\.(?:md|markdown|mdown|mkd)$/i, '')}
-            </button>
+              {isDir ? <span aria-hidden="true">{open ? '▾' : '▸'} </span> : null}
+              {label}
+            </div>
+            {open && node.children ? (
+              <Tree
+                nodes={node.children}
+                expanded={expanded}
+                current={current}
+                tabbable={tabbable}
+                onKey={onKey}
+                onActivate={onActivate}
+                depth={depth + 1}
+              />
+            ) : null}
           </li>
         );
       })}
@@ -174,12 +187,47 @@ export function FolderPanel() {
     () => (query.trim() === '' ? null : fuzzyFilter(notes, query, (p) => p).slice(0, MAX_FILTERED)),
     [notes, query]
   );
-  const toggle = (path: string) =>
-    setExpanded((open) => {
-      const next = new Set(open);
-      if (!next.delete(path)) next.add(path);
+  const rows = useMemo(() => visibleRows(tree, expanded), [tree, expanded]);
+  const [active, setActive] = useState<string | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const refocus = useRef(false);
+  // The row in the tab order: the one last moved to, else the open note, else the first.
+  const tabbable =
+    [active, current].find((p) => p !== null && rows.some((r) => r.path === p)) ??
+    rows[0]?.path ??
+    null;
+
+  const setOpen = (path: string, open: boolean) =>
+    setExpanded((all) => {
+      const next = new Set(all);
+      if (open) next.add(path);
+      else next.delete(path);
       return next;
     });
+  const onActivate = (path: string, isDir: boolean) => {
+    setActive(path);
+    if (isDir) setOpen(path, !expanded.has(path));
+    else void openFolderNote(path);
+  };
+  const onKey = (event: KeyboardEvent<HTMLElement>, path: string) => {
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    const move = treeKey(rows, path, event.key);
+    if (!move) return;
+    event.preventDefault();
+    if (move.expand) setOpen(move.expand, true);
+    if (move.collapse) setOpen(move.collapse, false);
+    if (move.activate) void openFolderNote(move.activate);
+    if (move.focus) {
+      refocus.current = true;
+      setActive(move.focus);
+    }
+  };
+  // Moves focus after the render that made the target the tab stop.
+  useEffect(() => {
+    if (!refocus.current || active === null) return;
+    refocus.current = false;
+    listRef.current?.querySelector<HTMLElement>(`[data-path="${CSS.escape(active)}"]`)?.focus();
+  }, [active]);
 
   return (
     <nav className="folder-panel" aria-label={t('folder.title')}>
@@ -237,7 +285,7 @@ export function FolderPanel() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
-          <div className="folder-list">
+          <div className="folder-list" ref={listRef}>
             {notes.length === 0 ? (
               <p className="muted outline-empty">{t('folder.empty')}</p>
             ) : filtered ? (
@@ -262,7 +310,14 @@ export function FolderPanel() {
                 </ul>
               )
             ) : (
-              <Tree nodes={tree} expanded={expanded} toggle={toggle} current={current} />
+              <Tree
+                nodes={tree}
+                expanded={expanded}
+                current={current}
+                tabbable={tabbable}
+                onKey={onKey}
+                onActivate={onActivate}
+              />
             )}
             {truncated ? <p className="muted outline-empty">{t('folder.truncated')}</p> : null}
           </div>
