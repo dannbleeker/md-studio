@@ -595,3 +595,356 @@
     display: block;
   }
 }
+
+/* Reading controls (Reading dialog): width, typeface, spacing, page colours. */
+.split[data-view="read"][data-read-width="narrow"] .visual-doc {
+  max-width: 36rem;
+}
+.split[data-view="read"][data-read-width="wide"] .visual-doc {
+  max-width: 56rem;
+}
+.split[data-view="read"][data-read-font="serif"] .visual-doc .ProseMirror {
+  font-family: Georgia, "Iowan Old Style", "Palatino Linotype", "Times New Roman", serif;
+}
+.split[data-view="read"][data-read-spacing="compact"] .visual-doc .ProseMirror {
+  line-height: 1.55;
+}
+.split[data-view="read"][data-read-spacing="relaxed"] .visual-doc .ProseMirror {
+  line-height: 2.05;
+}
+.split[data-view="read"][data-read-theme="sepia"] {
+  --bg: #f4ecd8;
+  --surface: #faf4e4;
+  --surface-2: #ebe1c9;
+  --text: #433422;
+  --text-muted: #6b5b45;
+  --text-faint: #7a6a52;
+  --border: #d8cdb4;
+  --accent: #8a5a22;
+  --accent-soft: #eadbbb;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Focus mode: only the page. */
+.app[data-focus] .toolbar,
+.app[data-focus] .tab-bar,
+.app[data-focus] .outline {
+  display: none;
+}
+.focus-exit {
+  position: fixed;
+  top: 0.5rem;
+  right: 1rem;
+  z-index: 20;
+  padding: 0.25rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.8rem;
+  opacity: 0.35;
+  cursor: pointer;
+}
+.focus-exit:hover,
+.focus-exit:focus-visible {
+  opacity: 1;
+}
+
+/* Heading buttons and the front matter card (Read view). */
+.read-link {
+  margin-left: 0.4em;
+  padding: 0 0.25em;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-faint);
+  font: inherit;
+  font-size: 0.8em;
+  cursor: pointer;
+  opacity: 0;
+  user-select: none;
+}
+.visual-doc :is(h1, h2, h3, h4, h5, h6):hover .read-link,
+.read-link:focus-visible {
+  opacity: 1;
+}
+.read-link:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+.read-card {
+  margin: 0 0 1.6rem;
+  padding: 0.9rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  line-height: 1.5;
+}
+.read-card-title {
+  font-size: 1.5rem;
+  font-weight: 650;
+  line-height: 1.25;
+}
+.read-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+.read-tag {
+  padding: 0.05rem 0.55rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+.read-card-fields {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.15rem 1rem;
+  margin: 0.6rem 0 0;
+  font-size: 0.85rem;
+}
+.read-card-key {
+  color: var(--text-faint);
+}
+.read-card-value {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Callouts (Read view). */
+.visual-doc blockquote.callout {
+  --callout: #3b6ea8;
+  margin: 1rem 0;
+  padding: 0.6rem 1rem;
+  border: 0;
+  border-left: 4px solid var(--callout);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: color-mix(in srgb, var(--callout) 10%, var(--surface));
+  color: var(--text);
+}
+.visual-doc blockquote.callout-tip {
+  --callout: #1e8a82;
+}
+.visual-doc blockquote.callout-success {
+  --callout: #2f8f4e;
+}
+.visual-doc blockquote.callout-question {
+  --callout: #a07a12;
+}
+.visual-doc blockquote.callout-warning {
+  --callout: #c2680f;
+}
+.visual-doc blockquote.callout-danger {
+  --callout: #c23b3b;
+}
+.visual-doc blockquote.callout-example {
+  --callout: #7a4fb5;
+}
+.visual-doc blockquote.callout-quote {
+  --callout: #7b8794;
+}
+.visual-doc blockquote.callout-abstract {
+  --callout: #2b8fb5;
+}
+.visual-doc blockquote.callout:not([data-callout-titled])::before {
+  content: attr(data-callout-label);
+  display: block;
+  margin-bottom: 0.2rem;
+  color: var(--callout);
+  font-weight: 650;
+}
+.callout-marker {
+  display: none;
+}
+/* The line break after the marker or the title is an inline break node, which shows as a space. */
+.callout-marker + [data-type="hardbreak"] {
+  display: none;
+}
+.callout-title + [data-type="hardbreak"] {
+  display: block;
+  height: 0.25rem;
+}
+.callout-title {
+  color: var(--callout);
+  font-weight: 650;
+}
+@media print {
+  .visual-doc .read-link,
+  .visual-doc .read-copy {
+    display: none;
+  }
+}
+
+/* The hover card over a link or footnote reference (Read view). */
+.read-popover {
+  position: fixed;
+  z-index: 60;
+  max-width: min(24rem, calc(100vw - 1rem));
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+.read-popover-title {
+  margin-bottom: 0.2rem;
+  font-weight: 650;
+}
+.read-popover-text {
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.visual-doc blockquote.callout > p {
+  margin: 0.25rem 0;
+}
+
+/* Folder panel: the opened folder's notes beside the editors. */
+.folder-panel {
+  display: flex;
+  flex-direction: column;
+  width: 16rem;
+  flex-shrink: 0;
+  min-height: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  padding: 0.75rem 0.5rem;
+}
+.folder-head {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.folder-head .outline-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.folder-filter {
+  margin: 0.25rem 0.25rem 0.5rem;
+  width: calc(100% - 0.5rem);
+}
+.folder-list {
+  flex: 1;
+  min-height: 4rem;
+  overflow-y: auto;
+}
+.folder-tree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.folder-item {
+  display: block;
+  width: 100%;
+  padding: 0.2rem 0.4rem;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.folder-item:hover {
+  background: var(--accent-soft);
+}
+.folder-item[aria-current="page"] {
+  background: var(--accent-soft);
+  font-weight: 650;
+}
+.folder-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.folder-dir {
+  color: var(--text-muted);
+}
+.folder-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+}
+.folder-linked {
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+  max-height: 35%;
+  overflow-y: auto;
+}
+.folder-change {
+  margin: 0.5rem 0.5rem 0;
+  align-self: flex-start;
+}
+.nav-buttons {
+  display: inline-flex;
+  gap: 0.1rem;
+  margin-right: 0.25rem;
+}
+.app[data-focus] .folder-panel {
+  display: none;
+}
+@media print {
+  .folder-panel {
+    display: none;
+  }
+}
+
+/* Math (KaTeX as MathML). */
+.md-math {
+  font-size: 1.08em;
+}
+.md-math math {
+  font-family: "Latin Modern Math", "STIX Two Math", "Cambria Math", "Noto Sans Math", math, serif;
+}
+.md-math:not(.md-math-ready) {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  color: var(--text-muted);
+}
+.md-math-display {
+  display: block;
+  margin: 0.9em 0;
+  overflow-x: auto;
+  text-align: center;
+}
+.md-math-display math {
+  font-size: 1.15em;
+}
+
+/* Mermaid diagrams (Read view). */
+.read-diagram {
+  margin: 1rem 0;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+.read-diagram img {
+  max-width: 100%;
+  height: auto;
+  cursor: zoom-in;
+}
+.read-diagram.is-error {
+  padding: 0.5rem 0.8rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+.read-diagram.is-ready + pre {
+  display: none;
+}

@@ -40,7 +40,9 @@ src/
                formats, footnotes, image paths and info,
                front matter, Obsidian embeds (embeds, embedLinks,
                codeRegions, vaultIndex, vaultConfig, transclusion,
-               embedExport, renderCost)
+               embedExport, renderCost), Read view (linkTarget, callouts,
+               frontMatterCard, notePreview, readKeys, readPositions),
+               math + mathPlaceholder, folder mode (folderTree, backlinks)
   store/       Zustand: index.ts (document, tabs, settings, recents,
                persistence subscription), settings.ts, ui.ts (dialogs and
                find bar flags, toasts, confirm/prompt, format state),
@@ -50,11 +52,17 @@ src/
                (File System Access + fallbacks), handleStore.ts (file
                handles in IndexedDB), documentActions.ts (user commands),
                images.ts, attachments.ts (vault folder, scan, resolve,
-               save), links.ts, perfMarks.ts, export/ (HTML, Word, PDF,
+               save), folder.ts (folder mode, lazy), noteHistory.ts (back /
+               forward), noteLinks.ts (follow + preview a note link),
+               backlinks.ts, links.ts, perfMarks.ts, export/ (HTML, Word, PDF,
                plain text; markdownPdf.mjs is shared with the book scripts)
   components/  editor/ (TextPane, VisualPane + visualSync, SplitView,
                sync helpers; embedNode, embedView, embedRender,
-               noteRenderer, imageView, mediaRenderers for embeds) ·
+               noteRenderer, imageView, mediaRenderers for embeds; mathNode,
+               mathRender; Read view: readHost + readFolds (eager) and the
+               lazy readImpl: readClicks, readHover, readDecorations +
+               readCallouts / readFrontMatter / readMermaid, lightbox) ·
+               folder/ (FolderPanel) ·
                attachments/ (folder banner) ·
                start/ · tabs/ · find/ · outline/ · export/ · settings/ ·
                command-palette/ · toolbar/ · toast/ · ui/ (Dialog,
@@ -169,6 +177,42 @@ that keep it safe:
   IndexedDB stand-in (CI's newer headless Chromium stalls cloning OPFS
   handles into IndexedDB); the visual pane adopts a click's selection right
   after focus (`clickSelection`), before ProseMirror's own 20 ms check.
+
+## Read view, math and folder mode (read before touching them)
+
+- **Read view is `viewMode === 'read'`**: the visual pane only, `editable`
+  off. Everything it adds is a **decoration or an event handler**, never
+  document content: folds, copy and link buttons, callouts, the front matter
+  card, diagrams. The raw block or marker is hidden by CSS, so a file is
+  never changed by looking at it. Keep it that way.
+- **The extras are a lazy chunk** (`readImpl`) behind a small eager host
+  plugin (`readHost`, in the editor from the start: fold state, plus
+  decoration and event hooks that delegate once the chunk has loaded, 1.5 s
+  after the page is up or at once in Read view). Do not add plugins to a
+  live editor with `state.reconfigure`: it recreates every plugin view and
+  broke the front matter handling. Until the chunk arrives a click on a link
+  in Read view is swallowed, never left to the browser. Anything the eager
+  code needs from the extras goes through a string (the folds' plugin key,
+  `readFolds.ts`).
+- **Math is a placeholder step, not a parser.** Before every parse the visual
+  pane replaces each `$...$` / `$$...$$` span (found by `domain/math.ts`,
+  code-aware, Pandoc rules) with an inert word that spells out the span
+  (`domain/mathPlaceholder.ts`); `remarkMath` turns it into the same `embed`
+  atom the Obsidian tokens use, `raw` = the exact source. Every parse path
+  must go through `parseWithMath` (VisualPane `create`, `applyMarkdown`,
+  `keepSourceStyle`). A document without math is untouched (the test
+  compares node JSON with the plain parser). KaTeX renders MathML (no fonts)
+  and loads on first use. A text pane edit of a formula is the way to change
+  one; typing math in the visual pane is plain text.
+- **Mermaid and KaTeX are lazy and Mermaid stays out of the precache**: its
+  chunks are named `diagram-` by `vite.config.ts` (`DIAGRAM_PACKAGES`) and
+  cached at runtime. Check `precache N entries` in the build output after a
+  dependency change. Diagrams go through an `<img>` data URL.
+- **Folder mode** reuses the attachments scan: the folder is stored as the
+  vault folder `dir:folder-mode`, so notes opened from it adopt it
+  (`adoptKnownRoot`). `pruneHandles` keeps `FOLDER_OWNER`. `services/folder`
+  is a lazy chunk; keep static imports of it (and of `attachments`) out of
+  the start-up path, or the `index` chunk budget fails.
 
 ## Conventions
 

@@ -7,6 +7,7 @@ import {
   openDocument,
   saveDocument,
 } from '@/services/documentActions';
+import { goBack, goForward } from '@/services/noteHistory';
 import { isMac } from '@/services/platform';
 import { useStore } from '@/store';
 import { useUiStore } from '@/store/ui';
@@ -38,6 +39,11 @@ export function useShortcuts(): void {
       else if (e.altKey && !mod && altKey === 'w' && s.screen === 'editor') void closeTab();
       else if (e.altKey && !mod && key === 'pagedown') cycleTab(1);
       else if (e.altKey && !mod && key === 'pageup') cycleTab(-1);
+      // The browser's own history keys: this app's notes have their own history.
+      else if (e.altKey && !mod && !e.shiftKey && key === 'arrowleft' && s.screen === 'editor')
+        void goBack();
+      else if (e.altKey && !mod && !e.shiftKey && key === 'arrowright' && s.screen === 'editor')
+        void goForward();
       else if ((mod && key === 'k') || (mod && e.shiftKey && key === 'p'))
         useUiStore.getState().setPaletteOpen(true);
       else if (mod && key === ',') useUiStore.getState().setSettingsOpen(true);

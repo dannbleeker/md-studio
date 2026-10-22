@@ -20,6 +20,7 @@ vi.mock('./attachments', () => ({ adoptAttachmentFolder }));
 
 const handles = new Map<string, FileSystemFileHandle>();
 vi.mock('./handleStore', () => ({
+  FOLDER_OWNER: 'folder-mode',
   getHandle: async (id: string) => handles.get(id) ?? null,
   // Like the real store: the same file keeps its id.
   putHandle: async (h: FileSystemFileHandle) => {
@@ -137,6 +138,24 @@ describe('recent files with handles', () => {
     expect(h.content).toBe('original');
     expect(click).toHaveBeenCalled(); // fell back to a download
     click.mockRestore();
+  });
+});
+
+describe('Open files in Read view', () => {
+  beforeEach(() => {
+    resetStoreForTest();
+    useStore.getState().setViewMode('split');
+  });
+
+  it('opens a file in Read view when the setting is on', async () => {
+    useStore.getState().updateSettings({ openInReadView: true });
+    await openDroppedFile(new File(['# Hi'], 'hi.md'));
+    expect(useStore.getState().viewMode).toBe('read');
+  });
+
+  it('leaves the view alone when it is off', async () => {
+    await openDroppedFile(new File(['# Hi'], 'hi.md'));
+    expect(useStore.getState().viewMode).toBe('split');
   });
 });
 

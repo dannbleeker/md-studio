@@ -121,6 +121,8 @@ another program saved it, reloads by itself as long as you have no unsaved
 changes. Save is left out of the toolbar and the palette in Read view, and
 Save as stays.
 
+The **Aa** button in Read view opens the reading controls: the width of the column, serif or sans, line spacing, and a sepia page. **Focus** hides the toolbar and tabs so only the page remains. The Settings dialog has **Open files in Read view**, which makes every file you open start in Read view, and MD Studio remembers where you stopped in each file. Rest the pointer on a link to another note to see the start of that note, and on a footnote reference to see the footnote. A heading shows a small **#** that copies a Markdown link to its section, and a front matter block shows as a card with the title, tags and fields. The keys for reading are in [Appendix A](appendix-a-keyboard-reference.md).
+
 Switching views only hides a pane. Both editors keep running, so switching is
 instant, and a pane you bring back is already up to date with what you typed
 in the other.

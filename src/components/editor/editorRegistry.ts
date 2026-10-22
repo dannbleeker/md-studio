@@ -51,3 +51,10 @@ export const visualHeadings = (pm: Element): HTMLElement[] =>
       ':scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6'
     )
   );
+
+/** A heading's own text, without the buttons Read view puts inside it. */
+export function headingPlainText(heading: Element): string {
+  const clone = heading.cloneNode(true) as Element;
+  for (const extra of clone.querySelectorAll('.read-fold, .read-link')) extra.remove();
+  return clone.textContent ?? '';
+}

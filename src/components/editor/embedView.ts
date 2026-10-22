@@ -1,6 +1,7 @@
 import type { Node } from '@milkdown/kit/prose/model';
 import type { NodeViewConstructor } from '@milkdown/kit/prose/view';
 import { parseWikiRef } from '@/domain/embeds';
+import { parseMathToken } from '@/domain/math';
 import { t } from '@/i18n';
 import type { DocContext } from '@/services/attachments';
 import { useStore } from '@/store';
@@ -45,7 +46,11 @@ export function withEmbedRender(use: (m: Render) => void): void {
 export async function loadAllEmbeds(): Promise<void> {
   const render = loaded ?? (await loading?.catch(() => null));
   await render?.flushPendingEmbeds();
+  await (await mathModule)?.mathSettled();
 }
+
+/** The math drawing module, once a formula has asked for it; null until then. */
+let mathModule: Promise<typeof import('./mathRender') | null> = Promise.resolve(null);
 
 /**
  * Prints the document with every embed drawn. The Print command and Ctrl+P both come
@@ -86,7 +91,45 @@ function hostClass(raw: string): string {
     : 'md-embed-host';
 }
 
-export const embedNodeView: NodeViewConstructor = (initial: Node) => {
+/** A formula: its source until KaTeX has drawn it. A new source is drawn again; a node that stops being math is rebuilt. */
+const mathNodeView: NodeViewConstructor = (initial: Node) => {
+  let raw = String(initial.attrs.raw ?? '');
+  const dom = document.createElement('span');
+  const draw = () => {
+    const display = parseMathToken(raw)?.display === true;
+    dom.className = `md-embed-host md-math${display ? ' md-math-display' : ''}`;
+    dom.textContent = raw;
+    dom.dataset.raw = raw;
+    mathModule = import('./mathRender').catch(() => null);
+    void mathModule.then((m) => m?.renderMath(dom, raw));
+  };
+  draw();
+  return {
+    dom,
+    update(next) {
+      if (next.type !== initial.type) return false;
+      const nextRaw = String(next.attrs.raw ?? '');
+      if (!parseMathToken(nextRaw)) return false;
+      if (nextRaw !== raw) {
+        raw = nextRaw;
+        draw();
+      }
+      return true;
+    },
+    ignoreMutation: () => true,
+    stopEvent: ownsEvent,
+  };
+};
+
+export const embedNodeView: NodeViewConstructor = (
+  initial: Node,
+  view,
+  getPos,
+  decorations,
+  inner
+) => {
+  if (parseMathToken(String(initial.attrs.raw ?? '')))
+    return mathNodeView(initial, view, getPos, decorations, inner);
   let node = initial;
   let raw = String(node.attrs.raw ?? '');
   const dom = document.createElement('span');
@@ -110,6 +153,8 @@ export const embedNodeView: NodeViewConstructor = (initial: Node) => {
       node = next;
       const nextRaw = String(next.attrs.raw ?? '');
       if (nextRaw === raw) return true;
+      // A wiki token that became a formula needs the formula's view.
+      if (parseMathToken(nextRaw)) return false;
       raw = nextRaw;
       mounted?.update(raw);
       return true;

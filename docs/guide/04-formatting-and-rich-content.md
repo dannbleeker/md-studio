@@ -318,6 +318,24 @@ customer's message. In the visual pane, **Quote** in the format toolbar wraps th
 current paragraph in a quote, and the visual editor is set up to do the same when
 you type `> ` at the start of a line.
 
+### Callouts
+
+Obsidian's callouts are block quotes with a label on the first line, for a note
+or a warning that should stand out:
+
+```markdown
+> [!warning] Check the date
+> The deadline moved to Friday.
+```
+
+The label is the type in square brackets after a bang, with an optional title
+after it. Without a title, the type's name is the title. Read view draws a
+callout with a coloured frame and hides the bracket label. The other views show
+the quote and the label as written, and every other tool shows a plain quote.
+Common types are `note`, `tip`, `warning`, `danger`, `success`, `question`,
+`example`, `quote` and `abstract`, and a few aliases such as `info`, `error` and
+`summary` map onto them.
+
 ## Footnotes
 
 A footnote moves a remark or a source out of the sentence. Mark the spot with a
@@ -341,6 +359,33 @@ markers. MD Studio's exports number them for you: each marker becomes `[1]`,
 `[2]` and so on, in the order they appear, and the notes follow as a numbered
 list at the end. For important sources, an inline link or a *Sources* section
 may still serve better.
+
+## Math and diagrams
+
+Put a formula between dollar signs and the visual pane typesets it:
+`$E = mc^2$` inline, or a block between two lines of `$$` for a display formula.
+The text between the signs is TeX. Math follows the usual rule for dollar signs,
+so prices stay prices: an opening `$` is not followed by a space, a closing one is
+not preceded by a space or followed by a digit, and a backslash before a dollar
+sign makes it plain text. Code never holds math. A formula is one unit in the
+visual pane, like an embed: to change it, edit the Markdown pane. Exports
+(HTML, Word and PDF) keep the formula as its TeX text, the same as a tool that
+does not know math.
+
+A fenced code block whose language is `mermaid` is a diagram:
+
+````markdown
+```mermaid
+graph TD
+  A[Start] --> B[Done]
+```
+````
+
+Read view draws it, and a click on the drawing shows it full size. The other
+views show the code. The diagram engine (Mermaid) is large and loads only when a
+document has a diagram, so the first one takes a moment, and in a browser you
+have never opened a diagram in, it needs a connection once. A diagram that
+cannot be drawn leaves its source on the page with a note.
 
 ## Horizontal rules
 

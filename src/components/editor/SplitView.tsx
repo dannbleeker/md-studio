@@ -49,6 +49,7 @@ function syncScrollNow(from: ScrollAdapter, to: ScrollAdapter) {
 export function SplitView() {
   const viewMode = useStore((s) => s.viewMode);
   const linkedScroll = useStore((s) => s.settings.linkedScroll);
+  const { readWidth, readFont, readSpacing, readTheme } = useStore((s) => s.settings);
   const adapters = useRef<Record<PaneId, ScrollAdapter | null>>({ text: null, visual: null });
   // Only the pane the user is interacting with drives the other; this is
   // what stops the programmatic scroll on the follower from bouncing back.
@@ -106,7 +107,14 @@ export function SplitView() {
   }, [viewMode, linkedScroll]);
 
   return (
-    <div className="split" data-view={viewMode}>
+    <div
+      className="split"
+      data-view={viewMode}
+      data-read-width={readWidth}
+      data-read-font={readFont}
+      data-read-spacing={readSpacing}
+      data-read-theme={readTheme}
+    >
       <section
         className="pane pane-text"
         data-pane="text"

@@ -13,6 +13,7 @@ import {
 } from '@/services/documentActions';
 import { exportDocument } from '@/services/export';
 import { BOOK_EPUB, BOOK_PDF, DASHBOARD, GUIDE_PDF } from '@/services/links';
+import { goBack, goForward } from '@/services/noteHistory';
 import { useStore } from '@/store';
 import { showToast, useUiStore } from '@/store/ui';
 
@@ -133,6 +134,32 @@ export const COMMANDS: readonly Command[] = [
     label: 'cmd.viewRead',
     shortcut: 'Ctrl+4',
     run: () => state().setViewMode('read'),
+  },
+  {
+    id: 'open-folder',
+    label: 'cmd.openFolder',
+    // Loaded on first use: most sessions never open a folder.
+    run: () => void import('@/services/folder').then((m) => m.openFolder()),
+  },
+  {
+    id: 'toggle-folder',
+    editorOnly: true,
+    label: 'cmd.toggleFolder',
+    run: () => state().updateSettings({ showFolder: !state().settings.showFolder }),
+  },
+  { id: 'nav-back', editorOnly: true, label: 'cmd.back', run: () => void goBack() },
+  { id: 'nav-forward', editorOnly: true, label: 'cmd.forward', run: () => void goForward() },
+  {
+    id: 'focus-mode',
+    editorOnly: true,
+    label: 'cmd.focus',
+    run: () => ui().setFocusMode(true),
+  },
+  {
+    id: 'reader-controls',
+    editorOnly: true,
+    label: 'cmd.reader',
+    run: () => ui().setReaderOpen(true),
   },
   {
     id: 'linked-scroll',

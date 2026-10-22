@@ -4,6 +4,7 @@
  * older build, and none of those may stop the editor from opening.
  */
 import type { MdDocument } from '@/domain/document';
+import { parsePositions, type SavedPositions } from '@/domain/readPositions';
 import type { Tab, Tabs } from '@/domain/tabs';
 import { TEXT_ENCODINGS, type TextFormat } from '@/domain/textFormat';
 
@@ -12,6 +13,7 @@ export const SETTINGS_KEY = 'md-studio:settings:v1';
 const RECENTS_KEY = 'md-studio:recents:v1';
 const HANDLE_KEY = 'md-studio:document-handle:v1';
 export const TABS_KEY = 'md-studio:tabs:v1';
+const READ_POSITIONS_KEY = 'md-studio:read-positions:v1';
 
 /** Snapshots above this size are left out of the recent list to protect the storage quota. */
 const MAX_RECENT_BYTES = 256 * 1024;
@@ -211,4 +213,13 @@ function remove(key: string): void {
   } catch {
     // Storage unavailable: nothing to clear.
   }
+}
+
+/** Where the reader had got to in each file, by file handle id. Never throws. */
+export function loadReadPositions(): SavedPositions {
+  return parsePositions(read<unknown>(READ_POSITIONS_KEY));
+}
+
+export function saveReadPositions(positions: SavedPositions): void {
+  write(READ_POSITIONS_KEY, positions);
 }

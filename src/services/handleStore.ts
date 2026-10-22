@@ -103,6 +103,14 @@ export async function getHandleAt<T extends FileSystemHandle>(key: string): Prom
   }
 }
 
+export async function deleteHandleAt(key: string): Promise<void> {
+  try {
+    await request('readwrite', (s) => s.delete(key));
+  } catch {
+    // Left stored: the next prune takes it.
+  }
+}
+
 /**
  * Every stored handle whose key starts with `prefix`, e.g. `dir:` for the
  * attachment folders chosen so far. Empty when IndexedDB is unavailable.
@@ -114,6 +122,12 @@ export async function listHandlesWithPrefix(prefix: string): Promise<[string, Fi
     return [];
   }
 }
+
+/**
+ * The owner id of the folder opened in folder mode (key `dir:folder-mode`).
+ * It belongs to no document, so pruning must keep it.
+ */
+export const FOLDER_OWNER = 'folder-mode';
 
 /** Key for the image folder chosen for the document with handle id `docHandleId`. */
 export const imageFolderKey = (docHandleId: string) => `dir:${docHandleId}`;

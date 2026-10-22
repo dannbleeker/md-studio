@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { headingSlug, linkTarget, wikilinkTarget } from './linkTarget';
+import { headingLink, headingSlug, linkTarget, wikilinkTarget } from './linkTarget';
 
 describe('linkTarget', () => {
   it('opens web, mail and phone links outside the app', () => {
@@ -81,5 +81,17 @@ describe('headingSlug', () => {
     expect(headingSlug('Hello, World!')).toBe('hello-world');
     expect(headingSlug('  Sådan gør du  ')).toBe('sådan-gør-du');
     expect(headingSlug('a_b - c')).toBe('a_b---c');
+  });
+});
+
+describe('headingLink', () => {
+  it('links a heading of a Markdown file by name', () => {
+    expect(headingLink('My note (v2).md', 'Part [two], done!')).toBe(
+      '[Part two, done!](My%20note%20%28v2%29.md#part-two-done)'
+    );
+  });
+
+  it('is just an anchor when the document is not a Markdown file', () => {
+    expect(headingLink('notes.txt', 'Intro')).toBe('[Intro](#intro)');
   });
 });

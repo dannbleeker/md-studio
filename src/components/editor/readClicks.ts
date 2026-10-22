@@ -1,8 +1,9 @@
 import { Plugin } from '@milkdown/kit/prose/state';
 import { headingSlug, type LinkTarget, linkTarget, wikilinkTarget } from '@/domain/linkTarget';
 import { useStore } from '@/store';
-import { visualHeadings } from './editorRegistry';
+import { headingPlainText, visualHeadings } from './editorRegistry';
 import { openLightbox } from './lightbox';
+import { showFor } from './readHover';
 
 /** The note-link service loads on first use: most sessions never follow one. */
 const noteLinks = () => import('@/services/noteLinks');
@@ -12,7 +13,7 @@ function follow(target: LinkTarget, pm: Element): void {
     window.open(target.url, '_blank', 'noopener,noreferrer');
   } else if (target.kind === 'anchor') {
     const slug = target.slug.toLowerCase();
-    const heading = visualHeadings(pm).find((h) => headingSlug(h.textContent ?? '') === slug);
+    const heading = visualHeadings(pm).find((h) => headingSlug(headingPlainText(h)) === slug);
     heading?.scrollIntoView({ block: 'start' });
   } else if (target.kind === 'note') {
     void noteLinks().then((m) => m.followNoteLink(target));
@@ -46,6 +47,13 @@ export const readClicks = new Plugin({
         if (chip && wants && !chip.closest('.md-transclusion')) {
           event.preventDefault();
           follow(wikilinkTarget(chip.title), view.dom);
+          return true;
+        }
+        // A tap on a footnote reference shows its text at once (touch has no hover).
+        const ref = el.closest('sup[data-type="footnote_reference"]');
+        if (reading && ref && view.dom.contains(ref)) {
+          event.preventDefault();
+          showFor(view, ref, 0);
           return true;
         }
         const img = el.closest('img');

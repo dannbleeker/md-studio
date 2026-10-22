@@ -20,9 +20,12 @@ import { search } from 'prosemirror-search';
 import { useEffect, useRef } from 'react';
 import { EMBED_NODE_NAME } from '@/domain/embeds';
 import { dropEmptyLineMarkers } from '@/domain/emptyLines';
+import { withMathPlaceholders } from '@/domain/mathPlaceholder';
+import { rememberPosition } from '@/domain/readPositions';
 import { buildAnchors, fromAnchorPosition, toAnchorPosition } from '@/domain/scrollMap';
 import { t } from '@/i18n';
 import { perfMeasure } from '@/services/perfMarks';
+import { loadReadPositions, saveReadPositions } from '@/services/storage';
 import { useStore } from '@/store';
 import { registerFlush, registerPrepareForPrint } from '@/store/flush';
 import { showToast } from '@/store/ui';
@@ -38,10 +41,13 @@ import { visualPaneImagePlugin } from './imageSupport';
 import { imageTitleFix } from './imageTitleFix';
 import { imageNodeView } from './imageView';
 import { keepSourceStyle } from './keepSourceStyle';
-import { readClicks } from './readClicks';
-import { readDecorations } from './readDecorations';
+import { remarkMath } from './mathNode';
+import { loadReadExtras, readHost } from './readHost';
 import type { ScrollAdapter } from './scrollAdapter';
 import { createVisualSync, type SyncState } from './visualSync';
+
+/** Read view's extras load after the first paint, so typing never waits for them. */
+const READ_EXTRAS_DELAY_MS = 1500;
 
 type Props = { onAdapter: (adapter: ScrollAdapter | null) => void };
 
@@ -79,7 +85,7 @@ export function VisualPane({ onAdapter }: Props) {
       Editor.make()
         .config((ctx) => {
           ctx.set(rootCtx, rootEl);
-          ctx.set(defaultValueCtx, initial);
+          ctx.set(defaultValueCtx, withMathPlaceholders(initial));
           // Match highlighting and search state for the app's find bar.
           // + the format toolbar's view of the selection, after every change
           // (a mark toggle changes formatting without moving the selection).
@@ -98,14 +104,14 @@ export function VisualPane({ onAdapter }: Props) {
             }),
             visualPaneImagePlugin(() => editor),
             clickSelection,
-            readClicks,
-            readDecorations,
+            readHost,
           ]);
           ctx.update(remarkPluginsCtx, (plugins) => [
             ...plugins,
             remarkFrontMatter,
             imageTitleFix,
             remarkEmbeds,
+            remarkMath,
           ]);
           configureEmbedStringify(ctx);
           ctx.update(nodeViewCtx, (views) => {
@@ -151,6 +157,7 @@ export function VisualPane({ onAdapter }: Props) {
     // kept, once the first editor shows the document (unless a load came first).
     const mountedAt = useStore.getState();
     let restoreOnCreate = mountedAt.restoreView !== null;
+    let resumedOnCreate = false;
 
     const sync = createVisualSync<Editor>({
       read,
@@ -165,6 +172,14 @@ export function VisualPane({ onAdapter }: Props) {
           const now = useStore.getState();
           if (now.loadId === mountedAt.loadId)
             restoreScroll(scrollEl, now.restoreView?.visualScroll ?? 0);
+        } else if (next && !resumedOnCreate && mountedAt.restoreView === null) {
+          resumedOnCreate = true;
+          resume(useStore.getState().handleId);
+        }
+        // Link clicks, hover cards and the rest of Read view arrive once the page is up.
+        if (next && !failed) {
+          if (useStore.getState().viewMode === 'read') void loadReadExtras().catch(() => {});
+          else setTimeout(() => void loadReadExtras().catch(() => {}), READ_EXTRAS_DELAY_MS);
         }
         // The placeholder stays unregistered, so the format toolbar and
         // find bar can't act on it.
@@ -201,6 +216,51 @@ export function VisualPane({ onAdapter }: Props) {
       return visualHeadings(pm).map((el) => el.getBoundingClientRect().top - base);
     };
 
+    // Where the reader had got to in each file, kept across sessions: a file
+    // opens again where it was left, unless the reader has already moved.
+    let positions = loadReadPositions();
+    let userScrolled = false;
+    // Scroll events right after a load are the page being replaced, not the reader moving.
+    let holdSavingUntil = 0;
+    const resume = (handleId: string | null) => {
+      holdSavingUntil = performance.now() + 1500;
+      userScrolled = false;
+      const saved = handleId ? positions[handleId] : undefined;
+      if (!saved) return;
+      const apply = () => {
+        if (userScrolled || isHidden(scrollEl)) return;
+        editors.linkedScrollPausedUntil = performance.now() + 300;
+        scrollEl.scrollTop = fromAnchorPosition(
+          buildAnchors(headingOffsets(), scrollEl.scrollHeight),
+          saved
+        );
+      };
+      // The layout settles for a while (images, embeds): try again as it does.
+      for (const delay of [60, 350, 1000]) resumeTimers.push(setTimeout(apply, delay));
+    };
+    const resumeTimers: ReturnType<typeof setTimeout>[] = [];
+    let saveTimer: ReturnType<typeof setTimeout> | null = null;
+    const onScroll = () => {
+      if (saveTimer !== null) clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        const handleId = useStore.getState().handleId;
+        if (!handleId || isHidden(scrollEl) || performance.now() < holdSavingUntil) return;
+        const where = toAnchorPosition(
+          buildAnchors(headingOffsets(), scrollEl.scrollHeight),
+          scrollEl.scrollTop
+        );
+        positions = rememberPosition(positions, handleId, where, Date.now());
+        saveReadPositions(positions);
+      }, 500);
+    };
+    const noteUserScroll = () => {
+      userScrolled = true;
+    };
+    scrollEl.addEventListener('scroll', onScroll, { passive: true });
+    const userEvents = ['wheel', 'touchstart', 'pointerdown', 'keydown'] as const;
+    for (const type of userEvents)
+      scrollEl.addEventListener(type, noteUserScroll, { passive: true });
+
     const unsubscribe = useStore.subscribe((state, prev) => {
       sync.onChange(read(state), read(prev));
       if ((state.viewMode === 'read') !== (prev.viewMode === 'read')) {
@@ -212,6 +272,7 @@ export function VisualPane({ onAdapter }: Props) {
               scrollEl.scrollTop
             );
         // ProseMirror only re-reads `editable` (and its decorations) when its props are set.
+        if (state.viewMode === 'read') void loadReadExtras().catch(() => {});
         editors.visual?.setProps({});
         if (where !== null) {
           editors.linkedScrollPausedUntil = performance.now() + 400;
@@ -229,6 +290,11 @@ export function VisualPane({ onAdapter }: Props) {
       printFrontMatter(state.settings.exportFrontMatter);
       if (state.loadId !== prev.loadId) {
         restoreScroll(scrollEl, state.restoreView?.visualScroll ?? 0);
+        // A tab visited before keeps its own spot; a file opened fresh resumes.
+        if (!state.restoreView) resume(state.handleId);
+      } else if (state.handleId !== prev.handleId && prev.handleId === null && !userScrolled) {
+        // The restored document's file handle arrives after the document.
+        resume(state.handleId);
       }
     });
 
@@ -264,6 +330,10 @@ export function VisualPane({ onAdapter }: Props) {
       unregisterPrepare();
       window.removeEventListener('beforeprint', prepare);
       rootEl.removeEventListener('focusin', onFocus);
+      scrollEl.removeEventListener('scroll', onScroll);
+      for (const type of userEvents) scrollEl.removeEventListener(type, noteUserScroll);
+      if (saveTimer !== null) clearTimeout(saveTimer);
+      for (const timer of resumeTimers) clearTimeout(timer);
       sync.dispose();
     };
   }, [onAdapter]);

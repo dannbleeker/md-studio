@@ -10,7 +10,7 @@ import { syncedTabs, useStore } from '@/store';
 import { flushEditors } from '@/store/flush';
 import { requestConfirm, showToast } from '@/store/ui';
 import { type OpenedFile, openFile, readFile, readHandle, saveFile } from './fileSystem';
-import { ensurePermission, getHandle, pruneHandles, putHandle } from './handleStore';
+import { ensurePermission, FOLDER_OWNER, getHandle, pruneHandles, putHandle } from './handleStore';
 import { loadTabs, type RecentEntry } from './storage';
 
 /** Asks before closing a tab whose changes are not saved to disk. */
@@ -34,6 +34,12 @@ function showOpenTab(file: Parameters<typeof tabForFile>[1]): boolean {
   return true;
 }
 
+/** With "Open files in Read view" on, a file just opened shows in Read view. */
+function readIfAsked(): void {
+  const { settings, setViewMode } = useStore.getState();
+  if (settings.openInReadView) setViewMode('read');
+}
+
 async function load(file: OpenedFile) {
   // putHandle reuses the id of a handle to the same file, so an id match
   // means the file is already open.
@@ -42,6 +48,7 @@ async function load(file: OpenedFile) {
   useStore
     .getState()
     .loadDocument(createDocument(file.markdown, file.name, file.format), file.handle, handleId);
+  readIfAsked();
   showToast(t('toast.opened', { name: file.name }));
   void forgetUnusedHandles();
 }
@@ -50,11 +57,13 @@ async function load(file: OpenedFile) {
 async function forgetUnusedHandles() {
   const state = useStore.getState();
   // Saved tabs count too: another window of the app may still use them.
-  const keep = new Set(
-    [...state.recents, ...syncedTabs(state), ...(loadTabs()?.tabs ?? [])].flatMap((r) =>
+  const keep = new Set([
+    // The opened folder (folder mode) is no document's, and stays.
+    FOLDER_OWNER,
+    ...[...state.recents, ...syncedTabs(state), ...(loadTabs()?.tabs ?? [])].flatMap((r) =>
       r.handleId ? [r.handleId] : []
-    )
-  );
+    ),
+  ]);
   await pruneHandles(keep);
 }
 
@@ -146,6 +155,7 @@ export async function openRecent(entry: RecentEntry): Promise<void> {
             handle,
             entry.handleId ?? null
           );
+        readIfAsked();
         return;
       } catch {
         showToast(
@@ -166,7 +176,10 @@ export async function openRecent(entry: RecentEntry): Promise<void> {
   // show it. The entry stays as it is (with its handle, for next time)
   // rather than gaining an unlinked twin. A large file's entry has no
   // snapshot: nothing to fall back to.
-  if (entry.markdown) openSnapshot(entry.markdown, entry.fileName, false);
+  if (entry.markdown) {
+    openSnapshot(entry.markdown, entry.fileName, false);
+    readIfAsked();
+  }
 }
 
 /**

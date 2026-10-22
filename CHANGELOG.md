@@ -2,6 +2,36 @@
 
 ## Unreleased
 
+- **Math and diagrams.** `$x^2$` and `$$...$$` are typeset (KaTeX, as MathML,
+  loaded on first use) in every view; the formula stays one lossless unit
+  holding its exact source (`domain/math.ts`, `mathPlaceholder.ts`,
+  `mathNode.ts`). Pandoc's rules keep prices as text. A ```mermaid block is
+  drawn as a diagram in Read view (Mermaid, strict security level, shown
+  through an `<img>`), click for full size. Mermaid and its dependencies are
+  lazy and left out of the precache (`diagram-` chunks, cached on first use).
+  The `index` and `i18n` budgets are re-pinned for the reader, folder mode and
+  math code on the start-up path; the Read view extras are now a lazy chunk.
+- **Folder mode.** "Open folder" (start screen, palette, or the Folder button)
+  picks a folder of notes and shows them as a tree with a filter box, beside
+  the editors. The open note is highlighted; "Linked from" lists the notes of
+  the folder that link to it (wikilinks and Markdown links, code ignored).
+  Notes opened from the folder find it as their attachments folder, so links
+  and images resolve with no further prompt. Following a link or opening from
+  the tree is recorded: Back and Forward buttons (and Alt+Left / Alt+Right)
+  step through those notes. The folder is remembered; after a restart the
+  panel asks once for access again. Needs a browser with the File System
+  Access API.
+- **Read view as a reader.** An "Open files in Read view" setting (off by
+  default) shows files opened from disk, by drop or from the recent list in
+  Read view. Where the reader stopped is remembered per file across sessions.
+  Reading controls (the Aa button): width, typeface, line spacing and a sepia
+  page. Focus mode (Focus button, `f`, Escape to leave) hides everything but
+  the page. Plain keys read the page: `j`/`k` and Space scroll, `g`/`G` jump
+  to the ends, `[`/`]` step between headings, `/` opens Find. Hovering a link
+  to a note shows the start of that note, and a footnote reference shows the
+  footnote. Headings get a "copy a link to this section" button. YAML front
+  matter shows as a card (title, tags, fields). Obsidian callouts
+  (`> [!warning] Title`) get a frame, a colour and a title.
 - **Read view grows up.** Links to other notes open in a tab: relative
   `[text](other.md)` links and `[[wikilinks]]` (through the attachments
   folder, with a clear message when it is not chosen). Headings fold, code

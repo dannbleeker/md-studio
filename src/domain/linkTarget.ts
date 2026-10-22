@@ -63,3 +63,17 @@ export function headingSlug(text: string): string {
     .replace(/[^\p{L}\p{N}\s_-]/gu, '')
     .replace(/\s/g, '-');
 }
+
+/**
+ * A Markdown link to a section, to paste into another note:
+ * `[Heading](My%20note.md#heading)`, or just `#heading` for a document that
+ * is not a Markdown file yet.
+ */
+export function headingLink(fileName: string, heading: string): string {
+  const slug = headingSlug(heading);
+  const file = /\.(?:md|markdown|mdown|mkd)$/i.test(fileName)
+    ? encodeURIComponent(fileName).replace(/[()]/g, (c) => (c === '(' ? '%28' : '%29'))
+    : '';
+  const text = heading.replace(/[[\]\\]/g, '').trim() || slug;
+  return `[${text}](${file}#${slug})`;
+}

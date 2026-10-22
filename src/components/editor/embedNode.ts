@@ -7,9 +7,12 @@ import { StepMap } from '@milkdown/kit/prose/transform';
 import type { RemarkPlugin } from '@milkdown/kit/transformer';
 import { $nodeSchema, $prose } from '@milkdown/kit/utils';
 import { EMBED_NODE_NAME, findWikiRefs, parseWikiRef } from '@/domain/embeds';
+import { parseMathToken } from '@/domain/math';
 
 /** mdast type of a token found by `remarkEmbeds`; custom so real inline HTML is never touched. */
 const MDAST_TYPE = 'obsidianEmbed';
+/** The same type for the math step, which makes its tokens the same kind of atom. */
+export const EMBED_MDAST_TYPE = MDAST_TYPE;
 
 /**
  * One inline atom for every `![[...]]` and `[[...]]` token. The only
@@ -35,7 +38,7 @@ const embedSchema = $nodeSchema(EMBED_NODE_NAME, () => ({
       // document verbatim, so only a single well-formed token is accepted.
       getAttrs: (dom) => {
         const raw = (dom as HTMLElement).getAttribute('data-raw') ?? '';
-        return parseWikiRef(raw)?.raw === raw ? { raw } : false;
+        return parseWikiRef(raw)?.raw === raw || parseMathToken(raw) ? { raw } : false;
       },
     },
   ],

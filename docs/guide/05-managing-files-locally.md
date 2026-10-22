@@ -114,6 +114,16 @@ MD Studio reads three settings from `.obsidian/app.json` in the vault: the attac
 
 The folder choice belongs to the document. If you use Save As to move a note to another place inside the same folder tree, the folder follows it. If the new location is outside the folder, MD Studio asks again when it is needed. A document with a folder already chosen for another note in the same vault picks up that folder without asking, preferring the vault's top folder when it has several to choose from.
 
+## A folder of notes
+
+When your notes live in a folder, open the folder itself: **Open folder** on the start screen, in the command palette, or the **Folder** button in the toolbar. In Edge and Chrome, pick the folder once and its Markdown files appear in a panel beside the editors, folders first, with a box at the top to filter them by name. A click opens a note in a tab, or goes to the tab that already holds it. The note you are reading is highlighted.
+
+Below the list, **Linked from** names the notes in the folder that link to the open one, whether by a wikilink such as `[[Plan]]` or a Markdown link such as `[plan](Plan.md)`. Links inside code do not count. MD Studio reads the notes to find them, up to the first 1,500, and remembers what it read until a note changes.
+
+A note opened from the folder uses the folder as its attachment folder, so its pictures and links to other notes resolve with no further question. In Read view a click on such a link opens the other note. The **Back** and **Forward** buttons beside the file name, or Alt+Left and Alt+Right, step through the notes you opened by following links or from the panel, like a browser's history.
+
+The folder is remembered. After you restart the browser the panel shows its name and a button, **Allow access**, because the browser asks for one click before it lets a page read a folder again. **×** in the panel's header forgets the folder.
+
 ## Working across devices
 
 MD Studio does not sync, so moving between a work laptop, a home desktop and a phone comes down to where you keep the files. You probably have the right tool already.

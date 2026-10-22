@@ -3,6 +3,7 @@ import { forPlatform } from '@/domain/keys';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { t } from '@/i18n';
 import { newDocument, openDocument, saveDocument } from '@/services/documentActions';
+import { goBack, goForward, useNavHistory } from '@/services/noteHistory';
 import { isMac } from '@/services/platform';
 import { useStore } from '@/store';
 import type { ViewMode } from '@/store/settings';
@@ -16,8 +17,11 @@ export function Toolbar() {
   const viewMode = useStore((s) => s.viewMode);
   const linkedScroll = useStore((s) => s.settings.linkedScroll);
   const showOutline = useStore((s) => s.settings.showOutline);
+  const showFolder = useStore((s) => s.settings.showFolder);
+  const { canBack, canForward } = useNavHistory();
   const { setViewMode, updateSettings, setScreen } = useStore.getState();
-  const { setSettingsOpen, setPaletteOpen, setExportOpen } = useUiStore.getState();
+  const { setSettingsOpen, setPaletteOpen, setExportOpen, setReaderOpen, setFocusMode } =
+    useUiStore.getState();
   const isMobile = useIsMobile();
 
   return (
@@ -26,6 +30,30 @@ export function Toolbar() {
         <button type="button" className="btn btn-ghost brand" onClick={() => setScreen('start')}>
           {isMobile ? 'MD' : t('appName')}
         </button>
+        {canBack || canForward ? (
+          <span className="nav-buttons">
+            <button
+              type="button"
+              className="btn-icon"
+              disabled={!canBack}
+              onClick={() => void goBack()}
+              title={`${t('nav.back')} (${forPlatform('Alt+Left', isMac())})`}
+              aria-label={t('nav.back')}
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              className="btn-icon"
+              disabled={!canForward}
+              onClick={() => void goForward()}
+              title={`${t('nav.forward')} (${forPlatform('Alt+Right', isMac())})`}
+              aria-label={t('nav.forward')}
+            >
+              ›
+            </button>
+          </span>
+        ) : null}
         <span className="file-name" title={fileName}>
           {fileName}
           {viewMode === 'read' ? <span className="read-badge">{t('toolbar.readOnly')}</span> : null}
@@ -78,6 +106,35 @@ export function Toolbar() {
             {t('toolbar.linkedScroll')}
           </label>
         ) : null}
+        {viewMode === 'read' ? (
+          <>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setReaderOpen(true)}
+              title={t('toolbar.readerTitle')}
+              aria-label={t('toolbar.readerTitle')}
+            >
+              {t('toolbar.reader')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setFocusMode(true)}
+              title={t('toolbar.focusTitle')}
+            >
+              {t('toolbar.focus')}
+            </button>
+          </>
+        ) : null}
+        <button
+          type="button"
+          className="btn btn-ghost"
+          aria-pressed={showFolder}
+          onClick={() => updateSettings({ showFolder: !showFolder })}
+        >
+          {t('folder.toolbar')}
+        </button>
         <button
           type="button"
           className="btn btn-ghost"
