@@ -4,18 +4,18 @@
   "code": [
     {
       "category": "App code",
-      "files": 133,
-      "lines": 19345
+      "files": 145,
+      "lines": 20210
     },
     {
       "category": "Unit tests",
-      "files": 96,
-      "lines": 16964
+      "files": 103,
+      "lines": 17500
     },
     {
       "category": "E2E tests",
       "files": 18,
-      "lines": 3088
+      "lines": 3282
     },
     {
       "category": "Scripts",
@@ -25,24 +25,24 @@
     {
       "category": "Styles",
       "files": 6,
-      "lines": 1764
+      "lines": 1837
     },
     {
       "category": "Book",
       "files": 13,
-      "lines": 2592
+      "lines": 2604
     }
   ],
   "tests": {
-    "files": 92,
-    "total": 1356,
-    "passed": 1353,
+    "files": 99,
+    "total": 1405,
+    "passed": 1402,
     "failed": 3,
     "e2eSpecs": 17
   },
   "coverage": null,
   "bundle": {
-    "eagerGzipBytes": 474638,
+    "eagerGzipBytes": 475693,
     "eager": [
       "codeRegions",
       "codemirror",
@@ -57,14 +57,16 @@
       "ui"
     ],
     "chunks": {
-      "AttachmentBanner": 1539,
+      "AttachmentBanner": 1542,
       "FindBar": 2595,
-      "FolderPanel": 2439,
-      "FormatToolbar": 1069,
-      "OutlinePanel": 927,
+      "FolderPanel": 3195,
+      "FormatToolbar": 1068,
+      "OutlinePanel": 952,
+      "ReadKeysDialog": 421,
       "ReaderDialog": 583,
       "USER_GUIDE": 4962,
-      "attachments": 6437,
+      "attachments": 6439,
+      "callouts": 850,
       "codeRegions": 2562,
       "codemirror": 215708,
       "decode": 15623,
@@ -165,32 +167,37 @@
       "diagram-wardleyDiagram-IVAIDKWA": 6544,
       "diagram-xychartDiagram-4URNHDU4": 12307,
       "docx": 116036,
-      "embedExport": 3426,
-      "embedLinks": 1300,
-      "embedRender": 4188,
+      "drawers": 172,
+      "embedExport": 3432,
+      "embedLinks": 1303,
+      "embedRender": 4226,
       "embeds": 2006,
       "exportImages": 2169,
       "fences": 189,
-      "folder": 1250,
+      "folder": 1251,
       "frontMatter": 605,
-      "html": 2260,
-      "i18n": 5526,
-      "images": 1251,
-      "index": 38317,
+      "html": 2335,
+      "i18n": 5726,
+      "images": 1250,
+      "index": 39157,
       "katex": 76952,
-      "linkTarget": 671,
+      "linkTarget": 782,
       "markdownPdf": 179127,
       "marked.esm": 13428,
-      "mathRender": 422,
+      "math": 272,
+      "mathRender": 276,
+      "mermaid": 1175,
       "milkdown": 140688,
-      "noteLinks": 1230,
-      "noteRenderer": 3001,
+      "noteLinks": 1369,
+      "noteRenderer": 3762,
       "plainText": 1023,
       "react": 67523,
-      "readImpl": 5494,
+      "readImpl": 4129,
       "rolldown-runtime": 627,
-      "transclusion": 3275,
-      "ui": 887,
+      "transclusion": 3277,
+      "typeset": 1499,
+      "typesetRenderers": 1005,
+      "ui": 902,
       "vaultConfig": 1628,
       "vaultIndex": 1649,
       "welcome.en": 989,
@@ -201,10 +208,10 @@
   "book": {
     "chapters": 11,
     "written": 11,
-    "words": 27140
+    "words": 27398
   },
   "git": {
-    "commits": 141,
+    "commits": 144,
     "firstCommit": "2026-10-02",
     "lastCommit": "2026-10-22",
     "activeDays": 11

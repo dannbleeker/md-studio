@@ -64,11 +64,11 @@
   },
   {
     "date": "2026-10-22",
-    "appLines": 19345,
-    "testLines": 16964,
-    "tests": 1356,
+    "appLines": 20210,
+    "testLines": 17500,
+    "tests": 1405,
     "coverageLines": null,
-    "eagerGzipBytes": 474638,
-    "bookWords": 27140
+    "eagerGzipBytes": 475693,
+    "bookWords": 27398
   }
 ]
