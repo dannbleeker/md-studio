@@ -2,6 +2,39 @@
 
 ## Unreleased
 
+- **Notes shown inside notes.** A transcluded note (`![[Note]]`) now typesets
+  its formulas, frames its callouts and draws its mermaid diagrams, as the
+  note does on its own. Its text still goes through the allow-list; the
+  formula, callout and diagram steps add only elements this app creates.
+- **Phone layout.** Below 720px the folder and outline panels slide over the
+  document as a drawer with a backdrop, and close when a note or heading is
+  picked. Rows, toolbar buttons and tabs get larger touch targets (also on
+  any coarse pointer). In Read view a quick horizontal swipe goes back or
+  forward through opened notes (`domain/swipe.ts`, ignored over code, tables,
+  formulas and diagrams, or while text is selected).
+- **Folder tree is a real tree.** The folder panel is an ARIA tree
+  (`role="tree"`, levels, expanded and selected states) with one row in the tab
+  order. Up/Down, Home/End, Right (open, then enter), Left (close, then climb)
+  and Enter/Space work as in a file manager; the rules are pure and tested in
+  `domain/treeNav.ts`.
+- **Links to files.** In Read view (or Ctrl+click while editing) a link to a
+  file that is not a note, `[report](report.pdf)` or `[[report.pdf]]`, finds
+  it in the vault folder and opens PDFs, pictures, audio and video in a new
+  tab. Anything else, including SVG and HTML (which would run with the app's
+  own origin), is saved instead (`fileOpenMode`). A missing file or an
+  unchosen folder says so.
+- **Reading keys help.** `?` in Read view (or "Reading keyboard shortcuts" in
+  the palette) lists the plain-letter keys. The list is built from the same
+  table that runs the keys (`readKeyBindings`), so it cannot drift; the dialog
+  is a lazy chunk.
+- **Formulas and diagrams in exports.** HTML keeps formulas as MathML and
+  embeds Mermaid diagrams as inline SVG pictures; Word gets both as PNG
+  pictures; PDF draws display formulas and diagrams as pictures (inline
+  formulas stay TeX text, as pictures cannot flow in its text layout). Plain
+  text is unchanged. The work is a lazy chunk used only when the document
+  contains `$` or a mermaid fence (`domain/typesetPlan.ts`,
+  `services/export/typeset.ts`); a formula or diagram that fails to draw
+  keeps its source text.
 - **Math and diagrams.** `$x^2$` and `$$...$$` are typeset (KaTeX, as MathML,
   loaded on first use) in every view; the formula stays one lossless unit
   holding its exact source (`domain/math.ts`, `mathPlaceholder.ts`,

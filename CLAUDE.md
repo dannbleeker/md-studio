@@ -161,7 +161,8 @@ that keep it safe:
   scroll into view (`IntersectionObserver`), and print flushes it
   (`printDocument`, `prepareForPrint`).
 - **Transcluded notes** render in a detached document and an allow-list
-  sanitiser, never as live `<img>` before the privacy setting is applied,
+  sanitiser (formulas, callouts and mermaid fences are added back as DOM steps
+  after it: `noteCallouts`, the math atom and `diagramBox`), never as live `<img>` before the privacy setting is applied,
   and stay out of the outline, find and scroll map.
 - **Resolution** follows Obsidian (`domain/vaultIndex.ts`); Markdown links
   keep resolving note-relative first. The vault folder is the existing
@@ -204,6 +205,14 @@ that keep it safe:
   compares node JSON with the plain parser). KaTeX renders MathML (no fonts)
   and loads on first use. A text pane edit of a formula is the way to change
   one; typing math in the visual pane is plain text.
+- **Exports typeset math and diagrams** in a lazy chunk
+  (`services/export/typeset.ts`, planned by `domain/typesetPlan.ts`): MathML
+  and inline SVG in HTML, PNG in Word and PDF. Only documents containing `$` or
+  a mermaid fence load it, and a failure puts the source text back.
+- **Phone**: below 720px the folder and outline panels are drawers
+  (`closeDrawers` after a pick); swipes in Read view are `useSwipeNav`. Links
+  to files that are not notes go through `followFileLink`; only formats a
+  browser draws without running anything open in a tab (`fileOpenMode`).
 - **Mermaid and KaTeX are lazy and Mermaid stays out of the precache**: its
   chunks are named `diagram-` by `vite.config.ts` (`DIAGRAM_PACKAGES`) and
   cached at runtime. Check `precache N entries` in the build output after a

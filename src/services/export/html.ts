@@ -88,6 +88,8 @@ function placeholderText(href: string, text: string): string {
 function embeddedImage(href: string, text: string, title: string): string | null {
   const image = loaded.get(href);
   if (!image) return null;
+  // Typeset math: markup the page shows as it is. It came from KaTeX, never from the document.
+  if (image.html !== undefined) return image.html;
   if (
     image.bytes.length > MAX_IMAGE_BYTES ||
     embeddedBytes + image.bytes.length > MAX_TOTAL_BYTES
@@ -100,7 +102,9 @@ function embeddedImage(href: string, text: string, title: string): string | null
     image.displayWidth ? ` width="${image.displayWidth}"` : '',
     image.displayWidth && image.displayHeight ? ` height="${image.displayHeight}"` : '',
   ].join('');
-  return `<img src="data:${image.mime ?? MIME[image.type]};base64,${base64(image.bytes)}" alt="${escapeHtml(text)}"${size}${title}>`;
+  // A drawn diagram is dark on light: it keeps a light card in a dark page.
+  const kind = image.mime === 'image/svg+xml' && image.displayWidth ? ' class="diagram"' : '';
+  return `<img src="data:${image.mime ?? MIME[image.type]};base64,${base64(image.bytes)}" alt="${escapeHtml(text)}"${size}${title}${kind}>`;
 }
 
 const marked = new Marked({
@@ -194,6 +198,8 @@ table{border-collapse:collapse;margin:1em 0}th,td{border:1px solid var(--border)
 [align=center]{text-align:center}[align=right]{text-align:right}
 hr{border:0;border-top:1px solid var(--border);margin:2em 0}
 img{max-width:100%;height:auto}
+img.diagram{background:#fff;border-radius:6px;padding:.4rem}
+math[display=block]{margin:1em 0}
 li>input[type=checkbox]{margin-right:.4em}
 @media print{:root{${LIGHT}}body{background:#fff;color:#000}main{padding:0}}
 </style>

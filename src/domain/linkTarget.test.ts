@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { headingLink, headingSlug, linkTarget, wikilinkTarget } from './linkTarget';
+import { fileOpenMode, headingLink, headingSlug, linkTarget, wikilinkTarget } from './linkTarget';
 
 describe('linkTarget', () => {
   it('opens web, mail and phone links outside the app', () => {
@@ -40,13 +40,42 @@ describe('linkTarget', () => {
       'JaVaScRiPt:alert(1)',
       'file:///etc/passwd',
       '//evil.example/a.md',
-      'photo.png',
-      'doc.pdf',
+      'Dr. Smith',
       'noextension',
       '#',
       '',
     ])
       expect(linkTarget(href)).toEqual({ kind: 'none' });
+  });
+});
+
+describe('file links', () => {
+  it('opens a relative path to a file that is not a note', () => {
+    expect(linkTarget('doc.pdf')).toEqual({ kind: 'file', path: 'doc.pdf', markdown: true });
+    expect(linkTarget('files/My%20sheet.xlsx#page=2')).toEqual({
+      kind: 'file',
+      path: 'files/My sheet.xlsx',
+      markdown: true,
+    });
+    expect(linkTarget('photo.png?raw=1').kind).toBe('file');
+  });
+
+  it('reads an attachment wikilink as a file and any other as a note', () => {
+    expect(wikilinkTarget('[[report.pdf]]')).toEqual({
+      kind: 'file',
+      path: 'report.pdf',
+      markdown: false,
+    });
+    expect(wikilinkTarget('[[a/photo.png|My photo]]').kind).toBe('file');
+    expect(wikilinkTarget('[[Note.v2]]').kind).toBe('note');
+    expect(wikilinkTarget('[[Plain]]').kind).toBe('note');
+  });
+
+  it('views what a browser only draws and downloads the rest', () => {
+    for (const p of ['a.pdf', 'a.png', 'B.JPG', 'a.mp3', 'a.mp4'])
+      expect(fileOpenMode(p)).toBe('view');
+    for (const p of ['a.svg', 'a.html', 'a.htm', 'a.xlsx', 'a.js', 'a.xml', 'noext'])
+      expect(fileOpenMode(p)).toBe('download');
   });
 });
 

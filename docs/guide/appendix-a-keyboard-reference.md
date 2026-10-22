@@ -65,7 +65,10 @@ These work in Read view only, when no dialog is open and no text field has focus
 | [ or ] | Previous or next heading. |
 | / | Open the find bar (without replace). |
 | F | **Focus** mode: only the page. Escape brings the toolbar back. |
+| ? | List these keys. |
 | Alt+Left or Alt+Right | **Back** or **Forward** through the notes you opened by following links or from the folder panel. |
+
+In the folder panel, the arrow keys move between notes: Right opens a folder and then enters it, Left closes it and then climbs out, Home and End jump to the first and last row, and Enter opens a note.
 
 ## Command palette
 

@@ -5,14 +5,19 @@ import { DOMSerializer, type Node as PmNode } from '@milkdown/kit/prose/model';
 import type { RemarkPlugin } from '@milkdown/kit/transformer';
 import { parseAltSize } from '@/domain/embeds';
 import { isRelativeUrl, isWebImage } from '@/domain/imagePaths';
+import { parseMathToken } from '@/domain/math';
 import { tooDeeplyNested } from '@/domain/nesting';
 import { tooCostlyToRender } from '@/domain/renderCost';
 import type { TranscludeChain } from '@/domain/transclusion';
+import { MAX_DIAGRAM_CHARS } from '@/services/mermaid';
 import { useStore } from '@/store';
+import { diagramElement } from './diagramBox';
 import { embeds, remarkEmbeds } from './embedNode';
 import type { EmbedRenderContext } from './embedRender';
 import { imageTitleFix } from './imageTitleFix';
 import { embedToken } from './imageView';
+import { parseWithMath, remarkMath } from './mathNode';
+import { calloutize } from './noteCallouts';
 
 /**
  * Renders another note's Markdown for a transclusion, read-only, inside an
@@ -78,6 +83,7 @@ function createParserEditor(): Promise<ParserTools> {
         neutraliseHtml,
         imageTitleFix,
         remarkEmbeds,
+        remarkMath,
       ]);
     })
     .use(commonmark)
@@ -185,6 +191,12 @@ function copyContentAttrs(from: Element, to: Element, tag: string): void {
   }
 }
 
+/** The fence's language, kept only in the plain form of a name so a diagram block can be found later. */
+function copyFenceLanguage(from: Element, to: Element): void {
+  const language = from.closest('pre')?.getAttribute('data-language') ?? '';
+  if (/^[\w+-]{1,30}$/.test(language)) to.setAttribute('data-language', language.toLowerCase());
+}
+
 function copyAttrs(from: Element, to: Element): void {
   for (const name of COPIED_ATTRS) {
     const value = from.getAttribute(name);
@@ -272,6 +284,7 @@ function clean(from: Node, into: Node, webImages: boolean): void {
     } else if (ALLOWED_TAGS.has(tag)) {
       out = owner.createElement(tag);
       copyAttrs(el, out);
+      if (tag === 'code') copyFenceLanguage(el, out);
       copyContentAttrs(el, out, tag);
     } else {
       clean(el, into, webImages);
@@ -331,7 +344,7 @@ async function build(markdown: string, webImages: boolean): Promise<Rendered> {
   // goes for input the parser takes quadratic time on (see renderCost.ts).
   if (tooDeeplyNested([text]) || tooCostlyToRender(text)) return plainPlaceholder(text);
   try {
-    const doc = tools.parse(text);
+    const doc = parseWithMath(tools.parse)(text);
     const template = document.createElement('template');
     if (doc) {
       // An inert document: images the serializer makes there are never fetched, so a
@@ -340,6 +353,7 @@ async function build(markdown: string, webImages: boolean): Promise<Rendered> {
       const rendered = inert.createElement('div');
       rendered.append(tools.serializer.serializeFragment(doc.content, { document: inert }));
       clean(rendered, template.content, webImages);
+      calloutize(template.content);
     }
     return { template, truncated };
   } catch {
@@ -423,6 +437,14 @@ function instantiate(rendered: Rendered, args: NoteBlockArgs): NoteBlock {
     const raw = span.getAttribute('data-raw') ?? '';
     const markdown = span.hasAttribute('data-md-markdown');
     span.textContent = '';
+    const math = parseMathToken(raw);
+    if (math) {
+      // A formula: drawn by KaTeX on first use, its source shown until then.
+      span.className = `md-embed-host md-math${math.display ? ' md-math-display' : ''}`;
+      span.textContent = raw;
+      void import('./mathRender').then((m) => m.renderMath(span, raw));
+      continue;
+    }
     span.className = 'md-embed-host';
     handles.push(
       args.mountEmbed(span, raw, {
@@ -433,6 +455,16 @@ function instantiate(rendered: Rendered, args: NoteBlockArgs): NoteBlock {
         ...(markdown ? { markdown: true } : {}),
       })
     );
+  }
+  // A mermaid fence is drawn above its code, which CSS hides once the drawing is there.
+  for (const code of Array.from(
+    body.querySelectorAll<HTMLElement>('code[data-language="mermaid"]')
+  )) {
+    const source = code.textContent ?? '';
+    const pre = code.parentElement;
+    if (pre?.localName !== 'pre' || source.trim() === '' || source.length > MAX_DIAGRAM_CHARS)
+      continue;
+    pre.before(diagramElement(source));
   }
   // Links stay inert unless they are the few that are safe to open; the
   // note's own relative links must never navigate the app. The Open links the

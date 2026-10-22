@@ -120,7 +120,11 @@ When your notes live in a folder, open the folder itself: **Open folder** on the
 
 Below the list, **Linked from** names the notes in the folder that link to the open one, whether by a wikilink such as `[[Plan]]` or a Markdown link such as `[plan](Plan.md)`. Links inside code do not count. MD Studio reads the notes to find them, up to the first 1,500, and remembers what it read until a note changes.
 
-A note opened from the folder uses the folder as its attachment folder, so its pictures and links to other notes resolve with no further question. In Read view a click on such a link opens the other note. The **Back** and **Forward** buttons beside the file name, or Alt+Left and Alt+Right, step through the notes you opened by following links or from the panel, like a browser's history.
+A note opened from the folder uses the folder as its attachment folder, so its pictures and links to other notes resolve with no further question. In Read view a click on such a link opens the other note. The **Back** and **Forward** buttons beside the file name, or Alt+Left and Alt+Right, step through the notes you opened by following links or from the panel, like a browser's history. On a phone or tablet in Read view, swipe right to go back and left to go forward.
+
+A link to a file that is not a note, such as `[report](report.pdf)` or `[[report.pdf]]`, works the same way: a PDF, picture, recording or video opens in a new tab, and anything else is saved to your downloads. SVG and HTML files are always saved rather than opened, because a page opened from the folder would run with the app's own access.
+
+The panel is a tree you can drive from the keyboard: Up and Down move between rows, Right opens a folder and then steps into it, Left closes it and then steps out, Home and End jump to the ends, and Enter opens a note. On a narrow screen the panel slides over the page, and picking a note puts it away.
 
 The folder is remembered. After you restart the browser the panel shows its name and a button, **Allow access**, because the browser asks for one click before it lets a page read a folder again. **×** in the panel's header forgets the folder.
 

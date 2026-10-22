@@ -17,6 +17,8 @@ function follow(target: LinkTarget, pm: Element): void {
     heading?.scrollIntoView({ block: 'start' });
   } else if (target.kind === 'note') {
     void noteLinks().then((m) => m.followNoteLink(target));
+  } else if (target.kind === 'file') {
+    void noteLinks().then((m) => m.followFileLink(target));
   }
 }
 

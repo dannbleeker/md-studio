@@ -225,4 +225,37 @@ describe('markdownToHtml', () => {
       expect(crowded.match(/<img /g)).toHaveLength(6);
     });
   });
+
+  it('shows typeset math as its markup and a diagram as an inline image', () => {
+    const math: ExportImage = {
+      type: 'png',
+      width: 0,
+      height: 0,
+      bytes: new Uint8Array(0),
+      html: '<math display="inline"><mi>x</mi></math>',
+    };
+    const svg = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"></svg>');
+    const diagram: ExportImage = {
+      type: 'png',
+      width: 0,
+      height: 0,
+      bytes: svg,
+      mime: 'image/svg+xml',
+      displayWidth: 300,
+      displayHeight: 100,
+    };
+    const html = markdownToHtml(
+      'Let ![x](typeset:1) be.\n\n![Diagram](typeset:2)',
+      't',
+      'light',
+      new Map([
+        ['typeset:1', math],
+        ['typeset:2', diagram],
+      ])
+    );
+    expect(html).toContain('Let <math display="inline"><mi>x</mi></math> be.');
+    expect(html).toMatch(
+      /<img src="data:image\/svg\+xml;base64,[^"]+" alt="Diagram" width="300" height="100" class="diagram">/
+    );
+  });
 });

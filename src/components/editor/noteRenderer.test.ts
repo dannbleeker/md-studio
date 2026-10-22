@@ -39,6 +39,13 @@ vi.mock('@/services/attachments', () => ({
   },
 }));
 
+// Mermaid itself is far too large to load here; a drawing is not what these tests are about.
+vi.mock('@/services/mermaid', () => ({
+  MAX_DIAGRAM_CHARS: 20_000,
+  peekDiagram: () => null,
+  drawDiagram: () => new Promise(() => {}),
+}));
+
 const doc: DocContext = { fileHandle: null, handleId: 'h1' };
 let host: HTMLElement;
 let signal: { cancelled: boolean };
@@ -794,5 +801,61 @@ describe('transclusion in a host: links, settings and identity', () => {
     for (const listener of [...listeners]) listener();
     await vi.waitFor(() => expect(host.textContent).toContain('is already shown above'));
     expect(host.textContent).not.toContain('N text');
+  });
+});
+
+describe('transcluded notes: math, callouts and diagrams', () => {
+  const noteArgs = (markdown: string, cacheKey: string) => ({
+    markdown,
+    cacheKey,
+    notePath: 'Note.md',
+    title: 'Note',
+    ctx: context(),
+    chain: startChain(null),
+    mountEmbed,
+    mountImage: () => ({ destroy() {} }),
+  });
+
+  it('typesets formulas and leaves a price as text', async () => {
+    const block = await renderNoteBlock(
+      noteArgs('Inline $x^2$ costs $5 today.\n\n$$\nE = mc^2\n$$\n', 'math-key')
+    );
+    document.body.append(block.el);
+    const formulas = block.el.querySelectorAll('.md-math');
+    expect(Array.from(formulas).map((f) => f.getAttribute('data-raw'))).toEqual([
+      '$x^2$',
+      '$$\nE = mc^2\n$$',
+    ]);
+    expect(formulas[1]?.classList.contains('md-math-display')).toBe(true);
+    await vi.waitFor(() => expect(block.el.querySelectorAll('math').length).toBe(2));
+    expect(block.el.textContent).toContain('costs $5 today.');
+    block.destroy();
+    block.el.remove();
+  });
+
+  it('frames a callout with its title and type', async () => {
+    const block = await renderNoteBlock(
+      noteArgs('> [!warning] Careful\n> Mind the gap.\n\n> [!tip]\n> Bare.\n', 'callout-key')
+    );
+    const quotes = block.el.querySelectorAll('blockquote.callout');
+    expect(quotes[0]?.className).toContain('callout-warning');
+    expect(quotes[0]?.querySelector('.callout-title')?.textContent).toBe('Careful');
+    expect(quotes[1]?.getAttribute('data-callout-label')).toBe('Tip');
+    expect(block.el.textContent).not.toContain('[!');
+    block.destroy();
+  });
+
+  it('puts a diagram above a mermaid fence and no other fence', async () => {
+    const block = await renderNoteBlock(
+      noteArgs('```mermaid\ngraph TD\n A-->B\n```\n\n```js\nlet a;\n```\n', 'diagram-key')
+    );
+    expect(block.el.querySelectorAll('.read-diagram').length).toBe(1);
+    expect(block.el.querySelector('.read-diagram + pre')?.textContent).toContain('A-->B');
+    block.destroy();
+  });
+
+  it('keeps a fence language a note cannot use to carry other attributes', async () => {
+    const html = await renderNote('```" onmouseover="x\ncode\n```\n');
+    expect(html).not.toContain('onmouseover');
   });
 });

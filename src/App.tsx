@@ -11,10 +11,12 @@ import { ToastHost } from './components/toast/ToastHost';
 import { Toolbar } from './components/toolbar/Toolbar';
 import { LazyBoundary } from './components/ui/LazyBoundary';
 import { useFileDrop } from './hooks/useFileDrop';
+import { useIsMobile } from './hooks/useIsMobile';
 import { useLocale } from './hooks/useLocale';
 import { useReadKeys } from './hooks/useReadKeys';
 import { useReadViewRefresh } from './hooks/useReadViewRefresh';
 import { useShortcuts } from './hooks/useShortcuts';
+import { useSwipeNav } from './hooks/useSwipeNav';
 import { useTheme } from './hooks/useTheme';
 import { t } from './i18n';
 import { useStore } from './store';
@@ -33,6 +35,9 @@ const AttachmentBanner = lazy(() =>
 const ReaderDialog = lazy(() =>
   import('./components/settings/ReaderDialog').then((m) => ({ default: m.ReaderDialog }))
 );
+const ReadKeysDialog = lazy(() =>
+  import('./components/settings/ReadKeysDialog').then((m) => ({ default: m.ReadKeysDialog }))
+);
 const FolderPanel = lazy(() =>
   import('./components/folder/FolderPanel').then((m) => ({ default: m.FolderPanel }))
 );
@@ -44,6 +49,7 @@ export function App() {
   const screen = useStore((s) => s.screen);
   const showOutline = useStore((s) => s.settings.showOutline);
   const showFolder = useStore((s) => s.settings.showFolder);
+  const isMobile = useIsMobile();
   const findOpen = useUiStore((s) => s.findOpen);
   const manyTabs = useStore((s) => s.tabs.length > 1);
   const fontSize = useStore((s) => s.settings.fontSize);
@@ -52,15 +58,21 @@ export function App() {
   const readerOpen = useUiStore((s) => s.readerOpen);
   // Loaded on the first open, then kept so closing it hands focus back as a dialog does.
   const [readerSeen, setReaderSeen] = useState(false);
+  const readKeysOpen = useUiStore((s) => s.readKeysOpen);
+  const [readKeysSeen, setReadKeysSeen] = useState(false);
   useEffect(() => {
     if (readerOpen) setReaderSeen(true);
   }, [readerOpen]);
+  useEffect(() => {
+    if (readKeysOpen) setReadKeysSeen(true);
+  }, [readKeysOpen]);
   useLocale();
   useTheme();
   useShortcuts();
   useFileDrop();
   useReadViewRefresh();
   useReadKeys();
+  useSwipeNav();
 
   // The folder of last time comes back (without a prompt) and keeps its list current.
   useEffect(() => {
@@ -108,6 +120,16 @@ export function App() {
                 <OutlinePanel />
               </LazyBoundary>
             ) : null}
+            {isMobile && (showFolder || showOutline) ? (
+              <button
+                type="button"
+                className="drawer-backdrop"
+                aria-label={t('drawer.close')}
+                onClick={() =>
+                  useStore.getState().updateSettings({ showFolder: false, showOutline: false })
+                }
+              />
+            ) : null}
             <div className="workspace-main">
               {findOpen ? (
                 <LazyBoundary>
@@ -135,6 +157,11 @@ export function App() {
       {readerSeen ? (
         <LazyBoundary>
           <ReaderDialog />
+        </LazyBoundary>
+      ) : null}
+      {readKeysSeen ? (
+        <LazyBoundary>
+          <ReadKeysDialog />
         </LazyBoundary>
       ) : null}
       <ExportDialog />

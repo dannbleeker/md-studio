@@ -13,7 +13,7 @@ const typesText = (target: EventTarget | null): boolean =>
 /**
  * Plain-key shortcuts for reading: j/k and Space scroll, g/G jump to the
  * ends, [ and ] step between headings, / opens Find and f toggles focus
- * mode. Only in Read view, and never while a dialog is open or text is being
+ * mode, ? lists them all. Only in Read view, and never while a dialog is open or text is being
  * typed somewhere.
  */
 export function useReadKeys(): void {
@@ -24,7 +24,8 @@ export function useReadKeys(): void {
       if (typesText(e.target) || document.querySelector('dialog[open]')) return;
       const action = readKeyAction(e);
       if (!action) return;
-      if (action === 'find') useUiStore.getState().setFind(true, false);
+      if (action === 'help') useUiStore.getState().setReadKeysOpen(true);
+      else if (action === 'find') useUiStore.getState().setFind(true, false);
       else if (action === 'focus')
         useUiStore.getState().setFocusMode(!useUiStore.getState().focusMode);
       else if (!scrollReader(action)) return;

@@ -605,3 +605,23 @@ kbd {
   border-radius: var(--radius);
   padding: 0.4rem 0.6rem;
 }
+
+.read-keys {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.75rem 0 0;
+}
+.read-keys > div {
+  display: grid;
+  grid-template-columns: 9rem 1fr;
+  gap: 0.75rem;
+  align-items: baseline;
+}
+.read-keys dt {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+.read-keys dd {
+  margin: 0;
+}
