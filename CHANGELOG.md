@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Links to files.** In Read view (or Ctrl+click while editing) a link to a
+  file that is not a note, `[report](report.pdf)` or `[[report.pdf]]`, finds
+  it in the vault folder and opens PDFs, pictures, audio and video in a new
+  tab. Anything else, including SVG and HTML (which would run with the app's
+  own origin), is saved instead (`fileOpenMode`). A missing file or an
+  unchosen folder says so.
 - **Reading keys help.** `?` in Read view (or "Reading keyboard shortcuts" in
   the palette) lists the plain-letter keys. The list is built from the same
   table that runs the keys (`readKeyBindings`), so it cannot drift; the dialog

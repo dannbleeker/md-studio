@@ -1,9 +1,14 @@
 import { headingPlainText } from '@/components/editor/editorRegistry';
-import { headingSlug } from '@/domain/linkTarget';
+import { fileOpenMode, headingSlug } from '@/domain/linkTarget';
 import { type NotePreview, notePreview } from '@/domain/notePreview';
 import { t } from '@/i18n';
 import { showToast } from '@/store/ui';
-import { currentDocContext, readNoteText, resolveNoteHandle } from './attachments';
+import {
+  currentDocContext,
+  readNoteText,
+  resolveAttachment,
+  resolveNoteHandle,
+} from './attachments';
 import { navigateToNote } from './noteHistory';
 
 /** Scrolls the visual pane to the heading with this slug (after a note opened, say). */
@@ -44,6 +49,29 @@ export async function followNoteLink(target: {
     const slug = headingSlug(fragment);
     setTimeout(() => scrollToHeadingSlug(slug), 300);
   }
+}
+
+/**
+ * Opens a linked file that is not a note: a PDF, picture, recording or video
+ * in a new tab, anything else as a download. Resolved like attachments, so
+ * the vault folder must have been chosen; a failure says why.
+ */
+export async function followFileLink(target: { path: string; markdown: boolean }): Promise<void> {
+  const name = target.path.replace(/^.*\//, '');
+  const res = await resolveAttachment(currentDocContext(), target.path, {
+    markdown: target.markdown,
+  });
+  if (res.state === 'scanning') return void showToast(t('link.scanning'));
+  if (res.state === 'missing') return void showToast(t('link.fileMissing', { name }));
+  if (res.state === 'unavailable') return void showToast(t('link.fileUnavailable'));
+  if (fileOpenMode(res.path) === 'view') {
+    window.open(res.url, '_blank', 'noopener');
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = res.url;
+  a.download = res.name;
+  a.click();
 }
 
 const previews = new Map<

@@ -60,7 +60,8 @@ const FILES: Record<string, string> = {
   'Notes/Index.md': '# Index\n\nSee [[Alpha]] and [Beta](Beta.md).',
   'Notes/Alpha.md': '# Alpha\n\nBack to [[Index]].',
   'Notes/Beta.md': '# Beta\n\nJust text.',
-  'Other/Gamma.md': '# Gamma\n\nLinks to [[Alpha]] too.',
+  'Other/Gamma.md': '# Gamma\n\nLinks to [[Alpha]] too. Data: [the sheet](data.csv).',
+  'Other/data.csv': 'a,b\n1,2\n',
   'img/pic.png': 'not a note',
 };
 
@@ -133,4 +134,15 @@ test('the filter finds a note by name, and links in Read view open other notes',
   await visualPane(page).locator('.md-wikilink').click();
   await expect(visualPane(page).locator('h1')).toContainText('Alpha');
   await expect(page.locator('.file-name')).toContainText('Alpha.md');
+});
+
+test('a link to a file that is not a note saves it from Read view', async ({ page }) => {
+  await setUp(page);
+  await page.getByRole('button', { name: 'Open folder', exact: true }).click();
+  await panel(page).getByRole('searchbox', { name: 'Filter notes' }).fill('gam');
+  await panel(page).getByRole('button', { name: 'Other/Gamma' }).click();
+  await page.getByRole('button', { name: 'Read', exact: true }).click();
+  const download = page.waitForEvent('download');
+  await visualPane(page).getByRole('link', { name: 'the sheet' }).click();
+  expect((await download).suggestedFilename()).toBe('data.csv');
 });

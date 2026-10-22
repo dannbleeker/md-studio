@@ -211,6 +211,9 @@ export const en = {
   'link.noteMissing': 'Could not find the note {name}.',
   'link.noteUnavailable':
     'To open linked notes, choose the attachments folder first (see the notice above the editor).',
+  'link.fileMissing': 'Could not find the file {name}.',
+  'link.fileUnavailable':
+    'To open linked files, choose the attachments folder first (see the notice above the editor).',
   'link.scanning': 'Still scanning the folder. Try the link again in a moment.',
   'read.fold': 'Fold or unfold this section',
   'folder.title': 'Folder',
