@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Links to other notes open on the first click.** Clicking a link to a note
+  or file when no attachments folder is chosen (or its permission has lapsed)
+  now opens the folder picker (or the permission prompt) from the click and
+  then follows the link, instead of only showing a toast. A link clicked while
+  the folder is still being scanned waits for the scan.
 - **Notes shown inside notes.** A transcluded note (`![[Note]]`) now typesets
   its formulas, frames its callouts and draws its mermaid diagrams, as the
   note does on its own. Its text still goes through the allow-list; the

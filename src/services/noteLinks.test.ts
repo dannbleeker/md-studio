@@ -2,7 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useUiStore } from '@/store/ui';
 
 const resolveAttachment = vi.fn();
+const chooseAttachmentFolder = vi.fn();
+const grantAttachmentAccess = vi.fn();
 vi.mock('./attachments', () => ({
+  chooseAttachmentFolder: (...args: unknown[]) => chooseAttachmentFolder(...args),
+  grantAttachmentAccess: (...args: unknown[]) => grantAttachmentAccess(...args),
   currentDocContext: () => ({ handleId: 'h', fileHandle: null }),
   readNoteText: vi.fn(),
   resolveAttachment: (...args: unknown[]) => resolveAttachment(...args),
@@ -27,6 +31,8 @@ describe('followFileLink', () => {
 
   beforeEach(() => {
     resolveAttachment.mockReset();
+    chooseAttachmentFolder.mockReset().mockResolvedValue(false);
+    grantAttachmentAccess.mockReset().mockResolvedValue(false);
     open.mockReset();
     click.mockReset();
     useUiStore.setState({ toasts: [] });
@@ -62,5 +68,26 @@ describe('followFileLink', () => {
     await followFileLink({ path: 'x.pdf', markdown: false });
     expect(toasts().at(-1)).toContain('attachments folder');
     expect(open).not.toHaveBeenCalled();
+  });
+
+  it('asks for the folder from the click, then follows the link', async () => {
+    resolveAttachment
+      .mockResolvedValueOnce({ state: 'unavailable', reason: 'no-folder' })
+      .mockResolvedValueOnce(ok('docs/report.pdf'));
+    chooseAttachmentFolder.mockResolvedValue(true);
+    await followFileLink({ path: 'docs/report.pdf', markdown: true });
+    expect(chooseAttachmentFolder).toHaveBeenCalledTimes(1);
+    expect(open).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks for permission when the folder is known but locked', async () => {
+    resolveAttachment
+      .mockResolvedValueOnce({ state: 'unavailable', reason: 'needs-permission' })
+      .mockResolvedValueOnce(ok('docs/report.pdf'));
+    grantAttachmentAccess.mockResolvedValue(true);
+    await followFileLink({ path: 'docs/report.pdf', markdown: true });
+    expect(grantAttachmentAccess).toHaveBeenCalledTimes(1);
+    expect(chooseAttachmentFolder).not.toHaveBeenCalled();
+    expect(open).toHaveBeenCalledTimes(1);
   });
 });
