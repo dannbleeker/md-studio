@@ -4,12 +4,46 @@ import { type NotePreview, notePreview } from '@/domain/notePreview';
 import { t } from '@/i18n';
 import { showToast } from '@/store/ui';
 import {
+  type AttachmentUnavailable,
+  chooseAttachmentFolder,
   currentDocContext,
+  grantAttachmentAccess,
   readNoteText,
   resolveAttachment,
   resolveNoteHandle,
 } from './attachments';
 import { navigateToNote } from './noteHistory';
+
+const SCAN_RETRIES = 12;
+const SCAN_RETRY_MS = 250;
+
+/**
+ * A click on a link is a user gesture, so a missing folder or permission is
+ * asked for right here (the picker, or the permission prompt) instead of
+ * sending the user to the banner. True when the lookup is worth repeating.
+ */
+function recoverAccess(reason: AttachmentUnavailable): Promise<boolean> {
+  const ctx = currentDocContext();
+  if (reason === 'needs-permission') return grantAttachmentAccess(ctx);
+  if (reason === 'no-folder') return chooseAttachmentFolder(ctx);
+  return Promise.resolve(false);
+}
+
+/** Runs a lookup; on "unavailable" asks for access once, and waits out a first scan. */
+async function resolveWithAccess<T extends { state: string }>(
+  lookup: () => Promise<T>
+): Promise<T> {
+  let res = await lookup();
+  const first = res as { state: string; reason?: AttachmentUnavailable };
+  if (first.state === 'unavailable' && first.reason && (await recoverAccess(first.reason))) {
+    res = await lookup();
+  }
+  for (let i = 0; res.state === 'scanning' && i < SCAN_RETRIES; i++) {
+    await new Promise((r) => setTimeout(r, SCAN_RETRY_MS));
+    res = await lookup();
+  }
+  return res;
+}
 
 /** Scrolls the visual pane to the heading with this slug (after a note opened, say). */
 export function scrollToHeadingSlug(slug: string): boolean {
@@ -36,9 +70,9 @@ export async function followNoteLink(target: {
   markdown: boolean;
 }): Promise<void> {
   const name = target.path;
-  const res = await resolveNoteHandle(currentDocContext(), target.path, {
-    markdown: target.markdown,
-  });
+  const res = await resolveWithAccess(() =>
+    resolveNoteHandle(currentDocContext(), target.path, { markdown: target.markdown })
+  );
   if (res.state === 'scanning') return void showToast(t('link.scanning'));
   if (res.state === 'missing') return void showToast(t('link.noteMissing', { name }));
   if (res.state === 'unavailable') return void showToast(t('link.noteUnavailable'));
@@ -58,9 +92,9 @@ export async function followNoteLink(target: {
  */
 export async function followFileLink(target: { path: string; markdown: boolean }): Promise<void> {
   const name = target.path.replace(/^.*\//, '');
-  const res = await resolveAttachment(currentDocContext(), target.path, {
-    markdown: target.markdown,
-  });
+  const res = await resolveWithAccess(() =>
+    resolveAttachment(currentDocContext(), target.path, { markdown: target.markdown })
+  );
   if (res.state === 'scanning') return void showToast(t('link.scanning'));
   if (res.state === 'missing') return void showToast(t('link.fileMissing', { name }));
   if (res.state === 'unavailable') return void showToast(t('link.fileUnavailable'));
