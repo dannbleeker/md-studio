@@ -48,8 +48,8 @@
     "mermaid": "^12.2.0",
     "pdf-lib": "^1.17.1",
     "prosemirror-search": "^1.1.1",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "remark-frontmatter": "^5.0.0",
     "zustand": "^5.0.15"
   },
