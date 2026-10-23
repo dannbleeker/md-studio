@@ -1,16 +1,16 @@
 {
-  "generatedAt": "2026-10-22",
+  "generatedAt": "2026-10-23",
   "version": "0.1.0",
   "code": [
     {
       "category": "App code",
       "files": 145,
-      "lines": 20210
+      "lines": 20244
     },
     {
       "category": "Unit tests",
       "files": 103,
-      "lines": 17500
+      "lines": 17527
     },
     {
       "category": "E2E tests",
@@ -35,14 +35,14 @@
   ],
   "tests": {
     "files": 99,
-    "total": 1405,
-    "passed": 1402,
+    "total": 1407,
+    "passed": 1404,
     "failed": 3,
     "e2eSpecs": 17
   },
   "coverage": null,
   "bundle": {
-    "eagerGzipBytes": 475693,
+    "eagerGzipBytes": 475687,
     "eager": [
       "codeRegions",
       "codemirror",
@@ -57,15 +57,15 @@
       "ui"
     ],
     "chunks": {
-      "AttachmentBanner": 1542,
-      "FindBar": 2595,
-      "FolderPanel": 3195,
-      "FormatToolbar": 1068,
-      "OutlinePanel": 952,
-      "ReadKeysDialog": 421,
+      "AttachmentBanner": 1539,
+      "FindBar": 2594,
+      "FolderPanel": 3193,
+      "FormatToolbar": 1069,
+      "OutlinePanel": 953,
+      "ReadKeysDialog": 420,
       "ReaderDialog": 583,
       "USER_GUIDE": 4962,
-      "attachments": 6439,
+      "attachments": 6441,
       "callouts": 850,
       "codeRegions": 2562,
       "codemirror": 215708,
@@ -167,38 +167,38 @@
       "diagram-wardleyDiagram-IVAIDKWA": 6544,
       "diagram-xychartDiagram-4URNHDU4": 12307,
       "docx": 116036,
-      "drawers": 172,
-      "embedExport": 3432,
+      "drawers": 173,
+      "embedExport": 3430,
       "embedLinks": 1303,
-      "embedRender": 4226,
+      "embedRender": 4227,
       "embeds": 2006,
-      "exportImages": 2169,
+      "exportImages": 2171,
       "fences": 189,
-      "folder": 1251,
+      "folder": 1248,
       "frontMatter": 605,
-      "html": 2335,
+      "html": 2334,
       "i18n": 5726,
       "images": 1250,
-      "index": 39157,
+      "index": 39151,
       "katex": 76952,
       "linkTarget": 782,
       "markdownPdf": 179127,
       "marked.esm": 13428,
       "math": 272,
-      "mathRender": 276,
+      "mathRender": 274,
       "mermaid": 1175,
       "milkdown": 140688,
-      "noteLinks": 1369,
+      "noteLinks": 1517,
       "noteRenderer": 3762,
       "plainText": 1023,
       "react": 67523,
-      "readImpl": 4129,
+      "readImpl": 4125,
       "rolldown-runtime": 627,
-      "transclusion": 3277,
+      "transclusion": 3279,
       "typeset": 1499,
       "typesetRenderers": 1005,
       "ui": 902,
-      "vaultConfig": 1628,
+      "vaultConfig": 1627,
       "vaultIndex": 1649,
       "welcome.en": 989,
       "workbox-window.prod.es5": 2199
@@ -211,9 +211,9 @@
     "words": 27398
   },
   "git": {
-    "commits": 144,
+    "commits": 147,
     "firstCommit": "2026-10-02",
-    "lastCommit": "2026-10-22",
-    "activeDays": 11
+    "lastCommit": "2026-10-23",
+    "activeDays": 12
   }
 }
