@@ -1,10 +1,6 @@
-import { extOf } from './vaultIndex';
+import { isNotePath } from './noteFiles';
 
 /** The folder panel's tree of notes: folders first, then files, each in natural order. */
-
-const NOTE_EXTENSIONS: ReadonlySet<string> = new Set(['md', 'markdown', 'mdown', 'mkd']);
-
-export const isNotePath = (path: string): boolean => NOTE_EXTENSIONS.has(extOf(path));
 
 export type TreeNode = {
   name: string;

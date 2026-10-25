@@ -39,6 +39,12 @@ export function hidePopoverSoon(): void {
   hideTimer = setTimeout(hidePopover, 180);
 }
 
+/** Keeps the card up: the pointer came back to its anchor from the card. */
+export function keepPopover(): void {
+  if (hideTimer !== null) clearTimeout(hideTimer);
+  hideTimer = null;
+}
+
 /** The element the card is showing for, to tell a move between its anchor and it from a real exit. */
 export const popoverAnchor = (): Element | null => anchor;
 
@@ -58,10 +64,7 @@ export function showPopover(near: Element, title: string | null, text: string): 
   body.className = 'read-popover-text';
   body.textContent = text;
   box.append(body);
-  box.addEventListener('pointerenter', () => {
-    if (hideTimer !== null) clearTimeout(hideTimer);
-    hideTimer = null;
-  });
+  box.addEventListener('pointerenter', keepPopover);
   box.addEventListener('pointerleave', hidePopoverSoon);
   document.body.append(box);
   card = box;
@@ -71,9 +74,17 @@ export function showPopover(near: Element, title: string | null, text: string): 
 }
 
 if (typeof window !== 'undefined') {
-  window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && card) hidePopover();
-  });
+  // Capture, and claimed: this chunk loads late, so a bubbling listener could
+  // run after focus mode's, and the same Escape would leave focus mode too.
+  window.addEventListener(
+    'keydown',
+    (e) => {
+      if (e.key !== 'Escape' || !card) return;
+      e.preventDefault();
+      hidePopover();
+    },
+    { capture: true }
+  );
   // A scroll moves the anchor away from the card: capture, as panes scroll on their own elements.
   window.addEventListener('scroll', hidePopover, { capture: true, passive: true });
 }

@@ -11,6 +11,7 @@ import { ToastHost } from './components/toast/ToastHost';
 import { Toolbar } from './components/toolbar/Toolbar';
 import { LazyBoundary } from './components/ui/LazyBoundary';
 import { useFileDrop } from './hooks/useFileDrop';
+import { useFocusModeEscape } from './hooks/useFocusModeEscape';
 import { useIsMobile } from './hooks/useIsMobile';
 import { useLocale } from './hooks/useLocale';
 import { useReadKeys } from './hooks/useReadKeys';
@@ -73,6 +74,7 @@ export function App() {
   useReadViewRefresh();
   useReadKeys();
   useSwipeNav();
+  useFocusModeEscape();
 
   // The folder of last time comes back (without a prompt) and keeps its list current.
   useEffect(() => {
@@ -83,17 +85,6 @@ export function App() {
       void m.restoreFolder();
     });
   }, []);
-
-  // Escape leaves focus mode, unless a dialog is open (it takes Escape first).
-  useEffect(() => {
-    if (!focusMode) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || document.querySelector('dialog[open]')) return;
-      useUiStore.getState().setFocusMode(false);
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [focusMode]);
 
   return (
     <div

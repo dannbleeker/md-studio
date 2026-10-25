@@ -30,12 +30,13 @@ export default mergeConfig(
         // allows each test 30 s instead of 5: the large parity sweeps take
         // about 4.5 s instrumented on a laptop and longer on CI runners.
         thresholds: {
-          lines: 79,
-          statements: 78,
-          functions: 69,
-          branches: 75,
+          lines: 84,
+          statements: 82,
+          functions: 74,
+          branches: 78,
           'src/domain/**': { lines: 99, statements: 97, functions: 100, branches: 91 },
-          'src/store/**': { lines: 97, statements: 95, functions: 94, branches: 88 },
+          'src/hooks/**': { lines: 100, statements: 98, functions: 95, branches: 97 },
+          'src/store/**': { lines: 98, statements: 96, functions: 96, branches: 88 },
         },
       },
     },

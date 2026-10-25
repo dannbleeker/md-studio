@@ -34,8 +34,9 @@ const embedChosen = new Set<string>();
 async function shrink(file: File): Promise<Blob> {
   // Vector and animated images would lose everything that makes them so.
   if (file.type === 'image/svg+xml' || file.type === 'image/gif') return file;
+  let bitmap: ImageBitmap | null = null;
   try {
-    const bitmap = await createImageBitmap(file);
+    bitmap = await createImageBitmap(file);
     const scale = Math.min(1, MAX_EMBED_SIDE / Math.max(bitmap.width, bitmap.height));
     if (scale === 1 && file.size < 400_000) return file;
     const canvas = document.createElement('canvas');
@@ -45,10 +46,15 @@ async function shrink(file: File): Promise<Blob> {
     const encode = (type: string) =>
       new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.85));
     const webp = await encode('image/webp');
-    const out = webp?.type === 'image/webp' ? webp : await encode('image/jpeg');
+    // Safari's canvas cannot write WebP. JPEG has no transparency (a
+    // screenshot's see-through shadow turns black), so only a JPEG stays one.
+    const fallback = file.type === 'image/jpeg' ? 'image/jpeg' : 'image/png';
+    const out = webp?.type === 'image/webp' ? webp : await encode(fallback);
     return out && out.size < file.size ? out : file;
   } catch {
     return file;
+  } finally {
+    bitmap?.close();
   }
 }
 
@@ -115,17 +121,22 @@ export async function placeFiles(
     showToast(t('image.documentChanged'));
     return false;
   };
+  // Asked at most once per paste or drop: a cancelled folder picker leaves
+  // no folder, and asking again for every further file would nag.
+  let asked = false;
   for (const file of files) {
     try {
       let status = await attachmentStatus(ctx);
       // First image in a document with no folder yet: ask once, as before.
       if (
         status.kind === 'no-folder' &&
+        !asked &&
         isImage(file) &&
         ctx.fileHandle &&
         ctx.handleId &&
         !embedChosen.has(ctx.handleId)
       ) {
+        asked = true;
         const useFolder = await requestConfirm({
           title: t('image.folderTitle'),
           body: t('image.folderBody', { name: ctx.fileHandle.name }),

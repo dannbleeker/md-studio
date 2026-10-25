@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
+import { opensAsDocument } from '@/domain/noteFiles';
 import { openDroppedFile } from '@/services/documentActions';
-
-const MARKDOWN = /\.(md|markdown|mdown|mkd|txt)$/i;
 
 /** Drop a Markdown file anywhere on the window to open it. */
 export function useFileDrop(): void {
@@ -16,7 +15,7 @@ export function useFileDrop(): void {
       // dropped on an editor are handled (and prevented) by that pane.
       e.preventDefault();
       for (const file of files) {
-        if (MARKDOWN.test(file.name)) await openDroppedFile(file);
+        if (opensAsDocument(file.name)) await openDroppedFile(file);
       }
     };
     window.addEventListener('dragover', onDragOver);

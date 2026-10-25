@@ -1,12 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { buildTree, isNotePath, notePaths } from './folderTree';
+import { buildTree, notePaths } from './folderTree';
 
 describe('folderTree', () => {
-  it('knows which files are notes', () => {
-    expect(['a.md', 'B.MARKDOWN', 'c.mkd', 'd.mdown'].every(isNotePath)).toBe(true);
-    expect(['a.png', 'b.txt', 'md', 'a.md.bak'].some(isNotePath)).toBe(false);
-  });
-
   it('builds folders first, then notes, in natural order, leaving out other files', () => {
     const tree = buildTree([
       'z.md',

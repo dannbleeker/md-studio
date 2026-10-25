@@ -1,19 +1,29 @@
 import { Plugin } from '@milkdown/kit/prose/state';
+import type { EditorView } from '@milkdown/kit/prose/view';
 import { headingSlug, type LinkTarget, linkTarget, wikilinkTarget } from '@/domain/linkTarget';
 import { useStore } from '@/store';
 import { headingPlainText, visualHeadings } from './editorRegistry';
 import { openLightbox } from './lightbox';
+import { expandAllFolds } from './readFolds';
 import { showFor } from './readHover';
 
 /** The note-link service loads on first use: most sessions never follow one. */
 const noteLinks = () => import('@/services/noteLinks');
 
-function follow(target: LinkTarget, pm: Element): void {
+const headingFor = (pm: Element, slug: string) =>
+  visualHeadings(pm).find((h) => headingSlug(headingPlainText(h)) === slug);
+
+function follow(target: LinkTarget, view: EditorView): void {
   if (target.kind === 'external') {
     window.open(target.url, '_blank', 'noopener,noreferrer');
   } else if (target.kind === 'anchor') {
     const slug = target.slug.toLowerCase();
-    const heading = visualHeadings(pm).find((h) => headingSlug(headingPlainText(h)) === slug);
+    let heading = headingFor(view.dom, slug);
+    // A folded section's heading is not drawn: there is nowhere to scroll to.
+    if (heading?.classList.contains('read-folded')) {
+      expandAllFolds(view);
+      heading = headingFor(view.dom, slug);
+    }
     heading?.scrollIntoView({ block: 'start' });
   } else if (target.kind === 'note') {
     void noteLinks().then((m) => m.followNoteLink(target));
@@ -42,13 +52,13 @@ export const readClicks = new Plugin({
           event.preventDefault();
           // A transcluded note's links are relative to that note, not this one.
           if (!anchor.closest('.md-transclusion'))
-            follow(linkTarget(anchor.getAttribute('href') ?? ''), view.dom);
+            follow(linkTarget(anchor.getAttribute('href') ?? ''), view);
           return true;
         }
         const chip = el.closest<HTMLElement>('.md-wikilink');
         if (chip && wants && !chip.closest('.md-transclusion')) {
           event.preventDefault();
-          follow(wikilinkTarget(chip.title), view.dom);
+          follow(wikilinkTarget(chip.title), view);
           return true;
         }
         // A tap on a footnote reference shows its text at once (touch has no hover).

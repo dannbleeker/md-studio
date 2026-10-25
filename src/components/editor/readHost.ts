@@ -2,7 +2,14 @@ import { Plugin } from '@milkdown/kit/prose/state';
 import type { EditorProps } from '@milkdown/kit/prose/view';
 import { useStore } from '@/store';
 import { editors } from './editorRegistry';
-import { applyFoldMeta, type FoldMeta, type Folds, folds } from './readFolds';
+import {
+  applyFoldMeta,
+  type FoldMeta,
+  type FoldState,
+  folds,
+  mapFolds,
+  NO_FOLDS,
+} from './readFolds';
 
 /**
  * Read view's place in the visual pane, from the first moment: the fold
@@ -35,7 +42,13 @@ export function loadReadExtras(): Promise<void> {
 }
 
 const reading = () => useStore.getState().viewMode === 'read';
-const EMPTY: Folds = new Set();
+
+/**
+ * Folds belong to one loaded document: another tab or note shown in this
+ * editor starts unfolded, even when its load changed nothing here.
+ */
+const foldsShown = (state: FoldState | undefined) =>
+  state && state.loadId === useStore.getState().loadId ? state.folded : NO_FOLDS;
 
 const delegate = (name: keyof Handlers): NonNullable<Handlers[typeof name]> =>
   // biome-ignore lint/suspicious/noExplicitAny: one forwarding shape for several event types.
@@ -55,15 +68,21 @@ const delegate = (name: keyof Handlers): NonNullable<Handlers[typeof name]> =>
     return false;
   }) as NonNullable<Handlers[typeof name]>;
 
-export const readHost = new Plugin<Folds>({
+export const readHost = new Plugin<FoldState>({
   key: folds,
   state: {
-    init: () => EMPTY,
-    apply: (tr, value) => applyFoldMeta(value, tr.getMeta(folds) as FoldMeta | undefined),
+    init: () => ({ loadId: useStore.getState().loadId, folded: NO_FOLDS }),
+    apply: (tr, value) => {
+      const { loadId } = useStore.getState();
+      let folded = foldsShown(value);
+      if (tr.docChanged) folded = mapFolds(folded, tr.mapping);
+      folded = applyFoldMeta(folded, tr.getMeta(folds) as FoldMeta | undefined);
+      return folded === value.folded && loadId === value.loadId ? value : { loadId, folded };
+    },
   },
   props: {
     decorations(state) {
-      return impl && reading() ? impl.decorations(state, folds.getState(state) ?? EMPTY) : null;
+      return impl && reading() ? impl.decorations(state, foldsShown(folds.getState(state))) : null;
     },
     handleDOMEvents: {
       click: delegate('click'),

@@ -1,4 +1,5 @@
 import { classifyTarget, parseWikiRef } from './embeds';
+import { isNoteExtension } from './noteFiles';
 import { extOf } from './vaultIndex';
 
 export type LinkTarget =
@@ -14,7 +15,6 @@ const EXTERNAL = /^(https?:|mailto:|tel:)/i;
 const SCHEME = /^[a-z][a-z0-9+.-]*:/i;
 /** A plausible file extension; keeps "Dr. Smith" and similar names from reading as a file. */
 const FILE_EXTENSION = /^[a-z0-9]{1,8}$/;
-const NOTE_EXTENSIONS: ReadonlySet<string> = new Set(['md', 'markdown', 'mdown', 'mkd']);
 
 const decode = (s: string): string => {
   try {
@@ -47,7 +47,7 @@ export function linkTarget(href: string): LinkTarget {
   const path = decode(query < 0 ? withoutHash : withoutHash.slice(0, query)).replace(/^<|>$/g, '');
   if (path === '') return { kind: 'none' };
   const ext = extOf(path);
-  if (!NOTE_EXTENSIONS.has(ext))
+  if (!isNoteExtension(ext))
     return FILE_EXTENSION.test(ext) ? { kind: 'file', path, markdown: true } : { kind: 'none' };
   const fragment = hash < 0 || hash === trimmed.length - 1 ? null : decode(trimmed.slice(hash + 1));
   return { kind: 'note', path, fragment, markdown: true };

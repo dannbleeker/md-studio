@@ -2,7 +2,8 @@ import { t } from '@/i18n';
 
 /**
  * Shows an already loaded image full size over the page. Click, Escape or
- * the close button dismisses it and focus returns to where it was. The
+ * the close button dismisses it and focus returns to where it was; until
+ * then focus stays on that button. The
  * source is the image the document already shows, so nothing new is fetched.
  */
 export function openLightbox(src: string, alt: string): void {
@@ -30,6 +31,13 @@ export function openLightbox(src: string, alt: string): void {
     opener?.focus?.();
   };
   const onKey = (e: KeyboardEvent) => {
+    // It is modal: Tab must not reach the page behind it, and the close
+    // button is all there is to reach inside it.
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      close.focus();
+      return;
+    }
     if (e.key !== 'Escape') return;
     e.preventDefault();
     e.stopPropagation();
