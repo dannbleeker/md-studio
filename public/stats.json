@@ -10,7 +10,7 @@
     {
       "category": "Unit tests",
       "files": 121,
-      "lines": 18997
+      "lines": 18993
     },
     {
       "category": "E2E tests",
@@ -36,18 +36,18 @@
   "tests": {
     "files": 117,
     "total": 1495,
-    "passed": 1495,
-    "failed": 0,
+    "passed": 1492,
+    "failed": 3,
     "e2eSpecs": 17
   },
   "coverage": {
     "lines": 84.89,
-    "statements": 83.07,
-    "functions": 74.9,
-    "branches": 79
+    "statements": 83.08,
+    "functions": 74.95,
+    "branches": 78.99
   },
   "bundle": {
-    "eagerGzipBytes": 477963,
+    "eagerGzipBytes": 477960,
     "eager": [
       "codeRegions",
       "codemirror",
@@ -63,11 +63,11 @@
       "vaultIndex"
     ],
     "chunks": {
-      "AttachmentBanner": 1541,
-      "FindBar": 2593,
-      "FolderPanel": 3171,
-      "FormatToolbar": 1068,
-      "OutlinePanel": 954,
+      "AttachmentBanner": 1540,
+      "FindBar": 2592,
+      "FolderPanel": 3169,
+      "FormatToolbar": 1069,
+      "OutlinePanel": 953,
       "ReadKeysDialog": 421,
       "ReaderDialog": 584,
       "USER_GUIDE": 4962,
@@ -175,38 +175,38 @@
       "diagram-xychartDiagram-4URNHDU4": 12311,
       "docx": 128422,
       "drawers": 171,
-      "embedExport": 3418,
-      "embedLinks": 1223,
-      "embedRender": 4178,
+      "embedExport": 3419,
+      "embedLinks": 1222,
+      "embedRender": 4175,
       "embeds": 2054,
-      "exportImages": 2136,
+      "exportImages": 2134,
       "fences": 189,
-      "folder": 1206,
+      "folder": 1208,
       "frontMatter": 605,
-      "html": 2336,
+      "html": 2334,
       "i18n": 5726,
       "images": 1297,
-      "index": 39698,
+      "index": 39696,
       "katex": 76945,
-      "linkTarget": 773,
+      "linkTarget": 772,
       "markdownPdf": 179107,
       "marked.esm": 13602,
       "math": 273,
-      "mathRender": 273,
+      "mathRender": 275,
       "mermaid": 1177,
       "milkdown": 140658,
-      "noteLinks": 1569,
+      "noteLinks": 1568,
       "noteRenderer": 3785,
       "plainText": 1025,
       "react": 67529,
       "readImpl": 4459,
       "rolldown-runtime": 627,
       "textHash": 145,
-      "transclusion": 3273,
-      "typeset": 1521,
+      "transclusion": 3272,
+      "typeset": 1522,
       "typesetRenderers": 956,
-      "ui": 903,
-      "vaultConfig": 1618,
+      "ui": 902,
+      "vaultConfig": 1620,
       "vaultIndex": 1648,
       "welcome.en": 989,
       "workbox-window.prod.es5": 2199
@@ -219,7 +219,7 @@
     "words": 27398
   },
   "git": {
-    "commits": 169,
+    "commits": 172,
     "firstCommit": "2026-10-02",
     "lastCommit": "2026-10-25",
     "activeDays": 13

@@ -83,10 +83,10 @@
   {
     "date": "2026-10-25",
     "appLines": 20687,
-    "testLines": 18997,
+    "testLines": 18993,
     "tests": 1495,
     "coverageLines": 84.89,
-    "eagerGzipBytes": 477963,
+    "eagerGzipBytes": 477960,
     "bookWords": 27398
   }
 ]
