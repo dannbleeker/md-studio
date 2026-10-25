@@ -52,7 +52,8 @@ src/
                (File System Access + fallbacks), handleStore.ts (file
                handles in IndexedDB), documentActions.ts (user commands),
                images.ts, attachments.ts (vault folder, scan, resolve,
-               save), folder.ts (folder mode, lazy), noteHistory.ts (back /
+               save; the entry point over attachmentCore, attachmentSave,
+               attachmentTypes, dirHandles), folder.ts (folder mode, lazy), noteHistory.ts (back /
                forward), noteLinks.ts (follow + preview a note link),
                backlinks.ts, links.ts, perfMarks.ts, export/ (HTML, Word, PDF,
                plain text; markdownPdf.mjs is shared with the book scripts)
