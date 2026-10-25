@@ -235,6 +235,9 @@ that keep it safe:
   other locale must cover every key (type `Messages`). Format dates with
   `dateTimeFormat()`, not a bare `Intl.DateTimeFormat`.
 - `pnpm verify` must be green before pushing. It is the CI gate.
+- Merging: Claude may merge its own PRs in this repo without asking, once CI
+  is green on the head, there is no merge conflict and no review thread is
+  left open. Squash, with the PR title as the commit title.
 - Bundle growth: re-pin `bundle-budget.json` deliberately and say why.
 - Coverage floors in `vitest.config.ts` (`thresholds`) are a ratchet: when
   coverage grows, raise them to the new level rounded down; never lower one
