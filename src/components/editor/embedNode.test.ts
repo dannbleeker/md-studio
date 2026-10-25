@@ -980,7 +980,7 @@ describe('code conversions of a chip can be undone by the opposite action', () =
 });
 
 describe('converting a block with thousands of chips', () => {
-  it('stays quick in both directions', () => {
+  it('stays quick in both directions', { tags: ['stress'] }, () => {
     const view = load(`${'![[a.png]] '.repeat(8000)}\n`);
     expect(raws(view.state.doc)).toHaveLength(8000);
     selectContent(view, 0);

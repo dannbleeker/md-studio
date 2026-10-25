@@ -2,7 +2,13 @@ import { Plugin } from '@milkdown/kit/prose/state';
 import { linkTarget, wikilinkTarget } from '@/domain/linkTarget';
 import { t } from '@/i18n';
 import { useStore } from '@/store';
-import { hidePopover, hidePopoverSoon, popoverAnchor, showPopover } from './readPopover';
+import {
+  hidePopover,
+  hidePopoverSoon,
+  keepPopover,
+  popoverAnchor,
+  showPopover,
+} from './readPopover';
 
 const SHOW_LINK_MS = 400;
 const SHOW_NOTE_MS = 120;
@@ -36,12 +42,20 @@ const cancel = () => {
 
 /** Shows the card for `el` now (a footnote) or after a delay (a note link). */
 export function showFor(view: { dom: Element }, el: Element, delay: number): void {
+  // One card at a time: a click during a hover's delay must not leave the
+  // hover's timer to show the card again after the pointer has left.
+  if (timer !== null) clearTimeout(timer);
   const mine = ++request;
   const label = el.getAttribute('data-label');
   if (el.matches('sup[data-type="footnote_reference"]') && label !== null) {
     const text = footnoteText(view, label);
     if (text !== null) {
-      timer = setTimeout(() => showPopover(el, null, text), Math.min(delay, SHOW_NOTE_MS));
+      timer = setTimeout(
+        () => {
+          if (mine === request) showPopover(el, null, text);
+        },
+        Math.min(delay, SHOW_NOTE_MS)
+      );
     }
     return;
   }
@@ -72,7 +86,12 @@ export const readHover = new Plugin({
       mouseover: (view, event) => {
         if (useStore.getState().viewMode !== 'read') return false;
         const el = event.target instanceof Element ? event.target.closest(SELECTOR) : null;
-        if (!el || !view.dom.contains(el) || el === popoverAnchor()) return false;
+        if (!el || !view.dom.contains(el)) return false;
+        // Back from the card to its own anchor: the card stays.
+        if (el === popoverAnchor()) {
+          keepPopover();
+          return false;
+        }
         if (el.closest('.md-transclusion')) return false;
         cancel();
         showFor(view, el, SHOW_LINK_MS);

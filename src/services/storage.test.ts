@@ -36,6 +36,48 @@ describe('storage', () => {
     expect(localStorage.getItem('md-studio:document-handle:v1')).toBeNull();
   });
 
+  /** Storage that refuses the tabs entry while more than `room` characters are stored. */
+  function tightStorage(room: number) {
+    const setItem = Storage.prototype.setItem;
+    const used = () =>
+      Object.keys(localStorage).reduce((n, k) => n + (localStorage.getItem(k)?.length ?? 0), 0);
+    Storage.prototype.setItem = function (this: Storage, key: string, value: string) {
+      if (key === 'md-studio:tabs:v1' && used() + value.length > room)
+        throw new DOMException('full', 'QuotaExceededError');
+      setItem.call(this, key, value);
+    };
+    return () => {
+      Storage.prototype.setItem = setItem;
+    };
+  }
+
+  it('makes room by dropping the old single document when the tabs do not fit beside it', () => {
+    const doc = createDocument(`# Old\n${'text '.repeat(200)}`, 'old.md');
+    localStorage.setItem('md-studio:document:v1', JSON.stringify(doc));
+    const restore = tightStorage(JSON.stringify(doc).length * 1.5);
+    try {
+      expect(saveTabs({ tabs: [{ id: 'x', doc, handleId: null }], activeId: 'x' })).toBe(true);
+    } finally {
+      restore();
+    }
+    expect(loadTabs()?.tabs[0]?.doc.markdown).toBe(doc.markdown);
+    expect(localStorage.getItem('md-studio:document:v1')).toBeNull();
+  });
+
+  it('keeps the old single document when the tabs cannot be stored at all', () => {
+    const doc = createDocument('# Old draft', 'old.md');
+    localStorage.setItem('md-studio:document:v1', JSON.stringify(doc));
+    localStorage.setItem('md-studio:document-handle:v1', JSON.stringify('h9'));
+    const restore = tightStorage(0);
+    try {
+      expect(saveTabs({ tabs: [{ id: 'x', doc, handleId: null }], activeId: 'x' })).toBe(false);
+    } finally {
+      restore();
+    }
+    // Nothing else holds the draft: a reload must still find it.
+    expect(loadTabs()?.tabs[0]).toMatchObject({ doc: { markdown: '# Old draft' }, handleId: 'h9' });
+  });
+
   it('ignores corrupt or foreign values', () => {
     localStorage.setItem('md-studio:document:v1', '{not json');
     expect(loadTabs()).toBeNull();

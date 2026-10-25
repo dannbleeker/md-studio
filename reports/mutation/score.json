@@ -1,6 +1,6 @@
 {
-  "mutationScore": 74.31,
-  "mutants": 6177,
+  "mutationScore": 75.03,
+  "mutants": 7481,
   "scope": "src/domain",
-  "generatedAt": "2026-10-18T09:02:36.710Z"
+  "generatedAt": "2026-10-25T10:29:09.617Z"
 }

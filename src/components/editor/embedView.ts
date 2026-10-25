@@ -70,11 +70,49 @@ export function liveDocContext(): DocContext {
   return { fileHandle, handleId };
 }
 
-export function loadingChip(): HTMLElement {
+function loadingChip(): HTMLElement {
   const chip = document.createElement('span');
   chip.className = 'md-embed-chip md-embed-loading';
   chip.textContent = t('embed.loading');
   return chip;
+}
+
+/**
+ * Shows a token in a live editor's node view: a loading chip until the
+ * render module has arrived, then the embed. A token changed meanwhile is
+ * the one mounted. `markdown` resolves a path note-relative first, as a
+ * Markdown link does.
+ */
+export function mountLiveEmbed(
+  dom: HTMLElement,
+  token: string,
+  markdown = false
+): { update(token: string): void; destroy(): void } {
+  const signal = { cancelled: false };
+  let current = token;
+  let mounted: { update(raw: string): void; destroy(): void } | null = null;
+  dom.append(loadingChip());
+  withEmbedRender((m) => {
+    if (signal.cancelled) return;
+    mounted = m.mountEmbed(dom, current, {
+      doc: liveDocContext,
+      chain: { depth: 0, visited: [] },
+      fromNotePath: undefined,
+      signal,
+      ...(markdown ? { markdown: true } : {}),
+    });
+  });
+  return {
+    update(next) {
+      current = next;
+      mounted?.update(next);
+    },
+    destroy() {
+      signal.cancelled = true;
+      mounted?.destroy();
+      mounted = null;
+    },
+  };
 }
 
 /** Events inside controls, frames and transcluded notes belong to them, not to the editor. */
@@ -134,18 +172,7 @@ export const embedNodeView: NodeViewConstructor = (
   let raw = String(node.attrs.raw ?? '');
   const dom = document.createElement('span');
   dom.className = hostClass(raw);
-  dom.append(loadingChip());
-  const signal = { cancelled: false };
-  let mounted: { update(raw: string): void; destroy(): void } | null = null;
-  withEmbedRender((m) => {
-    if (signal.cancelled) return;
-    mounted = m.mountEmbed(dom, raw, {
-      doc: liveDocContext,
-      chain: { depth: 0, visited: [] },
-      fromNotePath: undefined,
-      signal,
-    });
-  });
+  const embed = mountLiveEmbed(dom, raw);
   return {
     dom,
     update(next) {
@@ -156,15 +183,11 @@ export const embedNodeView: NodeViewConstructor = (
       // A wiki token that became a formula needs the formula's view.
       if (parseMathToken(nextRaw)) return false;
       raw = nextRaw;
-      mounted?.update(raw);
+      embed.update(raw);
       return true;
     },
     ignoreMutation: () => true,
     stopEvent: ownsEvent,
-    destroy() {
-      signal.cancelled = true;
-      mounted?.destroy();
-      mounted = null;
-    },
+    destroy: () => embed.destroy(),
   };
 };

@@ -110,7 +110,7 @@ export function loadTabs(): Tabs | null {
  * which halves what a saved tab costs.
  */
 export function saveTabs(state: Tabs): boolean {
-  const ok = write(TABS_KEY, {
+  const saved = {
     activeId: state.activeId,
     tabs: state.tabs.map(({ id, doc, handleId }) => ({
       id,
@@ -125,12 +125,39 @@ export function saveTabs(state: Tabs): boolean {
             }
           : doc,
     })),
-  });
-  // The legacy keys would otherwise resurrect a closed document if the
-  // tabs entry is ever unreadable.
-  remove(DOC_KEY);
-  remove(HANDLE_KEY);
-  return ok;
+  };
+  if (write(TABS_KEY, saved)) {
+    // The legacy keys would otherwise resurrect a closed document if the
+    // tabs entry is ever unreadable.
+    remove(DOC_KEY);
+    remove(HANDLE_KEY);
+    return true;
+  }
+  // The first save after upgrading may not fit beside the old single
+  // document it migrates: make room, but put that document back if the tabs
+  // still do not fit, as it is then the only stored copy of the draft.
+  const legacy = [DOC_KEY, HANDLE_KEY].map((key) => [key, rawItem(key)] as const);
+  if (legacy.every(([, value]) => value === null)) return false;
+  for (const [key] of legacy) remove(key);
+  if (write(TABS_KEY, saved)) return true;
+  for (const [key, value] of legacy) if (value !== null) setRawItem(key, value);
+  return false;
+}
+
+function rawItem(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function setRawItem(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // It fitted a moment ago, before the failed write: nothing more to try.
+  }
 }
 
 export function loadSettings(): Record<string, unknown> {

@@ -44,7 +44,7 @@ describe('parseFrontMatterCard', () => {
     expect(parseFrontMatterCard('just words')).toBeNull();
   });
 
-  it('stays linear on a huge block', () => {
+  it('stays linear on a huge block', { tags: ['stress'] }, () => {
     const time = (n: number) => {
       const yaml = Array.from({ length: n }, () => `a: ${'x'.repeat(100)}`).join('\n');
       const start = performance.now();

@@ -10,7 +10,14 @@ import { syncedTabs, useStore } from '@/store';
 import { flushEditors } from '@/store/flush';
 import { requestConfirm, showToast } from '@/store/ui';
 import { type OpenedFile, openFile, readFile, readHandle, saveFile } from './fileSystem';
-import { ensurePermission, FOLDER_OWNER, getHandle, pruneHandles, putHandle } from './handleStore';
+import {
+  ensurePermission,
+  FOLDER_OWNER,
+  getHandle,
+  permissionOf,
+  pruneHandles,
+  putHandle,
+} from './handleStore';
 import { loadTabs, type RecentEntry } from './storage';
 
 /** Asks before closing a tab whose changes are not saved to disk. */
@@ -118,23 +125,33 @@ export async function newDocument(): Promise<void> {
   useStore.getState().loadDocument(createDocument(), null);
 }
 
-/** Opens what `read` returns (nothing when the user cancelled); a failure becomes a toast. */
-async function openOrToast(read: () => Promise<OpenedFile | null>): Promise<void> {
+/**
+ * Opens what `read` returns; a failure becomes a toast. False when nothing
+ * opened: the user cancelled, or the read failed.
+ */
+async function openOrToast(read: () => Promise<OpenedFile | null>): Promise<boolean> {
   try {
     const file = await read();
-    if (file) await load(file);
+    if (!file) return false;
+    await load(file);
+    return true;
   } catch {
     showToast(t('toast.openFailed'));
+    return false;
   }
 }
 
-export const openDocument = (): Promise<void> => openOrToast(openFile);
+export const openDocument = async (): Promise<void> => {
+  await openOrToast(openFile);
+};
 
-export const openHandle = (handle: FileSystemFileHandle): Promise<void> =>
+/** Opens a file from its handle; false when it could not be read (a toast says why). */
+export const openHandle = (handle: FileSystemFileHandle): Promise<boolean> =>
   openOrToast(() => readHandle(handle));
 
-export const openDroppedFile = (file: File): Promise<void> =>
-  openOrToast(async () => ({ name: file.name, ...(await readFile(file)), handle: null }));
+export const openDroppedFile = async (file: File): Promise<void> => {
+  await openOrToast(async () => ({ name: file.name, ...(await readFile(file)), handle: null }));
+};
 
 /**
  * Reopens a recent file from disk when its handle is still usable, so the
@@ -337,15 +354,7 @@ let warnedAbout: string | null = null;
 export async function checkDiskChanges(): Promise<void> {
   const { fileHandle, doc, activeTabId } = useStore.getState();
   if (!fileHandle || savesInFlight > 0) return;
-  try {
-    if (
-      fileHandle.queryPermission &&
-      (await fileHandle.queryPermission({ mode: 'read' })) !== 'granted'
-    )
-      return;
-  } catch {
-    return;
-  }
+  if ((await permissionOf(fileHandle, 'read')) !== 'granted') return;
   const text = await diskText(fileHandle);
   const now = useStore.getState();
   // Ignore results that arrive after a switch, an edit or a save.

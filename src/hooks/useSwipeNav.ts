@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { modalOpen } from '@/components/ui/modal';
 import { swipeDirection, type TouchPoint } from '@/domain/swipe';
 import { goBack, goForward } from '@/services/noteHistory';
 import { useStore } from '@/store';
@@ -25,6 +26,7 @@ export function useSwipeNav(): void {
         screen === 'editor' &&
         viewMode === 'read' &&
         e.touches.length === 1 &&
+        !modalOpen() &&
         touch &&
         target &&
         !target.closest(OWN_GESTURE)

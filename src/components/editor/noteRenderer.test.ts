@@ -150,7 +150,9 @@ describe('renderNote', () => {
     expect(box.querySelector('li')?.textContent).toContain('<div>i</div>');
   });
 
-  it('shows a plain-text placeholder instead of parsing a far too deep note', async () => {
+  it('shows a plain-text placeholder instead of parsing a far too deep note', {
+    tags: ['stress'],
+  }, async () => {
     for (const hostile of [`${'>'.repeat(20000)} x`, `${'['.repeat(20000)}x${']'.repeat(20000)}`]) {
       const started = Date.now();
       const box = dom(await renderNote(hostile));
@@ -160,7 +162,9 @@ describe('renderNote', () => {
     }
   });
 
-  it('shows a plain-text placeholder for notes the parser takes quadratic time on', async () => {
+  it('shows a plain-text placeholder for notes the parser takes quadratic time on', {
+    tags: ['stress'],
+  }, async () => {
     const nested = Array.from({ length: 300 }, (_, i) => `${'  '.repeat(i)}- a`).join('\n');
     const wide = `|${' a |'.repeat(3300)}\n|${' - |'.repeat(3300)}`;
     for (const hostile of ['*a'.repeat(10_000), '_a'.repeat(10_000), nested, wide]) {
@@ -171,7 +175,7 @@ describe('renderNote', () => {
     }
   });
 
-  it('cuts a very long note short instead of parsing all of it', async () => {
+  it('cuts a very long note short instead of parsing all of it', { tags: ['stress'] }, async () => {
     // 200 KB of plain paragraphs: the parser used to take seconds on it.
     const long = 'word *a* b\n\n'.repeat(20_000);
     const started = Date.now();

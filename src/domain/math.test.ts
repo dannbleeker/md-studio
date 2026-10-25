@@ -62,7 +62,7 @@ describe('findMath', () => {
     expect(raws('plain text')).toEqual([]);
   });
 
-  it('stays linear on long runs of dollar signs', () => {
+  it('stays linear on long runs of dollar signs', { tags: ['stress'] }, () => {
     const time = (text: string) => {
       const start = performance.now();
       findMath(text);

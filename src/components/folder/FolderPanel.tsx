@@ -1,6 +1,7 @@
 import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { buildTree, type TreeNode } from '@/domain/folderTree';
 import { fuzzyFilter } from '@/domain/fuzzy';
+import { withoutNoteExtension } from '@/domain/noteFiles';
 import { treeKey, visibleRows } from '@/domain/treeNav';
 import { t } from '@/i18n';
 import { type Backlinks, findBacklinks } from '@/services/backlinks';
@@ -58,7 +59,7 @@ function Tree({ nodes, expanded, current, tabbable, onKey, onActivate, depth = 0
       {nodes.map((node) => {
         const isDir = node.children !== null;
         const open = isDir && expanded.has(node.path);
-        const label = isDir ? node.name : node.name.replace(/\.(?:md|markdown|mdown|mkd)$/i, '');
+        const label = isDir ? node.name : withoutNoteExtension(node.name);
         return (
           <li
             key={node.path}
@@ -154,7 +155,7 @@ function LinkedFrom({ current }: { current: string | null }) {
                 title={path}
                 onClick={() => pick(path)}
               >
-                {path.replace(/\.(?:md|markdown|mdown|mkd)$/i, '')}
+                {withoutNoteExtension(path)}
               </button>
             </li>
           ))}
@@ -314,7 +315,7 @@ export function FolderPanel() {
                         title={path}
                         onClick={() => pick(path)}
                       >
-                        {path.replace(/\.(?:md|markdown|mdown|mkd)$/i, '')}
+                        {withoutNoteExtension(path)}
                       </button>
                     </li>
                   ))}

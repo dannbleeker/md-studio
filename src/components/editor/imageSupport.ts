@@ -4,6 +4,7 @@ import { insertImageCommand } from '@milkdown/kit/preset/commonmark';
 import { Plugin, TextSelection } from '@milkdown/kit/prose/state';
 import { callCommand } from '@milkdown/kit/utils';
 import { EMBED_NODE_NAME, MEDIA_KINDS } from '@/domain/embeds';
+import { opensAsDocument } from '@/domain/noteFiles';
 import { t } from '@/i18n';
 import type { PlacedAttachment } from '@/services/images';
 import { showToast } from '@/store/ui';
@@ -13,9 +14,6 @@ import { embedMarks } from './embedNode';
 const images = () => import('@/services/images');
 
 const isImage = (f: File) => f.type.startsWith('image/');
-
-/** Dropped Markdown and text files are the window's to open (useFileDrop). */
-const isMarkdownFile = (f: File) => /\.(md|markdown|mdown|mkd|txt)$/i.test(f.name);
 
 /**
  * Files a paste takes over: images always; any other file only when the
@@ -29,8 +27,9 @@ function pastedFiles(data: DataTransfer | null): File[] {
   return data?.getData('text/plain') ? [] : files;
 }
 
+/** Dropped Markdown and text files are the window's to open (useFileDrop). */
 const droppedFiles = (data: DataTransfer | null): File[] =>
-  Array.from(data?.files ?? []).filter((f) => !isMarkdownFile(f));
+  Array.from(data?.files ?? []).filter((f) => !opensAsDocument(f.name));
 
 const paste = (files: File[], insert: (p: PlacedAttachment) => void) =>
   images().then((m) => m.placeFiles(files, 'paste', insert));

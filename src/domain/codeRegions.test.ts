@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type CodeRange, codeRanges, inCode } from './codeRegions';
+import { type CodeRange, codeRanges, inCode, outsideCode } from './codeRegions';
 
 const covered = (text: string): string =>
   codeRanges(text)
@@ -120,5 +120,20 @@ describe('codeRanges', () => {
     const spans = (md: string) => codeRanges(md).map((r) => md.slice(r.start, r.end));
     expect(spans('[a]:   x   "t"  \n---\n`c`\n')).toEqual(spans('[a]: x "t"\n---\n`c`\n'));
     expect(spans('[a]:   x   "t"  \n---\n`c`\n')).toEqual(['`c`']);
+  });
+});
+
+describe('outsideCode', () => {
+  const at = (text: string, needle: string) => ({ start: text.indexOf(needle) });
+
+  it('drops the items that start in code, after the front matter', () => {
+    const text = '---\nx: `a`\n---\nkeep `drop` keep2\n\n```\nfenced\n```\n';
+    const items = [at(text, 'keep'), at(text, 'drop'), at(text, 'keep2'), at(text, 'fenced')];
+    expect(outsideCode(text, items, text.indexOf('\n---') + 4)).toEqual([items[0], items[2]]);
+  });
+
+  it('returns no items as they are', () => {
+    const none: { start: number }[] = [];
+    expect(outsideCode('`x`', none, -1)).toBe(none);
   });
 });

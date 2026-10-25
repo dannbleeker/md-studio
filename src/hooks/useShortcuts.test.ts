@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { COMMANDS } from '@/components/command-palette/commands';
 import { printDocument } from '@/components/editor/embedView';
 import * as actions from '@/services/documentActions';
+import { goBack, goForward } from '@/services/noteHistory';
 import { resetStoreForTest, useStore } from '@/store';
 import { useUiStore } from '@/store/ui';
 import { useShortcuts } from './useShortcuts';
@@ -13,6 +14,8 @@ vi.mock('@/services/documentActions', async (importOriginal) => {
   const real = await importOriginal<Record<string, unknown>>();
   return Object.fromEntries(Object.keys(real).map((name) => [name, vi.fn()]));
 });
+
+vi.mock('@/services/noteHistory', () => ({ goBack: vi.fn(), goForward: vi.fn() }));
 
 // Print waits for the off-screen embeds; the real one would open the print dialog.
 vi.mock('@/components/editor/embedView', async (importOriginal) => ({
@@ -174,5 +177,97 @@ describe('shortcuts on a Mac', () => {
   it('let Option type accented letters', () => {
     expect(press({ key: 'Dead', code: 'KeyN', altKey: true })).toBe(false);
     expect(vi.mocked(actions.newDocument)).not.toHaveBeenCalled();
+  });
+});
+
+describe('Alt+Left and Alt+Right', () => {
+  beforeEach(() => fresh());
+
+  const press = (key: string, init: KeyboardEventInit = {}) => {
+    const { unmount } = renderHook(() => useShortcuts());
+    const event = new KeyboardEvent('keydown', {
+      key,
+      code: key,
+      altKey: true,
+      bubbles: true,
+      cancelable: true,
+      ...init,
+    });
+    window.dispatchEvent(event);
+    unmount();
+    return event.defaultPrevented;
+  };
+
+  it('step through the notes opened, not the browser history', () => {
+    expect(press('ArrowLeft')).toBe(true);
+    expect(goBack).toHaveBeenCalledTimes(1);
+    expect(press('ArrowRight')).toBe(true);
+    expect(goForward).toHaveBeenCalledTimes(1);
+  });
+
+  it('leave Shift+Alt (word selection) and the start screen alone', () => {
+    expect(press('ArrowLeft', { shiftKey: true })).toBe(false);
+    useStore.getState().setScreen('start');
+    expect(press('ArrowLeft')).toBe(false);
+    expect(press('ArrowRight')).toBe(false);
+    expect(goBack).not.toHaveBeenCalled();
+    expect(goForward).not.toHaveBeenCalled();
+  });
+
+  it('give way to an open dialog and to the image lightbox', () => {
+    document.body.innerHTML = '<dialog open></dialog>';
+    expect(press('ArrowLeft')).toBe(false);
+    document.body.innerHTML = '<div class="lightbox" role="dialog" aria-modal="true"></div>';
+    expect(press('ArrowLeft')).toBe(false);
+    // Alt+W would close the tab behind it.
+    expect(press('w', { code: 'KeyW' })).toBe(false);
+    document.body.innerHTML = '';
+    expect(goBack).not.toHaveBeenCalled();
+    expect(vi.mocked(actions.closeTab)).not.toHaveBeenCalled();
+  });
+});
+
+describe('shortcuts on other keyboard layouts', () => {
+  beforeEach(() => fresh());
+
+  const press = (key: string, code: string, init: KeyboardEventInit = {}) => {
+    const { unmount } = renderHook(() => useShortcuts());
+    const event = new KeyboardEvent('keydown', {
+      key,
+      code,
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+      ...init,
+    });
+    window.dispatchEvent(event);
+    unmount();
+    return event.defaultPrevented;
+  };
+
+  it('match the physical letter on a non-Latin layout (Ctrl+ы is Ctrl+S)', () => {
+    expect(press('ы', 'KeyS')).toBe(true);
+    expect(vi.mocked(actions.saveDocument)).toHaveBeenCalledTimes(1);
+    expect(press('щ', 'KeyO')).toBe(true);
+    expect(vi.mocked(actions.openDocument)).toHaveBeenCalledTimes(1);
+    expect(press('α', 'KeyA')).toBe(false);
+  });
+
+  it('match the digit row on AZERTY (Ctrl+& is Ctrl+1)', () => {
+    useStore.setState({ viewMode: 'text' });
+    expect(press('&', 'Digit1')).toBe(true);
+    expect(useStore.getState().viewMode).toBe('split');
+    expect(press('"', 'Digit3')).toBe(true);
+    expect(useStore.getState().viewMode).toBe('visual');
+  });
+
+  it('keep the typed letter on Latin layouts that move keys (Dvorak, AZERTY)', () => {
+    // Dvorak types "o" on the S key: Ctrl+O, not Ctrl+S.
+    expect(press('o', 'KeyS')).toBe(true);
+    expect(vi.mocked(actions.openDocument)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(actions.saveDocument)).not.toHaveBeenCalled();
+    // AZERTY's comma sits on the M key: still Ctrl+, for the settings.
+    expect(press(',', 'KeyM')).toBe(true);
+    expect(useUiStore.getState().settingsOpen).toBe(true);
   });
 });

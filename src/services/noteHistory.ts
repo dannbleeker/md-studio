@@ -46,12 +46,33 @@ export async function navigateToNote(handle: FileSystemFileHandle): Promise<void
   await openHandle(handle);
 }
 
+/** A step still opening its note: a held Alt+Left repeats faster than notes open. */
+let stepping = false;
+
+/**
+ * Moves only once the note is open. One that cannot be (deleted, moved,
+ * permission refused) leaves the history where it was and is dropped from
+ * it, so the next step goes past it instead of failing on it again.
+ */
 async function step(by: -1 | 1): Promise<void> {
-  const target = entries[index + by];
-  if (!target) return;
-  index += by;
-  publish();
-  await openHandle(target);
+  let at = index + by;
+  const target = entries[at];
+  if (!target || stepping) return;
+  stepping = true;
+  try {
+    const opened = await openHandle(target);
+    // A link followed meanwhile may have shifted or cut the list.
+    if (entries[at] !== target) at = entries.indexOf(target);
+    if (at < 0) return;
+    if (opened) index = at;
+    else {
+      entries.splice(at, 1);
+      if (at < index) index--;
+    }
+    publish();
+  } finally {
+    stepping = false;
+  }
 }
 
 export const goBack = (): Promise<void> => step(-1);
@@ -60,5 +81,6 @@ export const goForward = (): Promise<void> => step(1);
 export function resetHistoryForTest(): void {
   entries.length = 0;
   index = -1;
+  stepping = false;
   publish();
 }

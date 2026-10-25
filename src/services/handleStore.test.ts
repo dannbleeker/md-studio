@@ -6,6 +6,7 @@ import {
   getHandleAt,
   imageFolderKey,
   listHandlesWithPrefix,
+  permissionOf,
   pruneHandles,
   putHandle,
   putHandleAt,
@@ -69,5 +70,36 @@ describe('handleStore', () => {
     expect(asked).toBe(2);
     // Browsers without the permission API: just try.
     expect(await ensurePermission(handle('x.md'))).toBe(true);
+  });
+
+  it('reads the permission without asking', async () => {
+    const make = (answer: () => Promise<PermissionState>) =>
+      ({
+        queryPermission: answer,
+        requestPermission: async () => 'granted',
+      }) as unknown as FileSystemHandle;
+    expect(
+      await permissionOf(
+        make(async () => 'granted'),
+        'read'
+      )
+    ).toBe('granted');
+    expect(
+      await permissionOf(
+        make(async () => 'prompt'),
+        'readwrite'
+      )
+    ).toBe('prompt');
+    // A browser that fails to answer is not taken as a yes.
+    expect(
+      await permissionOf(
+        make(async () => {
+          throw new Error('no');
+        }),
+        'read'
+      )
+    ).toBe('prompt');
+    // Without the permission API there is nothing to wait for: just try.
+    expect(await permissionOf(handle('x.md'), 'read')).toBe('granted');
   });
 });

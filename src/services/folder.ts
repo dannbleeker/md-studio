@@ -15,6 +15,7 @@ import {
   FOLDER_OWNER,
   getHandleAt,
   imageFolderKey,
+  permissionOf,
   putHandleAt,
 } from './handleStore';
 import { navigateToNote } from './noteHistory';
@@ -46,13 +47,8 @@ let root: Dir | null = null;
 export const folderRoot = (): Dir | null => root;
 export const folderSupported = (): boolean => attachmentsSupported();
 
-async function granted(dir: Dir): Promise<boolean> {
-  try {
-    return ((await dir.queryPermission?.({ mode: 'read' })) ?? 'granted') === 'granted';
-  } catch {
-    return false;
-  }
-}
+const granted = async (dir: Dir): Promise<boolean> =>
+  (await permissionOf(dir, 'read')) === 'granted';
 
 async function load(dir: Dir, force = false): Promise<void> {
   useFolder.setState({ name: dir.name, status: 'scanning' });
@@ -133,19 +129,25 @@ export async function currentFolderPath(): Promise<string | null> {
   }
 }
 
+const sameList = (a: readonly string[], b: readonly string[]): boolean =>
+  a.length === b.length && a.every((x, i) => x === b[i]);
+
 /** Keeps the note list current when a rescan finishes. */
 let watching = false;
 export function watchFolder(): void {
   if (watching) return;
   watching = true;
   subscribeAttachments(() => {
-    if (root && useFolder.getState().status === 'ready')
-      void scanFolder(root).then(({ paths, truncated }) => {
-        if (!root) return;
-        const notes = notePaths(paths);
-        const prev = useFolder.getState();
-        if (prev.notes.length !== notes.length || prev.truncated !== truncated)
-          useFolder.setState({ notes, truncated });
-      });
+    const dir = root;
+    if (!dir || useFolder.getState().status !== 'ready') return;
+    void scanFolder(dir).then(({ paths, truncated }) => {
+      // A folder closed or replaced meanwhile keeps its own list.
+      if (root !== dir) return;
+      const notes = notePaths(paths);
+      const prev = useFolder.getState();
+      // By name, not count: a rename or a delete plus an add keeps the count.
+      if (prev.truncated !== truncated || !sameList(prev.notes, notes))
+        useFolder.setState({ notes, truncated });
+    });
   });
 }
