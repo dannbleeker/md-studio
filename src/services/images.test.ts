@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocument } from '@/domain/document';
 import { resetStoreForTest, useStore } from '@/store';
 import { useUiStore } from '@/store/ui';
@@ -55,6 +55,45 @@ describe('placeFiles', () => {
     expect(inserted[0]).toMatchObject({ via: 'data', alt: 'shot', kind: 'image' });
     expect(inserted[0]?.via === 'data' && inserted[0].src).toMatch(/^data:image\/png;base64,/);
     expect(messages()).toEqual([]);
+  });
+
+  describe('scaling a large picture down', () => {
+    /** A canvas like Safari's: asked for WebP, it hands back PNG. */
+    function safariCanvas(width: number) {
+      const bitmap = { width, height: 100, close: vi.fn() };
+      vi.stubGlobal('createImageBitmap', async () => bitmap);
+      const asked: string[] = [];
+      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+        drawImage: () => {},
+      } as unknown as CanvasRenderingContext2D);
+      vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((done, type) => {
+        asked.push(type ?? '');
+        const made = type === 'image/webp' ? 'image/png' : (type ?? 'image/png');
+        done(new Blob(['x'], { type: made }));
+      });
+      return { bitmap, asked };
+    }
+    const bigPng = () => new File([new Uint8Array(500_000)], 'shot.png', { type: 'image/png' });
+    const bigJpeg = () => new File([new Uint8Array(500_000)], 'photo.jpg', { type: 'image/jpeg' });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      vi.restoreAllMocks();
+    });
+
+    it('keeps a PNG a PNG where WebP is missing, so transparency survives', async () => {
+      const canvas = safariCanvas(3200);
+      await placeFiles([bigPng()], 'paste', insert);
+      expect(canvas.asked).not.toContain('image/jpeg');
+      expect(inserted[0]?.via === 'data' && inserted[0].src).toMatch(/^data:image\/png;base64,/);
+      expect(canvas.bitmap.close).toHaveBeenCalled();
+    });
+
+    it('still makes a JPEG of a photo where WebP is missing', async () => {
+      safariCanvas(3200);
+      await placeFiles([bigJpeg()], 'paste', insert);
+      expect(inserted[0]?.via === 'data' && inserted[0].src).toMatch(/^data:image\/jpeg;base64,/);
+    });
   });
 
   it('saves into images/ next to the document once a folder is chosen', async () => {
