@@ -121,17 +121,22 @@ export async function placeFiles(
     showToast(t('image.documentChanged'));
     return false;
   };
+  // Asked at most once per paste or drop: a cancelled folder picker leaves
+  // no folder, and asking again for every further file would nag.
+  let asked = false;
   for (const file of files) {
     try {
       let status = await attachmentStatus(ctx);
       // First image in a document with no folder yet: ask once, as before.
       if (
         status.kind === 'no-folder' &&
+        !asked &&
         isImage(file) &&
         ctx.fileHandle &&
         ctx.handleId &&
         !embedChosen.has(ctx.handleId)
       ) {
+        asked = true;
         const useFolder = await requestConfirm({
           title: t('image.folderTitle'),
           body: t('image.folderBody', { name: ctx.fileHandle.name }),

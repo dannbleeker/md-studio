@@ -122,6 +122,28 @@ describe('placeFiles', () => {
     expect(vault.written.size).toBe(2);
   });
 
+  it('asks about a folder once per drop, even when the folder picker is cancelled', async () => {
+    openDocument();
+    window.showDirectoryPicker = vi.fn(async () => {
+      throw new DOMException('cancelled', 'AbortError');
+    });
+    let asked = 0;
+    const placing = placeFiles([png(), png(), png()], 'drop', insert);
+    for (let i = 0; i < 3 && inserted.length < 3; i++) {
+      await vi.waitFor(() =>
+        expect(useUiStore.getState().confirm !== null || inserted.length === 3).toBe(true)
+      );
+      const confirm = useUiStore.getState().confirm;
+      if (!confirm) break;
+      asked++;
+      confirm.resolve(true);
+      await vi.waitFor(() => expect(useUiStore.getState().confirm).not.toBe(confirm));
+    }
+    await placing;
+    expect(asked).toBe(1);
+    expect(inserted.map((p) => p.via)).toEqual(['data', 'data', 'data']);
+  });
+
   it('does not insert into a document opened while the file was being placed', async () => {
     const { vault } = openDocument();
     window.showDirectoryPicker = vi.fn(async () => vault.root);
