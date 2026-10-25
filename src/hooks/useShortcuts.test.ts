@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { COMMANDS } from '@/components/command-palette/commands';
 import { printDocument } from '@/components/editor/embedView';
 import * as actions from '@/services/documentActions';
+import { goBack, goForward } from '@/services/noteHistory';
 import { resetStoreForTest, useStore } from '@/store';
 import { useUiStore } from '@/store/ui';
 import { useShortcuts } from './useShortcuts';
@@ -13,6 +14,8 @@ vi.mock('@/services/documentActions', async (importOriginal) => {
   const real = await importOriginal<Record<string, unknown>>();
   return Object.fromEntries(Object.keys(real).map((name) => [name, vi.fn()]));
 });
+
+vi.mock('@/services/noteHistory', () => ({ goBack: vi.fn(), goForward: vi.fn() }));
 
 // Print waits for the off-screen embeds; the real one would open the print dialog.
 vi.mock('@/components/editor/embedView', async (importOriginal) => ({
@@ -174,5 +177,47 @@ describe('shortcuts on a Mac', () => {
   it('let Option type accented letters', () => {
     expect(press({ key: 'Dead', code: 'KeyN', altKey: true })).toBe(false);
     expect(vi.mocked(actions.newDocument)).not.toHaveBeenCalled();
+  });
+});
+
+describe('Alt+Left and Alt+Right', () => {
+  beforeEach(() => fresh());
+
+  const press = (key: string, init: KeyboardEventInit = {}) => {
+    const { unmount } = renderHook(() => useShortcuts());
+    const event = new KeyboardEvent('keydown', {
+      key,
+      code: key,
+      altKey: true,
+      bubbles: true,
+      cancelable: true,
+      ...init,
+    });
+    window.dispatchEvent(event);
+    unmount();
+    return event.defaultPrevented;
+  };
+
+  it('step through the notes opened, not the browser history', () => {
+    expect(press('ArrowLeft')).toBe(true);
+    expect(goBack).toHaveBeenCalledTimes(1);
+    expect(press('ArrowRight')).toBe(true);
+    expect(goForward).toHaveBeenCalledTimes(1);
+  });
+
+  it('leave Shift+Alt (word selection) and the start screen alone', () => {
+    expect(press('ArrowLeft', { shiftKey: true })).toBe(false);
+    useStore.getState().setScreen('start');
+    expect(press('ArrowLeft')).toBe(false);
+    expect(press('ArrowRight')).toBe(false);
+    expect(goBack).not.toHaveBeenCalled();
+    expect(goForward).not.toHaveBeenCalled();
+  });
+
+  it('give way to an open dialog', () => {
+    document.body.innerHTML = '<dialog open></dialog>';
+    expect(press('ArrowLeft')).toBe(false);
+    document.body.innerHTML = '';
+    expect(goBack).not.toHaveBeenCalled();
   });
 });
