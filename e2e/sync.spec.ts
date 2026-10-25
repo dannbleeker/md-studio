@@ -403,15 +403,26 @@ test('front matter shows as one metadata block and edits as plain text', async (
 
   // The cursor at the end of the block (End doesn't move within a <pre> line).
   await block.click();
-  await block.locator('code').evaluate((code) => {
-    const range = document.createRange();
-    range.selectNodeContents(code);
-    range.collapse(false);
-    getSelection()?.removeAllRanges();
-    getSelection()?.addRange(range);
-  });
-  // ProseMirror adopts the DOM selection on the async `selectionchange`.
-  await page.waitForTimeout(50);
+  // ProseMirror puts its own selection back into the DOM 20 ms after focus, which on a slow
+  // runner can land after the range is set, so set it until it survives a short wait.
+  await expect
+    .poll(() =>
+      block.locator('code').evaluate(async (code) => {
+        const range = document.createRange();
+        range.selectNodeContents(code);
+        range.collapse(false);
+        getSelection()?.removeAllRanges();
+        getSelection()?.addRange(range);
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        const now = getSelection();
+        return (
+          now?.rangeCount === 1 &&
+          now.getRangeAt(0).compareBoundaryPoints(Range.END_TO_END, range) === 0 &&
+          now.isCollapsed
+        );
+      })
+    )
+    .toBe(true);
   await page.keyboard.press('Enter');
   await page.keyboard.type('tags: [a]');
   await expect
