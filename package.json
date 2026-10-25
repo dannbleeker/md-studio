@@ -17,7 +17,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage --tagsFilter='!stress' --testTimeout=30000",
-    "test:stress": "vitest run --tagsFilter=stress",
+    "test:stress": "vitest run --tagsFilter=stress --no-file-parallelism",
     "test:e2e": "playwright test",
     "check:bundle-size": "node ./scripts/check-bundle-size.mjs",
     "verify": "pnpm typecheck && pnpm lint && pnpm knip && pnpm test:coverage && pnpm test:stress && pnpm build && pnpm test:e2e && pnpm check:bundle-size",

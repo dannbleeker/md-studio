@@ -11,7 +11,9 @@ export default mergeConfig(
       include: ['src/**/*.test.{ts,tsx}', 'test/**/*.test.{ts,tsx}'],
       setupFiles: ['./test/setup.ts'],
       // Skipped by `pnpm test:coverage` and by vitest.mutation.config.ts
-      // (which defines the same tag); `pnpm test:stress` runs only these.
+      // (which defines the same tag); `pnpm test:stress` runs only these, one
+      // file at a time: run side by side they compete for the CPU and miss
+      // their time ceilings (embedNode took 551 ms against 500 on CI).
       tags: [{ name: 'stress', description: 'Huge inputs that guard against quadratic scans.' }],
       coverage: {
         provider: 'v8',
