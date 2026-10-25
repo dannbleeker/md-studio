@@ -35,3 +35,25 @@ export function mermaidDecorations(doc: PmNode): Decoration[] {
   });
   return out;
 }
+
+/**
+ * A diagram is drawn for the page's colours (its key holds them), but
+ * decorations are rebuilt only on an editor update: `redraw` runs when the
+ * theme, the reading theme or the system colour scheme changes. It watches
+ * the attributes, not the settings, as they are applied after the settings
+ * change and pageIsDark reads them.
+ */
+export function onPageThemeChange(redraw: () => void): () => void {
+  const observer = new MutationObserver(redraw);
+  observer.observe(document.documentElement, {
+    attributes: true,
+    subtree: true,
+    attributeFilter: ['data-theme', 'data-read-theme'],
+  });
+  const scheme = window.matchMedia?.('(prefers-color-scheme: dark)');
+  scheme?.addEventListener('change', redraw);
+  return () => {
+    observer.disconnect();
+    scheme?.removeEventListener('change', redraw);
+  };
+}
