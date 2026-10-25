@@ -7,12 +7,13 @@
  * type=file> picker for open and a download for save.
  */
 
+import { NOTE_EXTENSIONS } from '@/domain/noteFiles';
 import { decodeText, type TextFormat } from '@/domain/textFormat';
 
 export const MARKDOWN_TYPES: FilePickerAcceptType[] = [
   {
     description: 'Markdown',
-    accept: { 'text/markdown': ['.md', '.markdown', '.mdown', '.mkd'] },
+    accept: { 'text/markdown': NOTE_EXTENSIONS.map((ext) => `.${ext}`) },
   },
 ];
 
@@ -59,7 +60,9 @@ function openWithInput(): Promise<OpenedFile | null> {
   return new Promise((resolve, reject) => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.md,.markdown,.mdown,.mkd,text/markdown,text/plain';
+    input.accept = [...NOTE_EXTENSIONS.map((ext) => `.${ext}`), 'text/markdown', 'text/plain'].join(
+      ','
+    );
     input.addEventListener('change', () => {
       const file = input.files?.[0];
       if (!file) return resolve(null);
