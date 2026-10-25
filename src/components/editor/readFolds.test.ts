@@ -19,6 +19,9 @@ const schema = new Schema({
     },
     text: {},
   },
+  marks: {
+    link: { attrs: { href: {} }, toDOM: (m) => ['a', { href: m.attrs.href }, 0] },
+  },
 });
 const h = (text: string) => schema.node('heading', { level: 1 }, schema.text(text));
 const p = (text: string) => schema.node('paragraph', null, schema.text(text));
@@ -102,5 +105,21 @@ describe('Read view folds', () => {
     foldButtons(view)[1]?.click();
     expandAllFolds(view);
     expect(hidden(view)).toEqual([]);
+  });
+
+  it('open for a #link to a heading inside a fold', () => {
+    const link = schema.text('to B', [schema.marks.link.create({ href: '#b' })]);
+    const sub = schema.node('heading', { level: 2 }, schema.text('B'));
+    view = mount(doc(schema.node('paragraph', null, link), h('A'), sub, p('b')));
+    const scrolled: string[] = [];
+    Element.prototype.scrollIntoView = function (this: Element) {
+      scrolled.push(this.textContent ?? '');
+    };
+    // Folding A hides its subsection B, the link's target.
+    foldButtons(view)[0]?.click();
+    expect(hidden(view)).toEqual([expect.stringContaining('B'), 'b']);
+    view.dom.querySelector('a')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(hidden(view)).toEqual([]);
+    expect(scrolled.at(-1)).toContain('B');
   });
 });
