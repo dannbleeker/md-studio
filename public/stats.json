@@ -15,7 +15,7 @@
     {
       "category": "E2E tests",
       "files": 18,
-      "lines": 3282
+      "lines": 3293
     },
     {
       "category": "Scripts",
@@ -36,15 +36,15 @@
   "tests": {
     "files": 117,
     "total": 1495,
-    "passed": 1495,
-    "failed": 0,
+    "passed": 1491,
+    "failed": 4,
     "e2eSpecs": 17
   },
   "coverage": {
     "lines": 84.89,
     "statements": 83.07,
     "functions": 74.9,
-    "branches": 79
+    "branches": 78.99
   },
   "bundle": {
     "eagerGzipBytes": 486713,
@@ -219,7 +219,7 @@
     "words": 27398
   },
   "git": {
-    "commits": 179,
+    "commits": 181,
     "firstCommit": "2026-10-02",
     "lastCommit": "2026-10-25",
     "activeDays": 13
