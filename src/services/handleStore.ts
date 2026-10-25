@@ -148,6 +148,22 @@ export async function pruneHandles(keep: ReadonlySet<string>): Promise<void> {
 }
 
 /**
+ * Whether the page may use `handle` in `mode` now, without asking. A browser
+ * without a permission model counts as granted (just try, as below); one
+ * that fails to answer, as not granted.
+ */
+export async function permissionOf(
+  handle: FileSystemHandle,
+  mode: 'read' | 'readwrite'
+): Promise<PermissionState> {
+  try {
+    return (await handle.queryPermission?.({ mode })) ?? 'granted';
+  } catch {
+    return 'prompt';
+  }
+}
+
+/**
  * True when the page may use `handle` in `mode`, asking the user if needed.
  * Asking only works inside a user gesture (a click or key press), which is
  * where every caller runs.

@@ -3,10 +3,11 @@
  * from the core scanner in embeds.ts so the eager bundle does not carry it.
  */
 
-import { codeRanges, inCode } from './codeRegions';
+import { outsideCode } from './codeRegions';
 import { type EmbedSize, formatSize, parseAltSize } from './embeds';
 import { frontMatterEnd } from './frontMatter';
 import { isRelativeUrl } from './imagePaths';
+import { forEachLine } from './lines';
 
 export interface MarkdownImageRef {
   start: number;
@@ -173,37 +174,30 @@ export function findMarkdownImages(
   const skipCode = (opts.code ?? 'skip') === 'skip';
   const fmEnd = skipCode ? frontMatterEnd(text) : -1;
   const out: MarkdownImageRef[] = [];
-  for (let pos = 0; pos <= text.length; ) {
-    const nl = text.indexOf('\n', pos);
-    const lineEnd = nl < 0 ? text.length : nl;
-    const lineStart = pos;
-    pos = lineEnd + 1;
-    if (lineStart <= fmEnd) continue;
-    const line = text.slice(
-      lineStart,
-      text[lineEnd - 1] === '\r' && lineEnd > lineStart ? lineEnd - 1 : lineEnd
-    );
-    if (!line.includes('![')) continue;
-    const budget: Budget = { left: Math.max(MIN_BUDGET, line.length * BUDGET_PER_CHAR) };
-    const closes = altCloses(line);
-    for (let at = line.indexOf('!['); at >= 0; at = line.indexOf('![', at + 1)) {
-      if (budget.left <= 0) break;
-      if (line[at + 2] === '[' || escaped(line, at)) continue;
-      const parsed = parseImage(line, at, closes, budget);
-      if (!parsed) continue;
-      const { next, ...rest } = parsed;
-      out.push({
-        ...rest,
-        start: lineStart + at,
-        end: lineStart + next,
-        raw: line.slice(at, next),
-      });
-      at = next - 1;
-    }
-  }
-  if (!skipCode || out.length === 0) return out;
-  const code = codeRanges(text, fmEnd < 0 ? 0 : fmEnd + 1);
-  return out.filter((ref) => !inCode(code, ref.start));
+  forEachLine(
+    text,
+    (line, lineStart) => {
+      if (!line.includes('![')) return;
+      const budget: Budget = { left: Math.max(MIN_BUDGET, line.length * BUDGET_PER_CHAR) };
+      const closes = altCloses(line);
+      for (let at = line.indexOf('!['); at >= 0; at = line.indexOf('![', at + 1)) {
+        if (budget.left <= 0) break;
+        if (line[at + 2] === '[' || escaped(line, at)) continue;
+        const parsed = parseImage(line, at, closes, budget);
+        if (!parsed) continue;
+        const { next, ...rest } = parsed;
+        out.push({
+          ...rest,
+          start: lineStart + at,
+          end: lineStart + next,
+          raw: line.slice(at, next),
+        });
+        at = next - 1;
+      }
+    },
+    fmEnd
+  );
+  return skipCode ? outsideCode(text, out, fmEnd) : out;
 }
 
 /**

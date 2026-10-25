@@ -1,11 +1,10 @@
 import { t } from '@/i18n';
 import { LOCALES, type LocalePreference, SUPPORTED_LOCALES } from '@/i18n/locales';
-import { openUserGuide } from '@/services/documentActions';
-import { BOOK_EPUB, BOOK_PDF, GUIDE_PDF } from '@/services/links';
 import { useStore } from '@/store';
 import { FONT_SIZES, type Settings, type ThemePreference, type ViewMode } from '@/store/settings';
 import { useUiStore } from '@/store/ui';
 import { Dialog } from '../ui/Dialog';
+import { GuideLinks } from '../ui/GuideLinks';
 
 const THEMES: ThemePreference[] = ['system', 'light', 'dark'];
 const VIEWS: ViewMode[] = ['split', 'text', 'visual', 'read'];
@@ -177,25 +176,7 @@ export function SettingsDialog() {
 
         <nav className="settings-help" aria-label={t('settings.help')}>
           <h3>{t('settings.help')}</h3>
-          <button
-            type="button"
-            className="link-button"
-            onClick={() => {
-              close();
-              void openUserGuide();
-            }}
-          >
-            {t('start.guide')}
-          </button>
-          <a href={GUIDE_PDF} target="_blank" rel="noopener">
-            {t('start.guidePdf')}
-          </a>
-          <a href={BOOK_PDF} target="_blank" rel="noopener">
-            {t('start.bookPdf')}
-          </a>
-          <a href={BOOK_EPUB} download>
-            {t('start.bookEpub')}
-          </a>
+          <GuideLinks beforeGuide={close} />
         </nav>
 
         <div className="dialog-actions">

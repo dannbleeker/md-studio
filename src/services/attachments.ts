@@ -47,6 +47,7 @@ import {
   getHandleAt,
   imageFolderKey,
   listHandlesWithPrefix,
+  permissionOf,
   putHandleAt,
 } from './handleStore';
 
@@ -381,15 +382,6 @@ async function fileAt(root: Dir, path: string): Promise<FileHandle | null> {
     return await dir.getFileHandle(name);
   } catch {
     return null;
-  }
-}
-
-async function permissionOf(root: Dir, mode: 'read' | 'readwrite'): Promise<PermissionState> {
-  try {
-    // No permission model: just try, as handleStore does.
-    return (await root.queryPermission?.({ mode })) ?? 'granted';
-  } catch {
-    return 'prompt';
   }
 }
 

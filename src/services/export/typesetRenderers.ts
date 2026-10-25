@@ -1,5 +1,6 @@
 import { mathMl } from '../math';
 import { drawDiagram } from '../mermaid';
+import { canvasToPng } from './canvasPng';
 import type { Renderers } from './typeset';
 
 /**
@@ -9,18 +10,6 @@ import type { Renderers } from './typeset';
 const SCALE = 2;
 const MAX_SIDE = 2400;
 const XHTML = 'http://www.w3.org/1999/xhtml';
-
-function canvasToPng(canvas: HTMLCanvasElement): Promise<Uint8Array | null> {
-  return new Promise((resolve) => {
-    canvas.toBlob((blob) => {
-      if (!blob) return resolve(null);
-      blob.arrayBuffer().then(
-        (buffer) => resolve(new Uint8Array(buffer)),
-        () => resolve(null)
-      );
-    }, 'image/png');
-  });
-}
 
 /** An SVG document as a picture the canvas can draw. */
 function loadSvg(svg: string): Promise<HTMLImageElement> {

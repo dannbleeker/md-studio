@@ -4,6 +4,7 @@ import { splitLinkTarget } from '@/domain/embeds';
 import { dataUrlBytes, type ImageInfo, imageInfo } from '@/domain/imageInfo';
 import { isRasterDataUrl, isRelativeUrl, isWebImage } from '@/domain/imagePaths';
 import { type DocContext, readAttachmentBytes, resolveAttachment } from '../attachments';
+import { canvasToPng } from './canvasPng';
 
 export type ExportImage = ImageInfo & {
   bytes: Uint8Array;
@@ -61,18 +62,6 @@ function looksLikeSvg(bytes: Uint8Array, type: string): boolean {
   if (/svg/i.test(type)) return true;
   const head = new TextDecoder().decode(bytes.subarray(0, 512));
   return /<svg[\s>]/i.test(head);
-}
-
-function canvasToPng(canvas: HTMLCanvasElement): Promise<Uint8Array | null> {
-  return new Promise((resolve) => {
-    canvas.toBlob((blob) => {
-      if (!blob) return resolve(null);
-      blob.arrayBuffer().then(
-        (buffer) => resolve(new Uint8Array(buffer)),
-        () => resolve(null)
-      );
-    }, 'image/png');
-  });
 }
 
 function drawToPng(

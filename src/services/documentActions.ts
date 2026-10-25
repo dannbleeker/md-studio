@@ -10,7 +10,14 @@ import { syncedTabs, useStore } from '@/store';
 import { flushEditors } from '@/store/flush';
 import { requestConfirm, showToast } from '@/store/ui';
 import { type OpenedFile, openFile, readFile, readHandle, saveFile } from './fileSystem';
-import { ensurePermission, FOLDER_OWNER, getHandle, pruneHandles, putHandle } from './handleStore';
+import {
+  ensurePermission,
+  FOLDER_OWNER,
+  getHandle,
+  permissionOf,
+  pruneHandles,
+  putHandle,
+} from './handleStore';
 import { loadTabs, type RecentEntry } from './storage';
 
 /** Asks before closing a tab whose changes are not saved to disk. */
@@ -347,15 +354,7 @@ let warnedAbout: string | null = null;
 export async function checkDiskChanges(): Promise<void> {
   const { fileHandle, doc, activeTabId } = useStore.getState();
   if (!fileHandle || savesInFlight > 0) return;
-  try {
-    if (
-      fileHandle.queryPermission &&
-      (await fileHandle.queryPermission({ mode: 'read' })) !== 'granted'
-    )
-      return;
-  } catch {
-    return;
-  }
+  if ((await permissionOf(fileHandle, 'read')) !== 'granted') return;
   const text = await diskText(fileHandle);
   const now = useStore.getState();
   // Ignore results that arrive after a switch, an edit or a save.
