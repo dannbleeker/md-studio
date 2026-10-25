@@ -71,9 +71,17 @@ export function showPopover(near: Element, title: string | null, text: string): 
 }
 
 if (typeof window !== 'undefined') {
-  window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && card) hidePopover();
-  });
+  // Capture, and claimed: this chunk loads late, so a bubbling listener could
+  // run after focus mode's, and the same Escape would leave focus mode too.
+  window.addEventListener(
+    'keydown',
+    (e) => {
+      if (e.key !== 'Escape' || !card) return;
+      e.preventDefault();
+      hidePopover();
+    },
+    { capture: true }
+  );
   // A scroll moves the anchor away from the card: capture, as panes scroll on their own elements.
   window.addEventListener('scroll', hidePopover, { capture: true, passive: true });
 }
