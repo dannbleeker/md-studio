@@ -1,3 +1,5 @@
+import { useStore } from '@/store';
+
 /**
  * The one small card Read view shows over a link or a footnote reference. It
  * holds plain text only (built with textContent), follows its anchor, and
@@ -87,4 +89,9 @@ if (typeof window !== 'undefined') {
   );
   // A scroll moves the anchor away from the card: capture, as panes scroll on their own elements.
   window.addEventListener('scroll', hidePopover, { capture: true, passive: true });
+  // Another document or view replaces the anchor without a pointer leaving
+  // it (a tab switched from the keyboard): no mouseout would ever close it.
+  useStore.subscribe((state, prev) => {
+    if (card && (state.loadId !== prev.loadId || state.viewMode !== prev.viewMode)) hidePopover();
+  });
 }
