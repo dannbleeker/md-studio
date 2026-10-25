@@ -94,6 +94,10 @@ const LIMIT = 3;
 // Without the patch the large input takes seconds per run, which must fail the ratio, not time out.
 const TIMEOUT = 60_000;
 const RUNS = 5;
+// A ratio of timings is a time ceiling: under coverage instrumentation and parallel test files
+// it crossed 3 on CI (3.3) with the patch applied, so it runs with the stress tests, one file
+// at a time.
+const SCALING = { tags: ['stress'], timeout: TIMEOUT };
 
 /** Serializing time for 2N units over the time for N units. */
 const growth = (kind: Kind): number => {
@@ -114,21 +118,13 @@ const growth = (kind: Kind): number => {
 };
 
 describe('serializing a long paragraph stays linear', () => {
-  it(
-    'takes about twice as long for twice as many wikilink chips',
-    () => {
-      expect(growth('chip')).toBeLessThan(LIMIT);
-    },
-    TIMEOUT
-  );
+  it('takes about twice as long for twice as many wikilink chips', SCALING, () => {
+    expect(growth('chip')).toBeLessThan(LIMIT);
+  });
 
-  it(
-    'takes about twice as long for twice as many emphasis marks',
-    () => {
-      expect(growth('emphasis')).toBeLessThan(LIMIT);
-    },
-    TIMEOUT
-  );
+  it('takes about twice as long for twice as many emphasis marks', SCALING, () => {
+    expect(growth('emphasis')).toBeLessThan(LIMIT);
+  });
 
   it('writes a long paragraph of either kind back unchanged', () => {
     for (const unit of ['[[x]] ', 'a *b* ']) {
