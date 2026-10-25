@@ -10,7 +10,7 @@
     {
       "category": "Unit tests",
       "files": 103,
-      "lines": 17527
+      "lines": 17533
     },
     {
       "category": "E2E tests",
@@ -36,11 +36,16 @@
   "tests": {
     "files": 99,
     "total": 1407,
-    "passed": 1403,
-    "failed": 4,
+    "passed": 1404,
+    "failed": 3,
     "e2eSpecs": 17
   },
-  "coverage": null,
+  "coverage": {
+    "lines": 79.99,
+    "statements": 78.46,
+    "functions": 69.85,
+    "branches": 76.07
+  },
   "bundle": {
     "eagerGzipBytes": 475687,
     "eager": [
@@ -211,7 +216,7 @@
     "words": 27398
   },
   "git": {
-    "commits": 149,
+    "commits": 152,
     "firstCommit": "2026-10-02",
     "lastCommit": "2026-10-25",
     "activeDays": 13
