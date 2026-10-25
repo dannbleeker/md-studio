@@ -82,11 +82,11 @@
   },
   {
     "date": "2026-10-25",
-    "appLines": 20244,
-    "testLines": 17533,
-    "tests": 1407,
-    "coverageLines": 79.99,
-    "eagerGzipBytes": 475687,
+    "appLines": 20532,
+    "testLines": 18768,
+    "tests": 1480,
+    "coverageLines": 84.65,
+    "eagerGzipBytes": 477868,
     "bookWords": 27398
   }
 ]
