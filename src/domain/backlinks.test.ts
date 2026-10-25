@@ -37,7 +37,7 @@ describe('extractNoteLinks', () => {
     ]);
   });
 
-  it('stays linear on many opening brackets', () => {
+  it('stays linear on many opening brackets', { tags: ['stress'] }, () => {
     const time = (n: number) => {
       const md = '](('.repeat(n) + '\n' + '[['.repeat(n);
       const start = performance.now();
