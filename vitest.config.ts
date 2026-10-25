@@ -18,11 +18,15 @@ export default mergeConfig(
         include: ['src/**/*.{ts,tsx}'],
         exclude: ['src/**/*.test.{ts,tsx}', 'src/**/*.d.ts', 'src/main.tsx'],
         reporter: ['text-summary', 'html'],
+        // So CI's coverage-report artifact exists when a test fails too.
+        reportOnFailure: true,
         // A ratchet, not a target: each floor is the level reached when it was
         // set, rounded down, so `pnpm verify` fails when coverage drops. Raise
         // them when coverage grows. `pnpm test:coverage` skips the `stress`
         // tests (`pnpm test:stress` runs them without instrumentation, whose
-        // slowdown breaks their time ceilings), so measure with it.
+        // slowdown breaks their time ceilings), so measure with it. It also
+        // allows each test 30 s instead of 5: the large parity sweeps take
+        // about 4.5 s instrumented on a laptop and longer on CI runners.
         thresholds: {
           lines: 79,
           statements: 78,
