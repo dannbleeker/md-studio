@@ -94,7 +94,7 @@ describe('exportDocument with embeds', () => {
     expect(vault.getVault).not.toHaveBeenCalled();
   });
 
-  it('gates quickly on a line of unclosed image brackets', async () => {
+  it('gates quickly on a line of unclosed image brackets', { tags: ['stress'] }, async () => {
     const start = performance.now();
     await exported('txt', '!['.repeat(40000));
     expect(performance.now() - start).toBeLessThan(1000);

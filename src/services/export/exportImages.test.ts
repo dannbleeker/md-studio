@@ -276,7 +276,9 @@ describe('loadExportImages', () => {
       }
     });
 
-    it('rejects a run of adjacent comments that is not an svg without backtracking', async () => {
+    it('rejects a run of adjacent comments that is not an svg without backtracking', {
+      tags: ['stress'],
+    }, async () => {
       vi.stubGlobal('createImageBitmap', vi.fn());
       read.mockResolvedValue({
         bytes: new TextEncoder().encode(`${'<!---->'.repeat(140)}x`),

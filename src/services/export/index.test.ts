@@ -38,7 +38,7 @@ describe('printedText', () => {
     expect(printedText('plain text')).toBe('plain text');
   });
 
-  it('stays quick on a long line of unclosed attachment starts', () => {
+  it('stays quick on a long line of unclosed attachment starts', { tags: ['stress'] }, () => {
     const md = `${'![a](attachment:'.repeat(12_500)}x`;
     const start = performance.now();
     expect(printedText(md)).toBe(md);
