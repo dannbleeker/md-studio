@@ -1,6 +1,7 @@
 import type { Node as PmNode } from '@milkdown/kit/prose/model';
 import { Decoration } from '@milkdown/kit/prose/view';
 import { type FrontMatterCard, parseFrontMatterCard } from '@/domain/frontMatterCard';
+import { textHash } from '@/domain/textHash';
 
 const el = (tag: string, className: string, text?: string): HTMLElement => {
   const node = document.createElement(tag);
@@ -29,13 +30,6 @@ function cardElement(card: FrontMatterCard): HTMLElement {
   return root;
 }
 
-/** Small string hash, to key the card's widget on the block's text. */
-function hash(text: string): string {
-  let h = 5381;
-  for (let i = 0; i < text.length; i++) h = ((h << 5) + h + text.charCodeAt(i)) | 0;
-  return (h >>> 0).toString(36);
-}
-
 /**
  * Read view shows the front matter block as a card (title, tags, fields)
  * instead of raw YAML. The raw block is hidden, not removed, so nothing
@@ -48,7 +42,7 @@ export function frontMatterDecorations(node: PmNode, pos: number): Decoration[] 
     Decoration.node(pos, pos + node.nodeSize, { class: 'read-folded' }),
     Decoration.widget(pos, () => cardElement(card), {
       side: -1,
-      key: `card-${hash(node.textContent)}`,
+      key: `card-${textHash(node.textContent)}`,
       ignoreSelection: true,
     }),
   ];

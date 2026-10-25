@@ -6,6 +6,7 @@ import {
   wikilinkLabel,
 } from '@/domain/embeds';
 import { isWebImage } from '@/domain/imagePaths';
+import { textHash } from '@/domain/textHash';
 import {
   descend,
   MAX_LIVE_TRANSCLUSIONS,
@@ -256,13 +257,6 @@ async function hostPathOf(doc: DocContext): Promise<string> {
 const sameDoc = (a: DocContext, b: DocContext) =>
   a.handleId === b.handleId && a.fileHandle === b.fileHandle;
 
-/** A small stable hash of the shown text: it keys the render of a note, whoever's file it is. */
-function hashText(text: string): string {
-  let h = 5381;
-  for (let i = 0; i < text.length; i++) h = ((h << 5) + h + text.charCodeAt(i)) | 0;
-  return `${text.length}:${h >>> 0}`;
-}
-
 const BLOCK_KINDS: readonly EmbedKind[] = ['note', 'pdf', 'video'];
 /** Kinds whose elements are costly: built only once visible, even from a cache hit. */
 const HEAVY_KINDS: readonly EmbedKind[] = ['note', 'pdf'];
@@ -467,7 +461,7 @@ export function mountEmbed(
     }
     // Keyed on the text itself: a file date and size say nothing about which vault a note is
     // from, and two copies of a vault share both while their text differs.
-    const cacheKey = [read.path, hashText(selected.markdown), ref.fragment ?? ''].join('|');
+    const cacheKey = [read.path, textHash(selected.markdown), ref.fragment ?? ''].join('|');
     // Web images follow the setting, and the embeds inside depend on the chain they were entered with.
     const webImages = useStore.getState().settings.webImages;
     const hint = read.ambiguous ? t('embed.ambiguous', { path: read.path }) : undefined;
