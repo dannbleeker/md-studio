@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Keyboard and links, fixed.** Space presses a focused fold or copy button
+  in Read view; Ctrl shortcuts work on Russian, Greek and AZERTY layouts;
+  the image lightbox blocks the app's keys and swipes like a dialog; one
+  Escape in the find bar or a link preview keeps focus mode. Back and
+  Forward move only once a note opens, and step past one that cannot be.
+  A link clicked in one tab never opens from another, and its preview no
+  longer says "missing" while the vault is scanned. Folder mode follows
+  renames made outside the app. A transparent PNG embedded on Safari keeps
+  its transparency, and a drop of several images asks about a folder once.
 - **Coverage gate in CI.** `pnpm verify` now measures unit test coverage and
   fails when it drops below floors set at today's level (overall lines 79 %,
   statements 78 %, functions 69 %, branches 75 %; stricter floors for
