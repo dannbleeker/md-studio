@@ -1,5 +1,6 @@
 import { headingPlainText } from '@/components/editor/editorRegistry';
 import { fileOpenMode, headingSlug } from '@/domain/linkTarget';
+import { withoutNoteExtension } from '@/domain/noteFiles';
 import { type NotePreview, notePreview } from '@/domain/notePreview';
 import { t } from '@/i18n';
 import { showToast } from '@/store/ui';
@@ -130,9 +131,13 @@ export async function previewNote(target: {
   const read = await readNoteText(ctx, target.path, { markdown: target.markdown });
   const preview =
     read.state === 'ok'
-      ? { ...notePreview(read.text), name: read.path.replace(/^.*\//, '').replace(/\.md$/i, '') }
+      ? { ...notePreview(read.text), name: withoutNoteExtension(read.path.replace(/^.*\//, '')) }
       : null;
-  if (previews.size >= PREVIEW_ENTRIES) previews.delete(previews.keys().next().value as string);
-  previews.set(key, { at: Date.now(), preview });
+  // Only a settled answer is kept: a vault still scanning, or not yet
+  // allowed, may find the note a moment later.
+  if (read.state === 'ok' || read.state === 'missing') {
+    if (previews.size >= PREVIEW_ENTRIES) previews.delete(previews.keys().next().value as string);
+    previews.set(key, { at: Date.now(), preview });
+  }
   return preview;
 }
