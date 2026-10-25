@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { hidePopover, popoverAnchor, showPopover } from './readPopover';
 
-const escape = () => {
+const pressEscape = () => {
   const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
   document.body.dispatchEvent(event);
   return event;
@@ -28,10 +28,10 @@ describe('the Read view popover', () => {
     const link = document.createElement('a');
     document.body.append(link);
     showPopover(link, null, 'Body');
-    expect(escape().defaultPrevented).toBe(true);
+    expect(pressEscape().defaultPrevented).toBe(true);
     expect(document.getElementById('read-popover')).toBeNull();
     expect(link.hasAttribute('aria-describedby')).toBe(false);
     // With no card showing, Escape is not its to take.
-    expect(escape().defaultPrevented).toBe(false);
+    expect(pressEscape().defaultPrevented).toBe(false);
   });
 });

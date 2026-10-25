@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resetDialogsForTest, useUiStore } from '@/store/ui';
 import { useFocusModeEscape } from './useFocusModeEscape';
 
-const escape = (target: EventTarget = document.body) => {
+const pressEscape = (target: EventTarget = document.body) => {
   const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
   target.dispatchEvent(event);
   return event;
@@ -20,7 +20,7 @@ describe('useFocusModeEscape', () => {
 
   it('leaves focus mode on Escape', () => {
     renderHook(() => useFocusModeEscape());
-    escape();
+    pressEscape();
     expect(useUiStore.getState().focusMode).toBe(false);
   });
 
@@ -29,14 +29,14 @@ describe('useFocusModeEscape', () => {
     document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     expect(useUiStore.getState().focusMode).toBe(true);
     useUiStore.getState().setFocusMode(false);
-    escape();
+    pressEscape();
     expect(useUiStore.getState().focusMode).toBe(false);
   });
 
   it('lets an open dialog have the Escape', () => {
     renderHook(() => useFocusModeEscape());
     document.body.innerHTML = '<dialog open></dialog>';
-    escape();
+    pressEscape();
     expect(useUiStore.getState().focusMode).toBe(true);
   });
 
@@ -45,9 +45,9 @@ describe('useFocusModeEscape', () => {
     document.body.innerHTML = '<div id="bar"></div>';
     const bar = document.getElementById('bar') as HTMLElement;
     bar.addEventListener('keydown', (e) => e.preventDefault());
-    escape(bar);
+    pressEscape(bar);
     expect(useUiStore.getState().focusMode).toBe(true);
-    escape();
+    pressEscape();
     expect(useUiStore.getState().focusMode).toBe(false);
   });
 });
