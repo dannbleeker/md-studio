@@ -1,13 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createDocument } from '@/domain/document';
+import { useStore } from '@/store';
 import { useUiStore } from '@/store/ui';
 
+/** The document on screen, as the attachments service would see it. */
+const shown = vi.hoisted(() => ({ handleId: 'h' }));
 const resolveAttachment = vi.fn();
 const chooseAttachmentFolder = vi.fn();
 const grantAttachmentAccess = vi.fn();
 vi.mock('./attachments', () => ({
   chooseAttachmentFolder: (...args: unknown[]) => chooseAttachmentFolder(...args),
   grantAttachmentAccess: (...args: unknown[]) => grantAttachmentAccess(...args),
-  currentDocContext: () => ({ handleId: 'h', fileHandle: null }),
+  currentDocContext: () => ({ handleId: shown.handleId, fileHandle: null }),
   readNoteText: vi.fn(),
   resolveAttachment: (...args: unknown[]) => resolveAttachment(...args),
   resolveNoteHandle: vi.fn(),
@@ -79,6 +83,23 @@ describe('followFileLink', () => {
     await followFileLink({ path: 'docs/report.pdf', markdown: true });
     expect(chooseAttachmentFolder).toHaveBeenCalledTimes(1);
     expect(open).toHaveBeenCalledTimes(1);
+  });
+
+  it('drops a link clicked in a tab the user has left while the vault was scanned', async () => {
+    const asked: string[] = [];
+    resolveAttachment.mockImplementation(async (ctx: { handleId: string }) => {
+      asked.push(ctx.handleId);
+      return asked.length === 1 ? { state: 'scanning' } : ok('docs/report.pdf');
+    });
+    const following = followFileLink({ path: 'docs/report.pdf', markdown: true });
+    // Another tab comes up before the first scan is done.
+    shown.handleId = 'other';
+    useStore.getState().loadDocument(createDocument('# other', 'other.md'), null);
+    await following;
+    shown.handleId = 'h';
+    expect(asked.every((id) => id === 'h')).toBe(true);
+    expect(open).not.toHaveBeenCalled();
+    expect(click).not.toHaveBeenCalled();
   });
 
   it('asks for permission when the folder is known but locked', async () => {

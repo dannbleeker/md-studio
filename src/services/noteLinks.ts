@@ -3,11 +3,13 @@ import { fileOpenMode, headingSlug } from '@/domain/linkTarget';
 import { withoutNoteExtension } from '@/domain/noteFiles';
 import { type NotePreview, notePreview } from '@/domain/notePreview';
 import { t } from '@/i18n';
+import { useStore } from '@/store';
 import { showToast } from '@/store/ui';
 import {
   type AttachmentUnavailable,
   chooseAttachmentFolder,
   currentDocContext,
+  type DocContext,
   grantAttachmentAccess,
   readNoteText,
   resolveAttachment,
@@ -23,27 +25,34 @@ const SCAN_RETRY_MS = 250;
  * asked for right here (the picker, or the permission prompt) instead of
  * sending the user to the banner. True when the lookup is worth repeating.
  */
-function recoverAccess(reason: AttachmentUnavailable): Promise<boolean> {
-  const ctx = currentDocContext();
+function recoverAccess(reason: AttachmentUnavailable, ctx: DocContext): Promise<boolean> {
   if (reason === 'needs-permission') return grantAttachmentAccess(ctx);
   if (reason === 'no-folder') return chooseAttachmentFolder(ctx);
   return Promise.resolve(false);
 }
 
-/** Runs a lookup; on "unavailable" asks for access once, and waits out a first scan. */
+/**
+ * Runs a lookup for the document on screen; on "unavailable" asks for access
+ * once, and waits out a first scan. All of it is for the document the link
+ * was clicked in: null when another one is showing by the end, as the link
+ * no longer means anything there.
+ */
 async function resolveWithAccess<T extends { state: string }>(
-  lookup: () => Promise<T>
-): Promise<T> {
-  let res = await lookup();
+  lookup: (ctx: DocContext) => Promise<T>
+): Promise<T | null> {
+  const ctx = currentDocContext();
+  const { loadId } = useStore.getState();
+  let res = await lookup(ctx);
   const first = res as { state: string; reason?: AttachmentUnavailable };
-  if (first.state === 'unavailable' && first.reason && (await recoverAccess(first.reason))) {
-    res = await lookup();
+  if (first.state === 'unavailable' && first.reason && (await recoverAccess(first.reason, ctx))) {
+    res = await lookup(ctx);
   }
   for (let i = 0; res.state === 'scanning' && i < SCAN_RETRIES; i++) {
     await new Promise((r) => setTimeout(r, SCAN_RETRY_MS));
-    res = await lookup();
+    if (useStore.getState().loadId !== loadId) return null;
+    res = await lookup(ctx);
   }
-  return res;
+  return useStore.getState().loadId === loadId ? res : null;
 }
 
 /** Scrolls the visual pane to the heading with this slug (after a note opened, say). */
@@ -71,9 +80,10 @@ export async function followNoteLink(target: {
   markdown: boolean;
 }): Promise<void> {
   const name = target.path;
-  const res = await resolveWithAccess(() =>
-    resolveNoteHandle(currentDocContext(), target.path, { markdown: target.markdown })
+  const res = await resolveWithAccess((ctx) =>
+    resolveNoteHandle(ctx, target.path, { markdown: target.markdown })
   );
+  if (!res) return;
   if (res.state === 'scanning') return void showToast(t('link.scanning'));
   if (res.state === 'missing') return void showToast(t('link.noteMissing', { name }));
   if (res.state === 'unavailable') return void showToast(t('link.noteUnavailable'));
@@ -93,9 +103,10 @@ export async function followNoteLink(target: {
  */
 export async function followFileLink(target: { path: string; markdown: boolean }): Promise<void> {
   const name = target.path.replace(/^.*\//, '');
-  const res = await resolveWithAccess(() =>
-    resolveAttachment(currentDocContext(), target.path, { markdown: target.markdown })
+  const res = await resolveWithAccess((ctx) =>
+    resolveAttachment(ctx, target.path, { markdown: target.markdown })
   );
+  if (!res) return;
   if (res.state === 'scanning') return void showToast(t('link.scanning'));
   if (res.state === 'missing') return void showToast(t('link.fileMissing', { name }));
   if (res.state === 'unavailable') return void showToast(t('link.fileUnavailable'));
