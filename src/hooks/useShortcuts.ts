@@ -21,6 +21,23 @@ const VIEW_KEYS: ReadonlyMap<string, ViewMode> = new Map([
   ['4', 'read'],
 ]);
 
+/**
+ * The key a Ctrl (Command) shortcut names. e.key is right on any layout that
+ * types Latin letters, even one that moves them (Dvorak, AZERTY). A non-Latin
+ * layout types its own letter (Ctrl+ы on Russian), and AZERTY's digit row
+ * types symbols (Ctrl+& for Ctrl+1): there the physical key stands in, as it
+ * does for the browser's own shortcuts. Only those two cases: AZERTY's comma
+ * sits on the M key and must stay Ctrl+,.
+ */
+function shortcutKey(e: KeyboardEvent): string {
+  const key = e.key.toLowerCase();
+  const digit = /^Digit(\d)$/.exec(e.code)?.[1];
+  if (digit && !/^\d$/.test(key)) return digit;
+  const letter = /^Key([A-Z])$/.exec(e.code)?.[1];
+  if (letter && key.length === 1 && !/[ -~]/.test(key)) return letter.toLowerCase();
+  return key;
+}
+
 /** App-wide keyboard shortcuts. Editor-local keys (bold, undo…) stay with each editor. */
 export function useShortcuts(): void {
   useEffect(() => {
@@ -37,7 +54,7 @@ export function useShortcuts(): void {
       if (e.altKey && e.key === 'Dead') return;
       const s = useStore.getState();
       const editor = s.screen === 'editor';
-      const key = e.key.toLowerCase();
+      const key = shortcutKey(e);
       // With Alt, e.key is layout-dependent (macOS Option+W types "∑"), so
       // the Alt shortcuts match the physical key instead.
       const altKey = e.code.startsWith('Key') ? e.code.slice(3).toLowerCase() : key;
