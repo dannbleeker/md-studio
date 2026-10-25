@@ -10,6 +10,11 @@ const typesText = (target: EventTarget | null): boolean =>
   (target.closest('input, textarea, select, [contenteditable="true"], .cm-editor') !== null ||
     target.isContentEditable);
 
+/** Space presses a focused control (a fold or copy button); it scrolls only from the text. */
+const pressesControl = (target: EventTarget | null): boolean =>
+  target instanceof Element &&
+  target.closest('button, summary, [role="button"], [role="checkbox"], [role="switch"]') !== null;
+
 /**
  * Plain-key shortcuts for reading: j/k and Space scroll, g/G jump to the
  * ends, [ and ] step between headings, / opens Find and f toggles focus
@@ -23,7 +28,7 @@ export function useReadKeys(): void {
       if (screen !== 'editor' || viewMode !== 'read' || e.defaultPrevented || e.isComposing) return;
       if (typesText(e.target) || document.querySelector('dialog[open]')) return;
       const action = readKeyAction(e);
-      if (!action) return;
+      if (!action || (e.key === ' ' && pressesControl(e.target))) return;
       if (action === 'help') useUiStore.getState().setReadKeysOpen(true);
       else if (action === 'find') useUiStore.getState().setFind(true, false);
       else if (action === 'focus')

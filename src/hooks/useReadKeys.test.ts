@@ -85,6 +85,20 @@ describe('useReadKeys', () => {
     expect(scrollReader).not.toHaveBeenCalled();
   });
 
+  it('lets Space press a focused button (fold, copy) instead of scrolling', () => {
+    renderHook(() => useReadKeys());
+    document.body.innerHTML =
+      '<button id="b">fold</button><details><summary id="s">more</summary></details><span role="button" tabindex="0" id="r">x</span>';
+    for (const id of ['b', 's', 'r']) {
+      const target = document.getElementById(id) as HTMLElement;
+      expect(press(' ', {}, target).defaultPrevented, id).toBe(false);
+      expect(press(' ', { shiftKey: true }, target).defaultPrevented, id).toBe(false);
+    }
+    expect(scrollReader).not.toHaveBeenCalled();
+    // The other reading keys still work with a button focused.
+    expect(press('j', {}, document.getElementById('b') as HTMLElement).defaultPrevented).toBe(true);
+  });
+
   it('stays out of the way of an open dialog, a handled key, IME and modifiers', () => {
     renderHook(() => useReadKeys());
     document.body.innerHTML = '<dialog open></dialog>';
