@@ -1,0 +1,106 @@
+import { Schema } from '@milkdown/kit/prose/model';
+import { EditorState } from '@milkdown/kit/prose/state';
+import { EditorView } from '@milkdown/kit/prose/view';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { resetStoreForTest, useStore } from '@/store';
+import { editors } from './editorRegistry';
+import { expandAllFolds } from './readFolds';
+import { loadReadExtras, readHost } from './readHost';
+
+const schema = new Schema({
+  nodes: {
+    doc: { content: 'block+' },
+    paragraph: { group: 'block', content: 'text*', toDOM: () => ['p', 0] },
+    heading: {
+      group: 'block',
+      content: 'text*',
+      attrs: { level: { default: 1 } },
+      toDOM: (n) => [`h${n.attrs.level}`, 0],
+    },
+    text: {},
+  },
+});
+const h = (text: string) => schema.node('heading', { level: 1 }, schema.text(text));
+const p = (text: string) => schema.node('paragraph', null, schema.text(text));
+const doc = (...blocks: ReturnType<typeof h>[]) => schema.node('doc', null, blocks);
+
+function mount(content = doc(h('A'), p('a'), h('B'), p('b'))) {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const view = new EditorView(host, {
+    state: EditorState.create({ doc: content, plugins: [readHost] }),
+    editable: () => false,
+  });
+  editors.visual = view;
+  return view;
+}
+
+const foldButtons = (view: EditorView) => [
+  ...view.dom.querySelectorAll<HTMLButtonElement>('.read-fold'),
+];
+const hidden = (view: EditorView) =>
+  [...view.dom.querySelectorAll('.read-folded')].map((el) => el.textContent);
+
+/** What a load or a text-pane edit does to the visual pane: blocks replaced in the same editor. */
+function replace(view: EditorView, from: number, to: number, ...blocks: ReturnType<typeof h>[]) {
+  view.dispatch(view.state.tr.replaceWith(from, to, blocks).setMeta('addToHistory', false));
+}
+
+describe('Read view folds', () => {
+  let view: EditorView;
+
+  beforeEach(async () => {
+    resetStoreForTest();
+    useStore.setState({ screen: 'editor', viewMode: 'read' });
+    await loadReadExtras();
+  });
+  afterEach(() => {
+    view.destroy();
+    editors.visual = null;
+    document.body.innerHTML = '';
+  });
+
+  it('hide a section and show it again', () => {
+    view = mount();
+    foldButtons(view)[1]?.click();
+    expect(hidden(view)).toEqual(['b']);
+    foldButtons(view)[1]?.click();
+    expect(hidden(view)).toEqual([]);
+  });
+
+  it('do not carry over to another document', () => {
+    view = mount();
+    foldButtons(view)[1]?.click();
+    // Another tab or note shows in the same editor.
+    useStore.setState({ loadId: useStore.getState().loadId + 1 });
+    replace(view, 0, view.state.doc.content.size, h('X'), p('x'), h('Y'), p('y is not folded'));
+    expect(hidden(view)).toEqual([]);
+  });
+
+  it('stay with their heading when a heading is added above it', () => {
+    view = mount();
+    foldButtons(view)[1]?.click();
+    expect(hidden(view)).toEqual(['b']);
+    // A heading typed in the text pane before "A".
+    replace(view, 0, 0, h('New'), p('new'));
+    expect(hidden(view)).toEqual(['b']);
+  });
+
+  it('keep keyboard focus on the fold button', () => {
+    view = mount();
+    const button = foldButtons(view)[0];
+    button?.focus();
+    button?.click();
+    expect(hidden(view)).toEqual(['a']);
+    expect(document.activeElement?.classList.contains('read-fold')).toBe(true);
+    expect(document.activeElement?.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('all open again for a jump', () => {
+    view = mount();
+    foldButtons(view)[0]?.click();
+    foldButtons(view)[1]?.click();
+    expandAllFolds(view);
+    expect(hidden(view)).toEqual([]);
+  });
+});

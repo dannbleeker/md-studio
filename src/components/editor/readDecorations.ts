@@ -59,7 +59,7 @@ export function readDecorationSet(state: EditorState, folded: Folds): Decoration
     }
     hiddenUnder = null;
     const at = index;
-    const isFolded = folded.has(at);
+    const isFolded = folded.has(offset);
     if (isFolded) hiddenUnder = level;
     decorations.push(
       Decoration.widget(
@@ -68,12 +68,21 @@ export function readDecorationSet(state: EditorState, folded: Folds): Decoration
           const b = button('read-fold', t('read.fold'), isFolded ? '▸' : '▾');
           b.setAttribute('aria-expanded', String(!isFolded));
           b.addEventListener('mousedown', (e) => e.preventDefault());
-          b.addEventListener('click', () =>
-            view.dispatch(view.state.tr.setMeta(READ_FOLDS_KEY, { toggle: at } satisfies FoldMeta))
-          );
+          b.addEventListener('click', () => {
+            const focused = document.activeElement === b;
+            view.dispatch(
+              view.state.tr.setMeta(READ_FOLDS_KEY, { toggle: offset } satisfies FoldMeta)
+            );
+            // The toggle draws a new button: keep the keyboard on it.
+            if (focused) {
+              const heading = view.nodeDOM(offset);
+              if (heading instanceof HTMLElement)
+                heading.querySelector<HTMLElement>('.read-fold')?.focus();
+            }
+          });
           return b;
         },
-        { side: -1, key: `fold-${at}-${isFolded}`, ignoreSelection: true }
+        { side: -1, key: `fold-${offset}-${isFolded}`, ignoreSelection: true }
       )
     );
     decorations.push(
