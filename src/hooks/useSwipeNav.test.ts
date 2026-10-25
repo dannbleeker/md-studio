@@ -105,4 +105,16 @@ describe('useSwipeNav', () => {
     swipe([50, 300], [250, 300]);
     expect(goBack).not.toHaveBeenCalled();
   });
+
+  it('leaves a swipe over the image lightbox', () => {
+    renderHook(() => useSwipeNav());
+    const box = document.createElement('div');
+    box.className = 'lightbox';
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
+    box.innerHTML = '<img alt="">';
+    document.body.append(box);
+    swipe([50, 300], [250, 300], 200, box.querySelector('img') as Element);
+    expect(goBack).not.toHaveBeenCalled();
+  });
 });

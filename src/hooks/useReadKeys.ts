@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { scrollReader } from '@/components/editor/readNavigation';
+import { modalOpen } from '@/components/ui/modal';
 import { readKeyAction } from '@/domain/readKeys';
 import { useStore } from '@/store';
 import { useUiStore } from '@/store/ui';
@@ -26,7 +27,7 @@ export function useReadKeys(): void {
     const onKeyDown = (e: KeyboardEvent) => {
       const { screen, viewMode } = useStore.getState();
       if (screen !== 'editor' || viewMode !== 'read' || e.defaultPrevented || e.isComposing) return;
-      if (typesText(e.target) || document.querySelector('dialog[open]')) return;
+      if (typesText(e.target) || modalOpen()) return;
       const action = readKeyAction(e);
       if (!action || (e.key === ' ' && pressesControl(e.target))) return;
       if (action === 'help') useUiStore.getState().setReadKeysOpen(true);

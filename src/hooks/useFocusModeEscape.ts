@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { modalOpen } from '@/components/ui/modal';
 import { useUiStore } from '@/store/ui';
 
 /**
@@ -10,8 +11,7 @@ export function useFocusModeEscape(): void {
   useEffect(() => {
     if (!focusMode) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || e.defaultPrevented || document.querySelector('dialog[open]'))
-        return;
+      if (e.key !== 'Escape' || e.defaultPrevented || modalOpen()) return;
       useUiStore.getState().setFocusMode(false);
     };
     window.addEventListener('keydown', onKeyDown);

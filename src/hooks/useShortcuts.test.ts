@@ -214,11 +214,16 @@ describe('Alt+Left and Alt+Right', () => {
     expect(goForward).not.toHaveBeenCalled();
   });
 
-  it('give way to an open dialog', () => {
+  it('give way to an open dialog and to the image lightbox', () => {
     document.body.innerHTML = '<dialog open></dialog>';
     expect(press('ArrowLeft')).toBe(false);
+    document.body.innerHTML = '<div class="lightbox" role="dialog" aria-modal="true"></div>';
+    expect(press('ArrowLeft')).toBe(false);
+    // Alt+W would close the tab behind it.
+    expect(press('w', { code: 'KeyW' })).toBe(false);
     document.body.innerHTML = '';
     expect(goBack).not.toHaveBeenCalled();
+    expect(vi.mocked(actions.closeTab)).not.toHaveBeenCalled();
   });
 });
 

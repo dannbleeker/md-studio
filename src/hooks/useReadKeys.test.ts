@@ -121,4 +121,13 @@ describe('useReadKeys', () => {
     expect(press('j').defaultPrevented).toBe(false);
     expect(scrollReader).not.toHaveBeenCalled();
   });
+
+  it('stays out of the way of the image lightbox (a modal that is no <dialog>)', () => {
+    renderHook(() => useReadKeys());
+    document.body.innerHTML = '<div class="lightbox" role="dialog" aria-modal="true"></div>';
+    for (const key of ['j', ' ', '?', 'f']) expect(press(key).defaultPrevented, key).toBe(false);
+    expect(scrollReader).not.toHaveBeenCalled();
+    expect(useUiStore.getState().readKeysOpen).toBe(false);
+    expect(useUiStore.getState().focusMode).toBe(false);
+  });
 });

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { printDocument } from '@/components/editor/embedView';
+import { modalOpen } from '@/components/ui/modal';
 import {
   closeTab,
   cycleTab,
@@ -45,7 +46,7 @@ export function useShortcuts(): void {
       // Mid-composition (IME) keys belong to the text being composed, and
       // an open dialog (settings, confirm, palette…) owns the keyboard:
       // Alt+W behind a modal would close a tab the user can't even see.
-      if (e.isComposing || document.querySelector('dialog[open]')) return;
+      if (e.isComposing || modalOpen()) return;
       const mac = isMac();
       // Command on a Mac (Ctrl is for text editing there), Ctrl elsewhere.
       const mod = mac ? e.metaKey : e.ctrlKey;
