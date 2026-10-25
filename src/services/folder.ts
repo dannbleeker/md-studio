@@ -15,6 +15,7 @@ import {
   FOLDER_OWNER,
   getHandleAt,
   imageFolderKey,
+  permissionOf,
   putHandleAt,
 } from './handleStore';
 import { navigateToNote } from './noteHistory';
@@ -46,13 +47,8 @@ let root: Dir | null = null;
 export const folderRoot = (): Dir | null => root;
 export const folderSupported = (): boolean => attachmentsSupported();
 
-async function granted(dir: Dir): Promise<boolean> {
-  try {
-    return ((await dir.queryPermission?.({ mode: 'read' })) ?? 'granted') === 'granted';
-  } catch {
-    return false;
-  }
-}
+const granted = async (dir: Dir): Promise<boolean> =>
+  (await permissionOf(dir, 'read')) === 'granted';
 
 async function load(dir: Dir, force = false): Promise<void> {
   useFolder.setState({ name: dir.name, status: 'scanning' });

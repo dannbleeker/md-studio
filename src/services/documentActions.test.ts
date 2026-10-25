@@ -19,7 +19,8 @@ const adoptAttachmentFolder = vi.hoisted(() => vi.fn(async () => {}));
 vi.mock('./attachments', () => ({ adoptAttachmentFolder }));
 
 const handles = new Map<string, FileSystemFileHandle>();
-vi.mock('./handleStore', () => ({
+vi.mock('./handleStore', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./handleStore')>()),
   FOLDER_OWNER: 'folder-mode',
   getHandle: async (id: string) => handles.get(id) ?? null,
   // Like the real store: the same file keeps its id.
