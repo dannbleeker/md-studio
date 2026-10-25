@@ -33,7 +33,7 @@ describe('findMermaidBlocks', () => {
     expect(findMermaidBlocks('```\nplain\n```')).toEqual([]);
   });
 
-  it('is linear in the number of lines', () => {
+  it('is linear in the number of lines', { tags: ['stress'] }, () => {
     const time = (n: number) => {
       const md = `${'```x\n```\n'.repeat(n)}\`\`\`mermaid\nA\n\`\`\`\n`;
       const start = performance.now();

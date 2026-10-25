@@ -32,7 +32,7 @@ describe('notePreview', () => {
     expect(notePreview('')).toEqual({ title: null, text: '' });
   });
 
-  it('reads only the start of a huge note', () => {
+  it('reads only the start of a huge note', { tags: ['stress'] }, () => {
     const time = (n: number) => {
       const md = `# T\n${'text ['.repeat(n)}`;
       const start = performance.now();
