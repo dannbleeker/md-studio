@@ -5,8 +5,9 @@
  * are not resolved here: that is the vault index's job.
  */
 
-import { codeRanges, inCode } from './codeRegions';
+import { outsideCode } from './codeRegions';
 import { frontMatterEnd } from './frontMatter';
+import { forEachLine } from './lines';
 
 export const EMBED_NODE_NAME = 'embed';
 
@@ -185,37 +186,30 @@ export function findWikiRefs(
   const skipCode = (opts.code ?? 'skip') === 'skip';
   const fmEnd = (opts.frontMatter ?? 'skip') === 'skip' ? frontMatterEnd(text) : -1;
   const refs: WikiRef[] = [];
-  for (let pos = 0; pos <= text.length; ) {
-    const nl = text.indexOf('\n', pos);
-    const lineEnd = nl < 0 ? text.length : nl;
-    const lineStart = pos;
-    pos = lineEnd + 1;
-    if (lineStart <= fmEnd) continue;
-    const line = text.slice(
-      lineStart,
-      text[lineEnd - 1] === '\r' && lineEnd > lineStart ? lineEnd - 1 : lineEnd
-    );
-    for (let at = line.indexOf('[['); at >= 0; at = line.indexOf('[[', at + 1)) {
-      if (escaped(line, at)) continue;
-      const end = tokenEnd(line, at + 2);
-      if (end < 0) continue;
-      // A bang that is itself escaped is a literal character before a plain link.
-      const embed = line[at - 1] === '!' && !escaped(line, at - 1);
-      const begin = embed ? at - 1 : at;
-      const ref = build(
-        line.slice(begin, end),
-        embed,
-        lineStart + begin,
-        line.slice(at + 2, end - 2)
-      );
-      if (!ref) continue;
-      refs.push(ref);
-      at = end - 1;
-    }
-  }
-  if (!skipCode || refs.length === 0) return refs;
-  const code = codeRanges(text, fmEnd < 0 ? 0 : fmEnd + 1);
-  return refs.filter((ref) => !inCode(code, ref.start));
+  forEachLine(
+    text,
+    (line, lineStart) => {
+      for (let at = line.indexOf('[['); at >= 0; at = line.indexOf('[[', at + 1)) {
+        if (escaped(line, at)) continue;
+        const end = tokenEnd(line, at + 2);
+        if (end < 0) continue;
+        // A bang that is itself escaped is a literal character before a plain link.
+        const embed = line[at - 1] === '!' && !escaped(line, at - 1);
+        const begin = embed ? at - 1 : at;
+        const ref = build(
+          line.slice(begin, end),
+          embed,
+          lineStart + begin,
+          line.slice(at + 2, end - 2)
+        );
+        if (!ref) continue;
+        refs.push(ref);
+        at = end - 1;
+      }
+    },
+    fmEnd
+  );
+  return skipCode ? outsideCode(text, refs, fmEnd) : refs;
 }
 
 const UNESCAPE = /\\([!-/:-@[-`{-~])|&(?:(amp|lt|gt|quot)|#(\d{1,7})|#[xX]([0-9a-fA-F]{1,6}));/g;

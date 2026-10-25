@@ -450,6 +450,20 @@ export function codeRanges(text: string, from = 0): CodeRange[] {
 }
 
 /** Whether `pos` lies in one of `ranges` (sorted, disjoint, as `codeRanges` returns them). */
+/**
+ * The items (wiki tokens, image links) that do not start in code, given the
+ * end of the front matter (-1 for none): one scan, then a lookup per item.
+ */
+export function outsideCode<T extends { start: number }>(
+  text: string,
+  items: T[],
+  frontMatterEnd: number
+): T[] {
+  if (items.length === 0) return items;
+  const code = codeRanges(text, frontMatterEnd < 0 ? 0 : frontMatterEnd + 1);
+  return items.filter((item) => !inCode(code, item.start));
+}
+
 export function inCode(ranges: readonly CodeRange[], pos: number): boolean {
   let lo = 0;
   let hi = ranges.length;
