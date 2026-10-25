@@ -1,4 +1,10 @@
-import { type EmbedKind, parseWikiRef, splitLinkTarget, type WikiRef } from '@/domain/embeds';
+import {
+  type EmbedKind,
+  parseWikiRef,
+  splitLinkTarget,
+  type WikiRef,
+  wikilinkLabel,
+} from '@/domain/embeds';
 import { isWebImage } from '@/domain/imagePaths';
 import {
   descend,
@@ -271,11 +277,6 @@ const optionsFor = (
 // ---------------------------------------------------------------------------
 // Wiki tokens
 // ---------------------------------------------------------------------------
-
-function wikilinkText(ref: WikiRef): string {
-  if (ref.alt) return ref.alt;
-  return [ref.target, ref.fragment].filter((s) => s).join(' > ') || ref.raw;
-}
 
 const nameOf = (ref: WikiRef) => ref.target || ref.fragment || ref.raw;
 
@@ -577,7 +578,7 @@ export function mountEmbed(
     }
     if (!ref.embed) {
       setBlock(false);
-      show(`link|${raw}`, wikilinkChip(wikilinkText(ref), raw));
+      show(`link|${raw}`, wikilinkChip(wikilinkLabel(ref), raw));
       return;
     }
     setBlock(BLOCK_KINDS.includes(ref.kind));

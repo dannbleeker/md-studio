@@ -1,5 +1,7 @@
+import type { Node as PmNode } from '@milkdown/kit/prose/model';
 import type { EditorState } from '@milkdown/kit/prose/state';
 import { Decoration, DecorationSet } from '@milkdown/kit/prose/view';
+import { EMBED_NODE_NAME, parseWikiRef, wikilinkLabel } from '@/domain/embeds';
 import { headingLink } from '@/domain/linkTarget';
 import { t } from '@/i18n';
 import { useStore } from '@/store';
@@ -19,6 +21,16 @@ const button = (className: string, label: string, text: string): HTMLButtonEleme
   b.textContent = text;
   return b;
 };
+
+/** A heading's text as the page shows it, with a [[link]] as its chip reads. */
+function headingName(heading: PmNode): string {
+  return heading.textBetween(0, heading.content.size, '', (leaf) => {
+    if (leaf.type.name !== EMBED_NODE_NAME) return leaf.isText ? (leaf.text ?? '') : ' ';
+    const raw = String(leaf.attrs.raw ?? '');
+    const ref = parseWikiRef(raw);
+    return ref && !ref.embed ? wikilinkLabel(ref) : raw;
+  });
+}
 
 async function copyText(text: string, done: string): Promise<void> {
   try {
@@ -61,6 +73,11 @@ export function readDecorationSet(state: EditorState, folded: Folds): Decoration
     const at = index;
     const isFolded = folded.has(offset);
     if (isFolded) hiddenUnder = level;
+    // The buttons sit inside the heading: name it by its own text, or a
+    // screen reader's list of headings reads "Fold section … Copy link".
+    decorations.push(
+      Decoration.node(offset, offset + node.nodeSize, { 'aria-label': headingName(node) })
+    );
     decorations.push(
       Decoration.widget(
         offset + 1,

@@ -154,6 +154,12 @@ export function parseWikiRef(raw: string): WikiRef | null {
   return /[[\]\r\n]/.test(body) ? null : build(raw, embed, 0, body);
 }
 
+/** What a plain [[link]] shows: its alias, else the note and heading it names. */
+export function wikilinkLabel(ref: WikiRef): string {
+  if (ref.alt) return ref.alt;
+  return [ref.target, ref.fragment].filter((s) => s).join(' > ') || ref.raw;
+}
+
 /** Index just past the `]]` closing a token whose body starts at `from`, or -1. */
 function tokenEnd(line: string, from: number): number {
   const limit = Math.min(line.length, from + MAX_BODY + 2);
