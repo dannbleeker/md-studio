@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Coverage gate in CI.** `pnpm verify` now measures unit test coverage and
+  fails when it drops below floors set at today's level (overall lines 79 %,
+  statements 78 %, functions 69 %, branches 75 %; stricter floors for
+  `src/domain` and `src/store`). Tests with time ceilings are tagged `stress`
+  and run uninstrumented in a separate `pnpm test:stress` step.
 - **Links to other notes open on the first click.** Clicking a link to a note
   or file when no attachments folder is chosen (or its permission has lapsed)
   now opens the folder picker (or the permission prompt) from the click and

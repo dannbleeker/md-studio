@@ -172,8 +172,10 @@ that keep it safe:
   scaling test (time at n and 2n, no absolute thresholds); no unbounded
   character classes next to each other. Crafted notes reach these paths
   (`SECURITY.md`). A test that feeds huge input to prove it is tagged
-  `{ tags: ['stress'] }`: the mutation run skips those, because instrumented
-  code is too slow for their time ceilings and one failing test aborts the job.
+  `{ tags: ['stress'] }`, and so is any test with a time ceiling: the mutation
+  run and the coverage run skip those, because instrumented code is too slow
+  for their time ceilings and one failing test aborts the job.
+  `pnpm test:stress` runs them on their own.
 - **e2e vault specs** hand the app real OPFS handles with an in-memory
   IndexedDB stand-in (CI's newer headless Chromium stalls cloning OPFS
   handles into IndexedDB); the visual pane adopts a click's selection right
@@ -234,6 +236,9 @@ that keep it safe:
   `dateTimeFormat()`, not a bare `Intl.DateTimeFormat`.
 - `pnpm verify` must be green before pushing. It is the CI gate.
 - Bundle growth: re-pin `bundle-budget.json` deliberately and say why.
+- Coverage floors in `vitest.config.ts` (`thresholds`) are a ratchet: when
+  coverage grows, raise them to the new level rounded down; never lower one
+  to get green.
 - `patches/` holds a `pnpm patch` of `@milkdown/transformer` (the serializer's
   child merge, quadratic upstream). A Milkdown upgrade must re-create it with
   `pnpm patch @milkdown/transformer`; `serializerScaling.test.ts` fails if the
@@ -242,6 +247,9 @@ that keep it safe:
 ## Commands
 
 `pnpm dev` · `pnpm test` · `pnpm test:e2e` · `pnpm lint:fix` · `pnpm verify`.
+`pnpm verify` runs Vitest as `pnpm test:coverage` (coverage floors, no
+`stress` tests) plus `pnpm test:stress`; `pnpm test` still runs everything
+without coverage.
 For Playwright with a preinstalled Chromium, set `PLAYWRIGHT_CHROMIUM_PATH`.
 
 - `pnpm book`: rebuild `public/Writing-in-Plain-Text.{epub,pdf}` from
