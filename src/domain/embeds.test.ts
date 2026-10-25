@@ -11,6 +11,7 @@ import {
   parseWikiRef,
   splitLinkTarget,
   unescapeMarkdownText,
+  wikilinkLabel,
 } from './embeds';
 
 const raws = (text: string, opts?: Parameters<typeof findWikiRefs>[1]) =>
@@ -45,6 +46,19 @@ describe('classifyTarget', () => {
     for (const ext of ['png', 'pdf', 'mp3', 'mp4', 'flac'])
       expect(isAttachmentExtension(ext)).toBe(true);
     for (const ext of ['md', '', 'zip', 'canvas']) expect(isAttachmentExtension(ext)).toBe(false);
+  });
+});
+
+describe('wikilinkLabel', () => {
+  const label = (raw: string) => {
+    const ref = parseWikiRef(raw);
+    return ref ? wikilinkLabel(ref) : null;
+  };
+  it('shows the alias, else the note and heading', () => {
+    expect(label('[[Note|Shown]]')).toBe('Shown');
+    expect(label('[[Note#Part]]')).toBe('Note > Part');
+    expect(label('[[#Part]]')).toBe('Part');
+    expect(label('[[Note]]')).toBe('Note');
   });
 });
 

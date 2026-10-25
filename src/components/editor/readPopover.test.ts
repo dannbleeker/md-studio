@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { resetStoreForTest, useStore } from '@/store';
 import { hidePopover, popoverAnchor, showPopover } from './readPopover';
 
 const pressEscape = () => {
@@ -33,5 +34,19 @@ describe('the Read view popover', () => {
     expect(link.hasAttribute('aria-describedby')).toBe(false);
     // With no card showing, Escape is not its to take.
     expect(pressEscape().defaultPrevented).toBe(false);
+  });
+
+  it('goes when another document or view replaces the page under it', () => {
+    resetStoreForTest();
+    useStore.setState({ viewMode: 'read' });
+    const link = document.createElement('a');
+    document.body.append(link);
+    showPopover(link, null, 'Body');
+    // A tab switch from the keyboard while the pointer rests on the link.
+    useStore.setState({ loadId: useStore.getState().loadId + 1 });
+    expect(document.getElementById('read-popover')).toBeNull();
+    showPopover(link, null, 'Body');
+    useStore.setState({ viewMode: 'split' });
+    expect(document.getElementById('read-popover')).toBeNull();
   });
 });

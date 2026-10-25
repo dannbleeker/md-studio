@@ -1,6 +1,7 @@
 import { Schema } from '@milkdown/kit/prose/model';
 import { EditorState } from '@milkdown/kit/prose/state';
 import { EditorView } from '@milkdown/kit/prose/view';
+import { within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resetStoreForTest, useStore } from '@/store';
 import { editors } from './editorRegistry';
@@ -10,14 +11,21 @@ import { loadReadExtras, readHost } from './readHost';
 const schema = new Schema({
   nodes: {
     doc: { content: 'block+' },
-    paragraph: { group: 'block', content: 'text*', toDOM: () => ['p', 0] },
+    paragraph: { group: 'block', content: 'inline*', toDOM: () => ['p', 0] },
     heading: {
       group: 'block',
-      content: 'text*',
+      content: 'inline*',
       attrs: { level: { default: 1 } },
       toDOM: (n) => [`h${n.attrs.level}`, 0],
     },
-    text: {},
+    text: { group: 'inline' },
+    embed: {
+      group: 'inline',
+      inline: true,
+      atom: true,
+      attrs: { raw: {} },
+      toDOM: () => ['span', { class: 'md-wikilink' }, 'Shown'],
+    },
   },
   marks: {
     link: { attrs: { href: {} }, toDOM: (m) => ['a', { href: m.attrs.href }, 0] },
@@ -121,5 +129,24 @@ describe('Read view folds', () => {
     view.dom.querySelector('a')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(hidden(view)).toEqual([]);
     expect(scrolled.at(-1)).toContain('B');
+  });
+
+  it('leave the fold and link buttons out of the heading names', () => {
+    view = mount();
+    const headings = within(view.dom as HTMLElement).getAllByRole('heading');
+    expect(headings.map((el) => el.getAttribute('aria-label'))).toEqual(['A', 'B']);
+    expect(within(view.dom as HTMLElement).getByRole('heading', { name: 'B' })).toBeTruthy();
+    // The buttons are still there, each with its own name.
+    expect(foldButtons(view)).toHaveLength(2);
+  });
+
+  it('name a heading with a [[link]] as its chip reads', () => {
+    const chip = schema.node('embed', { raw: '[[Note|Shown]]' });
+    view = mount(doc(schema.node('heading', { level: 1 }, [schema.text('See '), chip])));
+    expect(
+      within(view.dom as HTMLElement)
+        .getByRole('heading')
+        .getAttribute('aria-label')
+    ).toBe('See Shown');
   });
 });
