@@ -36,14 +36,14 @@
   "tests": {
     "files": 113,
     "total": 1480,
-    "passed": 1477,
-    "failed": 3,
+    "passed": 1479,
+    "failed": 1,
     "e2eSpecs": 17
   },
   "coverage": {
     "lines": 84.65,
-    "statements": 82.82,
-    "functions": 74.35,
+    "statements": 82.83,
+    "functions": 74.4,
     "branches": 79
   },
   "bundle": {
@@ -217,7 +217,7 @@
     "words": 27398
   },
   "git": {
-    "commits": 154,
+    "commits": 156,
     "firstCommit": "2026-10-02",
     "lastCommit": "2026-10-25",
     "activeDays": 13
