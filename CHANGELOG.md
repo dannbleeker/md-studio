@@ -11,6 +11,12 @@
   longer says "missing" while the vault is scanned. Folder mode follows
   renames made outside the app. A transparent PNG embedded on Safari keeps
   its transparency, and a drop of several images asks about a folder once.
+- **Read view, fixed.** Folds stay with their own document (they used to
+  carry over to the next tab or note, and shift after an edit) and keep
+  keyboard focus when toggled; a #link into a folded section opens it.
+  Hover cards stay when the pointer comes back to their link and no longer
+  reopen after it has left. Diagrams follow a theme change, and the image
+  lightbox keeps Tab inside it.
 - **Coverage gate in CI.** `pnpm verify` now measures unit test coverage and
   fails when it drops below floors set at today's level (overall lines 79 %,
   statements 78 %, functions 69 %, branches 75 %; stricter floors for
