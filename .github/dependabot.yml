@@ -34,6 +34,12 @@ updates:
         update-types: ['version-update:semver-major']
       - dependency-name: '@vitest/*'
         update-types: ['version-update:semver-major']
+      # TypeScript 7 has no JavaScript compiler API, and Stryker 10 reads the
+      # tsconfig through it: the mutation job fails at once
+      # ("ts.parseConfigFileTextToJson is not a function"). Lift this once a
+      # Stryker release supports TypeScript 7 (check with `pnpm mutation`).
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
     # A dependency joins the FIRST group that matches it, so the specific
     # groups come before the minor/patch catch-all. Major versions of
     # anything not named here arrive as one pull request each.
