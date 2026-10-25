@@ -4,7 +4,7 @@ import { classifyTarget, embedTokenFor, parseAltSize } from '@/domain/embeds';
 import { isRelativeUrl, isWebImage } from '@/domain/imagePaths';
 import { t } from '@/i18n';
 import { useStore } from '@/store';
-import { liveDocContext, loadingChip, ownsEvent, withEmbedRender } from './embedView';
+import { liveDocContext, mountLiveEmbed, ownsEvent, withEmbedRender } from './embedView';
 
 /**
  * Renders Markdown images in the visual pane. Relative links (images saved
@@ -39,23 +39,10 @@ type Resolver = { update(src: string): void; destroy(): void };
 function embedBacked(initial: Node, initialToken: string): NodeView {
   let node = initial;
   let src = String(node.attrs.src ?? '');
-  let token = initialToken;
   const dom = document.createElement('span');
   dom.className = 'md-embed-host';
-  dom.append(loadingChip());
-  const signal = { cancelled: false };
-  let mounted: { update(raw: string): void; destroy(): void } | null = null;
-  withEmbedRender((m) => {
-    if (signal.cancelled) return;
-    mounted = m.mountEmbed(dom, token, {
-      doc: liveDocContext,
-      chain: { depth: 0, visited: [] },
-      fromNotePath: undefined,
-      signal,
-      // A Markdown link, so a path is tried next to the note before the vault root.
-      markdown: true,
-    });
-  });
+  // A Markdown link, so a path is tried next to the note before the vault root.
+  const embed = mountLiveEmbed(dom, initialToken, true);
   return {
     dom,
     update(next) {
@@ -67,18 +54,12 @@ function embedBacked(initial: Node, initialToken: string): NodeView {
       node = next;
       if (nextSrc === src) return true;
       src = nextSrc;
-      token = nextToken;
-      // Before the module arrives nothing is mounted: the pending mount reads the new token.
-      withEmbedRender(() => mounted?.update(nextToken));
+      embed.update(nextToken);
       return true;
     },
     ignoreMutation: () => true,
     stopEvent: ownsEvent,
-    destroy() {
-      signal.cancelled = true;
-      mounted?.destroy();
-      mounted = null;
-    },
+    destroy: () => embed.destroy(),
   };
 }
 
