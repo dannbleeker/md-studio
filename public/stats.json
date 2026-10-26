@@ -4,18 +4,18 @@
   "code": [
     {
       "category": "App code",
-      "files": 156,
-      "lines": 20718
+      "files": 160,
+      "lines": 21190
     },
     {
       "category": "Unit tests",
-      "files": 121,
-      "lines": 19059
+      "files": 124,
+      "lines": 19277
     },
     {
       "category": "E2E tests",
       "files": 18,
-      "lines": 3328
+      "lines": 3371
     },
     {
       "category": "Scripts",
@@ -25,29 +25,29 @@
     {
       "category": "Styles",
       "files": 6,
-      "lines": 1829
+      "lines": 1985
     },
     {
       "category": "Book",
       "files": 13,
-      "lines": 2606
+      "lines": 2617
     }
   ],
   "tests": {
-    "files": 117,
-    "total": 1500,
-    "passed": 1499,
-    "failed": 1,
+    "files": 120,
+    "total": 1514,
+    "passed": 1514,
+    "failed": 0,
     "e2eSpecs": 17
   },
   "coverage": {
-    "lines": 84.89,
-    "statements": 83.09,
-    "functions": 74.93,
-    "branches": 79.06
+    "lines": 84.96,
+    "statements": 83.19,
+    "functions": 75.44,
+    "branches": 79.11
   },
   "bundle": {
-    "eagerGzipBytes": 486814,
+    "eagerGzipBytes": 488817,
     "eager": [
       "codeRegions",
       "codemirror",
@@ -63,16 +63,16 @@
       "vaultIndex"
     ],
     "chunks": {
-      "AttachmentBanner": 1539,
-      "FindBar": 2594,
-      "FolderPanel": 3168,
-      "FormatToolbar": 1069,
+      "AttachmentBanner": 1541,
+      "FindBar": 2591,
+      "FolderPanel": 3170,
+      "FormatToolbar": 1216,
       "OutlinePanel": 951,
-      "ReadKeysDialog": 422,
-      "ReaderDialog": 585,
-      "USER_GUIDE": 4962,
-      "attachments": 6402,
-      "callouts": 850,
+      "ReaderDialog": 582,
+      "ShortcutsDialog": 697,
+      "USER_GUIDE": 5382,
+      "attachments": 6401,
+      "callouts": 848,
       "canvasPng": 147,
       "codeRegions": 2608,
       "codemirror": 224105,
@@ -174,39 +174,39 @@
       "diagram-wardleyDiagram-IVAIDKWA": 6545,
       "diagram-xychartDiagram-4URNHDU4": 12305,
       "docx": 128422,
-      "drawers": 170,
-      "embedExport": 3416,
-      "embedLinks": 1222,
-      "embedRender": 4177,
+      "drawers": 168,
+      "embedExport": 3418,
+      "embedLinks": 1221,
+      "embedRender": 4178,
       "embeds": 2054,
-      "exportImages": 2133,
+      "exportImages": 2134,
       "fences": 189,
-      "folder": 1207,
+      "folder": 1206,
       "frontMatter": 605,
-      "html": 2334,
-      "i18n": 5732,
-      "images": 1298,
-      "index": 39801,
+      "html": 2332,
+      "i18n": 6185,
+      "images": 1296,
+      "index": 41348,
       "katex": 76945,
       "linkTarget": 771,
       "markdownPdf": 179107,
       "marked.esm": 13602,
       "math": 274,
-      "mathRender": 275,
+      "mathRender": 274,
       "mermaid": 1177,
       "milkdown": 141014,
-      "noteLinks": 1567,
-      "noteRenderer": 3786,
+      "noteLinks": 1565,
+      "noteRenderer": 3785,
       "plainText": 1025,
       "react": 67529,
       "readImpl": 4460,
       "rolldown-runtime": 627,
       "textHash": 145,
-      "transclusion": 3273,
-      "typeset": 1522,
+      "transclusion": 3272,
+      "typeset": 1519,
       "typesetRenderers": 959,
-      "ui": 902,
-      "vaultConfig": 1617,
+      "ui": 905,
+      "vaultConfig": 1618,
       "vaultIndex": 1648,
       "welcome.en": 989,
       "workbox-window.prod.es5": 2199
@@ -216,10 +216,10 @@
   "book": {
     "chapters": 11,
     "written": 11,
-    "words": 27436
+    "words": 27591
   },
   "git": {
-    "commits": 185,
+    "commits": 188,
     "firstCommit": "2026-10-02",
     "lastCommit": "2026-10-26",
     "activeDays": 14
