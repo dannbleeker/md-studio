@@ -58,21 +58,42 @@ export function StartScreen() {
             <span className="muted">{documentTitle(resumeMarkdown)}</span>
           </button>
         ) : null}
-        <button type="button" className="start-card" onClick={() => void newDocument()}>
-          <strong>{t('start.new')}</strong>
-        </button>
-        <button type="button" className="start-card" onClick={() => void openDocument()}>
-          <strong>{t('start.open')}</strong>
+        <button
+          type="button"
+          className={`start-card${resumeId ? '' : ' start-card-primary'}`}
+          onClick={() => void openDocument()}
+          aria-labelledby="start-open-label"
+          aria-describedby="start-open-hint"
+        >
+          <strong id="start-open-label">{t('start.open')}</strong>
+          <span className="muted" id="start-open-hint">
+            {t('start.openHint')}
+          </span>
         </button>
         {canOpenFolder() ? (
-          <button type="button" className="start-card" onClick={() => void openFolderFromStart()}>
-            <strong>{t('start.openFolder')}</strong>
+          <button
+            type="button"
+            className="start-card"
+            onClick={() => void openFolderFromStart()}
+            aria-labelledby="start-folder-label"
+            aria-describedby="start-folder-hint"
+          >
+            <strong id="start-folder-label">{t('start.openFolder')}</strong>
+            <span className="muted" id="start-folder-hint">
+              {t('start.openFolderHint')}
+            </span>
           </button>
         ) : null}
-        <button type="button" className="start-card" onClick={() => void openWelcome()}>
-          <strong>{t('start.welcome')}</strong>
-        </button>
       </div>
+      <p className="start-more">
+        <button type="button" className="link-button" onClick={() => void newDocument()}>
+          {t('start.new')}
+        </button>
+        <span aria-hidden="true"> · </span>
+        <button type="button" className="link-button" onClick={() => void openWelcome()}>
+          {t('start.welcome')}
+        </button>
+      </p>
 
       <section className="start-recent" aria-labelledby="recent-heading">
         <div className="start-recent-head">
@@ -116,12 +137,15 @@ export function StartScreen() {
         )}
       </section>
       <p className="muted start-hint">{t('start.dropHint')}</p>
-      <nav className="start-links" aria-label={t('start.links')}>
-        <GuideLinks />
-        <a href={DASHBOARD} target="_blank" rel="noopener">
-          {t('start.dashboard')}
-        </a>
-      </nav>
+      <details className="start-help">
+        <summary>{t('start.links')}</summary>
+        <nav className="start-links" aria-label={t('start.links')}>
+          <GuideLinks />
+          <a href={DASHBOARD} target="_blank" rel="noopener">
+            {t('start.dashboard')}
+          </a>
+        </nav>
+      </details>
     </main>
   );
 }

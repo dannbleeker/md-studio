@@ -1,5 +1,15 @@
 import { expect, type Page, test } from '@playwright/test';
-import { edit, newDocument, setText, textContent, textPane, visualPane } from './helpers';
+import {
+  edit,
+  layout,
+  menu,
+  moreFormatting,
+  newDocument,
+  setText,
+  textContent,
+  textPane,
+  visualPane,
+} from './helpers';
 
 test('text pane edits render in the visual pane', async ({ page }) => {
   await newDocument(page);
@@ -52,15 +62,15 @@ test('view modes hide and show panes', async ({ page }) => {
   const textSection = page.locator('[data-pane="text"]');
   const visualSection = page.locator('[data-pane="visual"]');
 
-  await page.getByRole('button', { name: 'Text', exact: true }).click();
+  await layout(page, 'Markdown');
   await expect(textSection).toBeVisible();
   await expect(visualSection).toBeHidden();
 
-  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  await layout(page, 'Visual');
   await expect(textSection).toBeHidden();
   await expect(visualSection).toBeVisible();
 
-  await page.getByRole('button', { name: 'Split', exact: true }).click();
+  await layout(page, 'Split');
   await expect(textSection).toBeVisible();
   await expect(visualSection).toBeVisible();
 });
@@ -70,7 +80,7 @@ test('command palette runs commands', async ({ page }) => {
   await page.keyboard.press('ControlOrMeta+K');
   const input = page.getByRole('combobox', { name: 'Commands' });
   await expect(input).toBeFocused();
-  await input.fill('text only');
+  await input.fill('markdown only');
   await page.keyboard.press('Enter');
   await expect(page.locator('[data-pane="visual"]')).toBeHidden();
 });
@@ -127,7 +137,9 @@ test('linked scroll follows headings, not pixel ratios', async ({ page }) => {
     .toBeLessThan(30);
 
   // Turning linked scroll off stops the visual pane following.
-  await page.getByRole('checkbox', { name: 'Linked scroll' }).uncheck();
+  await menu(page, 'Settings');
+  await page.getByRole('checkbox', { name: /Scroll both panes/ }).uncheck();
+  await page.getByRole('button', { name: 'Done' }).click();
   const before = await scroller.evaluate((el) => el.scrollTop);
   await page.getByTestId('text-editor').hover();
   await textPane(page).evaluate((el) => {
@@ -221,10 +233,10 @@ test('the hidden visual pane catches up when shown again', async ({ page }) => {
   await newDocument(page);
   await setText(page, '# Before\n');
   await expect(visualPane(page).locator('h1')).toHaveText('Before');
-  await page.getByRole('button', { name: 'Text', exact: true }).click();
+  await layout(page, 'Markdown');
   await setText(page, '# After\n\nwritten while hidden\n');
   await page.waitForTimeout(400);
-  await page.getByRole('button', { name: 'Split', exact: true }).click();
+  await layout(page, 'Split');
   await expect(visualPane(page).locator('h1')).toHaveText('After');
   await expect(visualPane(page).locator('p')).toHaveText('written while hidden');
 });
@@ -266,7 +278,7 @@ test('a text edit right after a visual edit is not reverted', async ({ page }) =
 test('switching tabs right after a visual edit keeps the edit in its own tab', async ({ page }) => {
   await newDocument(page);
   await setText(page, '# Alpha\n\nalpha text\n');
-  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await menu(page, 'New document');
   await setText(page, '# Beta\n\nbeta text\n');
   const tabs = page.getByRole('tablist', { name: 'Open documents' });
   await tabs.getByRole('tab').first().click();
@@ -480,6 +492,7 @@ test('front matter keeps its shape under block commands, Backspace and a typed f
 
   await caretInBlock();
   await page.keyboard.press('ControlOrMeta+Shift+B');
+  await moreFormatting(page);
   for (const name of ['Quote', 'Horizontal rule', 'Insert table', 'Code block']) {
     await toolbar.getByRole('button', { name: new RegExp(`^${name}`) }).click();
   }
@@ -602,6 +615,7 @@ const visualBlocks = (page: Page) =>
  * actionability waits, so it can follow a keystroke within milliseconds.
  */
 async function formatButton(page: Page, name: RegExp): Promise<() => Promise<void>> {
+  await moreFormatting(page);
   const box = await page
     .getByRole('toolbar', { name: 'Formatting' })
     .getByRole('button', { name })

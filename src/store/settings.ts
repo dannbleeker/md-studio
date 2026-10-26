@@ -51,6 +51,8 @@ export type Settings = {
   readFont: ReadFont;
   readSpacing: ReadSpacing;
   readTheme: ReadTheme;
+  /** The first-run tip (press Edit, Ctrl+K) was dismissed, or Edit was used. */
+  tipSeen: boolean;
 };
 
 type AttachmentRules = 'vault' | 'images';
@@ -77,6 +79,7 @@ export const DEFAULT_SETTINGS: Settings = {
   readFont: 'sans',
   readSpacing: 'normal',
   readTheme: 'match',
+  tipSeen: false,
 };
 
 export const EDIT_MODES: readonly EditMode[] = ['split', 'text', 'visual'];
@@ -126,5 +129,6 @@ export function sanitizeSettings(raw: Record<string, unknown>): Settings {
     readFont: oneOf(READ_FONTS, raw.readFont, d.readFont),
     readSpacing: oneOf(READ_SPACINGS, raw.readSpacing, d.readSpacing),
     readTheme: oneOf(READ_THEMES, raw.readTheme, d.readTheme),
+    tipSeen: bool(raw.tipSeen, d.tipSeen),
   };
 }

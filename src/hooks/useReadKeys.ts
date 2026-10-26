@@ -19,19 +19,24 @@ const pressesControl = (target: EventTarget | null): boolean =>
 /**
  * Plain-key shortcuts for reading: j/k and Space scroll, g/G jump to the
  * ends, [ and ] step between headings, / opens Find and f toggles focus
- * mode, ? lists them all. Only in Read view, and never while a dialog is open or text is being
- * typed somewhere.
+ * mode. Only in Read view, and never while a dialog is open or text is being typed somewhere.
+ * ? lists every shortcut, from any view.
  */
 export function useReadKeys(): void {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.isComposing || typesText(e.target) || modalOpen()) return;
       const { screen, viewMode } = useStore.getState();
-      if (screen !== 'editor' || viewMode !== 'read' || e.defaultPrevented || e.isComposing) return;
-      if (typesText(e.target) || modalOpen()) return;
       const action = readKeyAction(e);
+      // ? lists the shortcuts from anywhere nothing is being typed, not only in Read view.
+      if (action === 'help') {
+        useUiStore.getState().setShortcutsOpen(true);
+        e.preventDefault();
+        return;
+      }
+      if (screen !== 'editor' || viewMode !== 'read') return;
       if (!action || (e.key === ' ' && pressesControl(e.target))) return;
-      if (action === 'help') useUiStore.getState().setReadKeysOpen(true);
-      else if (action === 'find') useUiStore.getState().setFind(true, false);
+      if (action === 'find') useUiStore.getState().setFind(true, false);
       else if (action === 'focus')
         useUiStore.getState().setFocusMode(!useUiStore.getState().focusMode);
       else if (!scrollReader(action)) return;

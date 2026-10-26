@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { expect, type Page, test } from '@playwright/test';
-import { newDocument, setText, visualPane } from './helpers';
+import { menu, newDocument, setText, visualPane } from './helpers';
 
 /**
  * Visual regression: screenshots of the main surfaces compared against
@@ -76,7 +76,7 @@ test('editor, split view, dark', async ({ page }) => {
 
 test('settings dialog', async ({ page }) => {
   await openSample(page);
-  await page.getByRole('button', { name: 'Settings' }).click();
+  await menu(page, 'Settings');
   await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
   await matchesBaseline(page, 'settings.png');
 });

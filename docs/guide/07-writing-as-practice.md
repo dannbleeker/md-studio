@@ -182,7 +182,7 @@ Before you share a document, read it once from top to bottom in the visual view.
 
 ### Editing in the source
 
-Switch to the source (the **Text** button, or Ctrl+2 in the installed app) to see what the formatting is. The visual view shows how things look, and the source shows what they are.
+Switch to the source (the **Markdown** button, or Ctrl+2 in the installed app) to see what the formatting is. The visual view shows how things look, and the source shows what they are.
 
 That matters more often than you'd expect. In the visual view, a short bold line and a heading can look alike, but only the heading appears in the outline, moves with linked scroll and becomes a heading in a Word export; the source tells you which one you have. The visual view shows a link's text, while the source shows its address and whether it is relative (`images/chart.png`, which travels with the folder) or absolute (a web URL, which may not). Indentation in the source decides how a list nests, so when a list behaves oddly, the source shows why. And the source is what you share when you send the `.md` file ([Chapter 6](06-exporting-and-sharing.md)) and what git tracks. If the visual view looks fine but the source is a mess, the mess is what other tools will see.
 

@@ -18,7 +18,7 @@ Check the images before you attach it. If they were saved to an `images` folder 
 
 ## The Export dialog
 
-When the recipient needs something other than Markdown, open the **Export** dialog: **Export** in the toolbar, or *Export…* in the command palette (**Ctrl+K**). The dialog says what it does in one line: "Save a copy in another format. Your Markdown file stays as it is."
+When the recipient needs something other than Markdown, open the **Export** dialog: **Export…** in the **☰** menu, or *Export…* in the command palette (**Ctrl+K**). The dialog says what it does in one line: "Save a copy in another format. Your Markdown file stays as it is."
 
 Take that literally. Export writes a *separate* file. It never changes which file your document is linked to, so after exporting `report.pdf`, **Ctrl+S** still saves `report.md`, not the PDF. You can export as often as you like without any risk to your source.
 

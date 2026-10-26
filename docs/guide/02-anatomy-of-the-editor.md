@@ -22,16 +22,22 @@ saved to disk. The browser keeps the document either way (see
 [Chapter 1](01-your-first-document.md)), so the dot only tells you about the
 file.
 
-Then come the file actions, **New**, **Open**, **Save** and **Export**.
-Chapter 1 covers the first three. Export saves a copy in another format and
-has [Chapter 6](06-exporting-and-sharing.md) to itself.
+The right-hand side depends on whether you are reading or editing. A file
+you open starts in Read view, and there the main button is **Edit**, next to
+**Aa** (reading controls) and **Focus**. While you edit, the main button is
+**Save**, with **Read** beside it to go back to reading, and a switch with
+three layouts, **Split**, **Markdown** and **Visual**, with the current one
+pressed. Two small icons show the folder panel and the **Outline**, a panel
+listing the document's headings.
 
-The right-hand group starts with the view mode switch, three buttons labelled
-**Split**, **Text** and **Visual**, with the current view pressed. In split
-view on a wide screen, a **Linked scroll** checkbox sits next to it; more on
-that below. After that come **Outline**, which opens a panel listing the
-document's headings, **Commands**, which opens the command palette, and
-**Settings**.
+Everything else is in the **☰** menu at the far right: **New document**,
+**Open file…**, **Open folder…**, **Save as…**, **Export…**, **Commands**
+(the command palette), **Keyboard shortcuts**, **Settings** and the user
+guide. Chapter 1 covers New, Open and Save. Export saves a copy in another
+format and has [Chapter 6](06-exporting-and-sharing.md) to itself. On a
+phone the menu also holds the layouts and the panels, so the toolbar keeps
+only the file name, Edit or Read, Save and the menu. Press **?** whenever no
+text is being typed to see every keyboard shortcut.
 
 When two or more documents are open, a tab bar sits between the toolbar and
 the editor. Each tab shows the file name and, if the document has unsaved
@@ -88,18 +94,18 @@ down, the symbols get in the way, and here you don't see them.
 Undo works most predictably in the pane where you made the change. If you make a word bold on the right, Ctrl+Z on the right takes the
 bold away again, and the left follows.
 
-## Three views
+## Reading and three ways to edit
 
-The view mode switch decides which panes you see.
+Read view and the three editing layouts decide which panes you see.
 
 | View | Shortcut | What you see |
 | --- | --- | --- |
 | **Split** | Ctrl+1 | Markdown source on the left, the formatted document on the right |
-| **Text** | Ctrl+2 | Markdown source only |
+| **Markdown** | Ctrl+2 | Markdown source only |
 | **Visual** | Ctrl+3 | Formatted document only |
 | **Read** | Ctrl+4 | Formatted document only, not editable, laid out for reading |
 
-The command palette has the same four as *View: split*, *View: text only*,
+The command palette has the same four as *View: split*, *View: Markdown only*,
 *View: visual only* and *View: read*. In Visual view, Ctrl+click follows a link.
 In an ordinary browser tab, Ctrl+1 to Ctrl+4 switch the
 browser's own tabs, so use the toolbar or the palette there. In the installed
@@ -236,13 +242,12 @@ evenly they are spread, the closer the panes stay. A long document with no
 headings has only its top and bottom to line up. [Chapter 3](03-structuring-documents.md)
 has more on headings, which are useful for much more than scrolling.
 
-To turn linked scroll off, untick **Linked scroll** in the toolbar, choose
-*Toggle linked scroll* in the command palette, or clear **Link scrolling
-between panes in split view** in Settings.
+To turn linked scroll off, choose *Toggle linked scroll* in the command
+palette, or clear **Scroll both panes together in split view** in Settings.
 
 ## The outline
 
-**Outline** in the toolbar, or **Ctrl+Shift+O**, opens a panel listing the
+**Outline** (the list icon in the toolbar), or **Ctrl+Shift+O**, opens a panel listing the
 document's headings. Click one to bring that section to the top of both panes.
 The section you are reading is highlighted as you scroll. On a narrow screen
 the outline slides over the editor instead of sitting beside it.
@@ -250,8 +255,8 @@ the outline slides over the editor instead of sitting beside it.
 ## The command palette
 
 Most of what MD Studio can do is also a command, and the **command palette**
-lists them. Open it with **Ctrl+K**, **Ctrl+Shift+P** or the **Commands**
-button. The box says *Type a command, or # to jump to a heading*.
+lists them. Open it with **Ctrl+K**, **Ctrl+Shift+P** or **Commands** in the **☰**
+menu. The box says *Type a command, or # to jump to a heading*.
 
 Start typing and the list narrows to matching commands, then press Enter to
 run the highlighted one. A few letters is usually enough: `save a` finds
@@ -264,20 +269,25 @@ letters to narrow them down, and Enter jumps to that section. *Go to heading…*
 in the palette does the same. In a long document this is often the fastest
 way to move around.
 
-Some commands are only in the palette, such as *Save as…*, *Toggle linked
-scroll*, *Open the sample document*, *Go to start screen* and *Print*.
-[Appendix A](appendix-a-keyboard-reference.md) lists every shortcut.
+Some commands are only in the palette, such as *Toggle linked scroll*,
+*Open the sample document*, *Go to start screen* and *Print*.
+[Appendix A](appendix-a-keyboard-reference.md) lists every shortcut, and **?**
+shows them in the app.
 
 ## Settings
 
-**Settings** in the toolbar, or **Ctrl+,**, opens a short dialog. **Theme** is
-**Match system**, **Light** or **Dark**. **Default view mode** is **Split**,
-**Text**, **Visual** or **Read** (the default), the view MD Studio opens in. **Text size** is
-**Small**, **Medium** or **Large** and applies to both panes.
+**Settings** in the **☰** menu, or **Ctrl+,**, opens a short dialog in
+sections. **Appearance** has the **Theme** (**Match system**, **Light** or
+**Dark**) and the **Text size** (**Small**, **Medium** or **Large**, for both
+panes). **Reading** has **Open files in Read view** (on by default) and
+**When the app starts, show**: **Read** (the default), **Split**,
+**Markdown** or **Visual**. **Editing** has **Wrap long lines in the
+Markdown pane** and **Show line numbers in the Markdown pane**, both on by
+default, and **Scroll both panes together in split view**.
 
-Three checkboxes follow. **Wrap long lines in the Markdown pane** and **Show
-line numbers in the Markdown pane** are both on by default. **Link scrolling
-between panes in split view** is the same switch as the toolbar checkbox.
+**More settings** folds away the rest: how links to attachments are written
+and where pasted files go (see Chapter 7), whether web images load, and
+whether front matter goes into exports.
 
 Changes apply immediately. Click **Done** to close the dialog. The browser
 keeps your settings, so they are still there next time.

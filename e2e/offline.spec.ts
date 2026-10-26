@@ -19,11 +19,12 @@ test('offline, the app, the user guide and the book are served by the service wo
   await context.setOffline(true);
   await page.reload();
   // Nothing was opened, so the reload shows the start screen.
+  await page.getByText('Help and the book').click();
   await page
-    .getByRole('navigation', { name: 'About MD Studio' })
+    .getByRole('navigation', { name: 'Help and the book' })
     .getByRole('button', { name: 'User guide' })
     .click();
-  await expect(visualPane(page).locator('h1')).toHaveText('MD Studio quick reference');
+  await expect(visualPane(page).locator('h1')).toContainText('MD Studio quick reference');
 
   const book = await page.evaluate(async () => {
     const sizes: Record<string, number> = {};

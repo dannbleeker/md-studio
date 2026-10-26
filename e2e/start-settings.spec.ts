@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { edit, textContent, textPane, visualPane } from './helpers';
+import { edit, menu, textContent, textPane, visualPane } from './helpers';
 
 test('the sample document opens, renders and is navigable from the palette', async ({ page }) => {
   const errors: string[] = [];
@@ -53,7 +53,8 @@ test('the user guide and the book are reachable from the start screen, settings 
   page,
 }) => {
   await page.goto('/');
-  const links = page.getByRole('navigation', { name: 'About MD Studio' });
+  await page.getByText('Help and the book').click();
+  const links = page.getByRole('navigation', { name: 'Help and the book' });
   await expect(links.getByRole('link', { name: 'Read the book (PDF)' })).toHaveAttribute(
     'href',
     '/Writing-in-Plain-Text.pdf'
@@ -63,8 +64,8 @@ test('the user guide and the book are reachable from the start screen, settings 
     '/User-Guide.pdf'
   );
   await links.getByRole('button', { name: 'User guide' }).click();
-  await expect(visualPane(page).locator('h1')).toHaveText('MD Studio quick reference');
-  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await expect(visualPane(page).locator('h1')).toContainText('MD Studio quick reference');
+  await menu(page, 'New document');
 
   await page.keyboard.press('ControlOrMeta+,');
   const help = page.getByRole('dialog', { name: 'Settings' }).getByRole('navigation');

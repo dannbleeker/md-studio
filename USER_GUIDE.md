@@ -2,9 +2,15 @@
 
 ## Getting started
 
-- **New document**, **Open file…**, or pick a file from **Recent** on the start
-  screen. You can also drop `.md` files anywhere on the window; each opens
-  in its own tab.
+- **Open file…**, **Open folder**, or pick a file from **Recent** on the
+  start screen; **New document** is the link under them. You can also drop
+  `.md` files anywhere on the window; each opens in its own tab.
+- Files open in **Read view**, as a page to read. Press **Edit** to change
+  one, and **Read** to go back. A new document opens for editing.
+- Everything else is in the **☰** menu at the right of the toolbar: New
+  document, Open, Save as, Export, Commands, Keyboard shortcuts, Settings
+  and this guide. **Ctrl+K** finds any command by name, and **?** lists
+  the keyboard shortcuts whenever no text is being typed.
 - Click **MD Studio** in the toolbar to return to the start screen.
 - In Edge and Chrome, a recent file marked **File on disk** reopens the
   file itself, with its current content, and Save writes back to it. The
@@ -16,25 +22,31 @@
   Markdown as a new, unsaved document.
 - The **×** next to a recent file removes it from the list, and **Clear
   list** empties it. The files themselves are not touched.
-- The links under the start screen open this guide (in a tab, or as a
+- **Help and the book**, at the foot of the start screen, opens this guide (in a tab, or as a
   PDF), the book *Writing in Plain Text* (PDF or EPUB) and the project
   dashboard. The guide opens as a
   document in its own tab, so you can search it. Both the guide and the
   book are downloaded with the app and open offline.
 
-## Views
+## Reading and editing
 
-| View | What you see |
+**Read view** shows the document as a page: links open, headings fold, and
+nothing can change by accident. **Edit** switches to editing, in the layout
+you used last, and **Read** switches back. While editing, the toolbar picks
+the layout:
+
+| Layout | What you see |
 | --- | --- |
 | **Split** | Markdown source on the left, the formatted document on the right |
-| **Text** | Markdown source only |
+| **Markdown** | Markdown source only |
 | **Visual** | Formatted document only |
 
 Both panes edit the same document. Type in either one and the other updates
 a moment later.
 
-**Linked scroll** (split view) keeps both panes on the same section as you
-scroll. Turn it off in the toolbar or in Settings.
+In split view the panes scroll together, keeping the same section in view.
+Turn that off in Settings (**Scroll both panes together in split view**).
+On a phone, the layouts and the panels are in the **☰** menu.
 
 **Front matter**, the YAML metadata block some tools put at the top of a
 file between two `---` lines, shows in the visual view as a grey box
@@ -46,8 +58,8 @@ there as plain text; Backspace in an empty box removes it.
 
 In the visual view, the toolbar above the document formats without
 keyboard shortcuts: text style (paragraph or heading 1 to 4), bold, italic,
-strikethrough, inline code, link, bulleted and numbered lists, quote,
-code block, table and horizontal rule. Buttons show as pressed when the
+link, bulleted list and quote. **⋯** (More formatting) adds strikethrough,
+inline code, numbered list, code block, table and horizontal rule. Buttons show as pressed when the
 selection already has that formatting. A link asks for its address;
 clearing the address removes the link.
 
@@ -111,7 +123,8 @@ inside an embed or wikilink token (its file name or alias) counts too, and
 Replace rewrites the token if the result is still a valid one. Enter goes to the next
   match, Shift+Enter to the previous one, Escape closes the bar. A
   replacement in either pane appears in the other.
-- **Outline** (toolbar, or Ctrl+Shift+O) lists the document's headings.
+- **Outline** (the list icon in the toolbar, or Ctrl+Shift+O) lists the
+  document's headings; the folder icon next to it shows the folder panel.
   Click one to bring that section to the top of both panes; the section
   you are reading is highlighted.
 - In the command palette (Ctrl+K), type `#` to list the headings instead
@@ -120,8 +133,9 @@ Replace rewrites the token if the result is still a valid one. Enter goes to the
 
 ## Settings
 
-Ctrl+, or **Settings** in the toolbar. Besides theme, default view and linked
-scroll:
+Ctrl+, or **Settings** in the **☰** menu. The everyday settings come first,
+in sections (Appearance, Reading, Editing); the vault, privacy, export and
+language settings are under **More settings**. Among them:
 
 - **Text size** (small, medium, large) for both panes.
 - **Wrap long lines** and **Show line numbers** for the Markdown pane.
@@ -139,7 +153,7 @@ The Export dialog remembers the format and theme you used last.
 
 ## Tabs
 
-- **New**, **Open**, a **Recent** file or a dropped file each open in a new
+- **New document**, **Open**, a **Recent** file or a dropped file each open in a new
   tab. An empty, untouched new document is reused instead of piling up.
 - Opening a file that is already open switches to its tab. Without a link
   to the file on disk (other browsers, dropped files) MD Studio goes by the
@@ -175,7 +189,7 @@ The Export dialog remembers the format and theme you used last.
 
 ## Exporting
 
-**Export** (toolbar, or *Export…* in the command palette) saves a copy of the
+**Export…** (in the **☰** menu or the command palette) saves a copy of the
 document in another format. Your Markdown file stays as it is, and stays the
 file that Save writes to.
 
@@ -232,6 +246,6 @@ app.
 
 On macOS use Cmd in place of Ctrl. Ctrl+1, Ctrl+2 and Ctrl+3 work in the
 installed app; in a normal browser tab they switch browser tabs instead, so
-use the toolbar or the command palette there. Ctrl+W and Ctrl+Tab always
+use the toolbar or the command palette there. **?** lists every shortcut. Ctrl+W and Ctrl+Tab always
 belong to the browser, which is why closing and switching MD Studio tabs
 uses Alt.

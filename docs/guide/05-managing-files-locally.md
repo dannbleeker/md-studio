@@ -22,7 +22,7 @@ Edge and Chrome (and other Chromium-based browsers on the desktop) support the F
 
 Here is the everyday loop:
 
-1. Open a file with **Open file…** on the start screen, **Open** in the toolbar, or **Ctrl+O**. The system's file picker appears; choose `notes.md`.
+1. Open a file with **Open file…** on the start screen or in the **☰** menu, or **Ctrl+O**. The system's file picker appears; choose `notes.md`.
 2. Edit. The unsaved-changes dot appears.
 3. Press **Ctrl+S** (or **Save** in the toolbar). MD Studio writes straight back to `notes.md`, in place, and a toast confirms: "Saved notes.md".
 

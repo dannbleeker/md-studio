@@ -54,7 +54,7 @@ describe('useReadKeys', () => {
   it('opens the help, the find bar and focus mode', () => {
     renderHook(() => useReadKeys());
     expect(press('?').defaultPrevented).toBe(true);
-    expect(useUiStore.getState().readKeysOpen).toBe(true);
+    expect(useUiStore.getState().shortcutsOpen).toBe(true);
     press('/');
     expect(useUiStore.getState().findOpen).toBe(true);
     press('f');
@@ -72,6 +72,23 @@ describe('useReadKeys', () => {
     useStore.getState().setScreen('start');
     expect(press('j').defaultPrevented).toBe(false);
     expect(scrollReader).not.toHaveBeenCalled();
+  });
+
+  it('lists the shortcuts on ? in any view and on the start screen, but not while typing', () => {
+    renderHook(() => useReadKeys());
+    useStore.getState().setViewMode('split');
+    expect(press('?').defaultPrevented).toBe(true);
+    expect(useUiStore.getState().shortcutsOpen).toBe(true);
+    resetDialogsForTest();
+    useStore.getState().setScreen('start');
+    press('?');
+    expect(useUiStore.getState().shortcutsOpen).toBe(true);
+    resetDialogsForTest();
+    document.body.innerHTML = '<div class="cm-editor"><span id="cm"></span></div>';
+    expect(press('?', {}, document.getElementById('cm') as HTMLElement).defaultPrevented).toBe(
+      false
+    );
+    expect(useUiStore.getState().shortcutsOpen).toBe(false);
   });
 
   it('leaves keys typed into a field or an editor', () => {
@@ -127,7 +144,7 @@ describe('useReadKeys', () => {
     document.body.innerHTML = '<div class="lightbox" role="dialog" aria-modal="true"></div>';
     for (const key of ['j', ' ', '?', 'f']) expect(press(key).defaultPrevented, key).toBe(false);
     expect(scrollReader).not.toHaveBeenCalled();
-    expect(useUiStore.getState().readKeysOpen).toBe(false);
+    expect(useUiStore.getState().shortcutsOpen).toBe(false);
     expect(useUiStore.getState().focusMode).toBe(false);
   });
 });

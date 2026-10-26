@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
-import { edit, newDocument, setText, textContent, visualPane } from './helpers';
+import { edit, moreFormatting, newDocument, setText, textContent, visualPane } from './helpers';
 
 /** Collects Content Security Policy violations reported on the page. */
 async function cspViolations(page: Page): Promise<string[]> {
@@ -130,6 +130,7 @@ test('web images load only once the setting allows them', async ({ page }) => {
   expect(requests).toEqual([]);
 
   await page.keyboard.press('ControlOrMeta+,');
+  await page.getByText('More settings').click();
   await page.getByRole('checkbox', { name: /Load web images/ }).check();
   await page.getByRole('button', { name: 'Done' }).click();
   await expect(imgs.first()).not.toHaveClass(/image-blocked/);
@@ -168,6 +169,7 @@ test('the format toolbar cannot overwrite a document the visual pane can’t sho
   await setText(page, doc);
   await expect(page.getByText(/nested too deeply for the visual pane/)).toBeVisible();
   const toolbar = page.getByRole('toolbar', { name: 'Formatting' });
+  await moreFormatting(page);
   await toolbar.getByRole('button', { name: 'Insert table' }).click();
   await toolbar.getByRole('button', { name: 'Horizontal rule' }).click();
   await page.waitForTimeout(500);
