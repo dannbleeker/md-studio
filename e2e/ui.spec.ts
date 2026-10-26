@@ -155,11 +155,29 @@ async function readView(page: Page, markdown: string) {
   return visualPane(page);
 }
 
-test('Read view shows a read-only marker and no Save', async ({ page }) => {
-  await readView(page, 'Hello');
-  await expect(page.getByText('Read-only', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0);
+test('Read view offers Edit instead of Save, back to the layout last used', async ({ page }) => {
+  await newDocument(page);
+  await setText(page, 'Hello');
   await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  await page.getByRole('button', { name: 'Read', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Visual', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  );
+});
+
+test('a file opens in Read view, and a new document for editing', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Try the sample document' }).click();
+  await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Read', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  );
+  await page.getByRole('button', { name: 'New', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeVisible();
 });
 

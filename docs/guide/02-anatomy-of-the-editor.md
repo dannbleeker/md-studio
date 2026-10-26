@@ -119,9 +119,10 @@ code block has a Copy button, and a click on an image shows it full size until
 you press Escape or click again. A file that changes on disk, say because
 another program saved it, reloads by itself as long as you have no unsaved
 changes. Save is left out of the toolbar and the palette in Read view, and
-Save as stays.
+Save as stays. In its place is **Edit**, which switches to the editing view
+you used last.
 
-The **Aa** button in Read view opens the reading controls: the width of the column, serif or sans, line spacing, and a sepia page. **Focus** hides the toolbar and tabs so only the page remains. The Settings dialog has **Open files in Read view**, which makes every file you open start in Read view, and MD Studio remembers where you stopped in each file. Rest the pointer on a link to another note to see the start of that note, and on a footnote reference to see the footnote. A heading shows a small **#** that copies a Markdown link to its section, and a front matter block shows as a card with the title, tags and fields. The keys for reading are in [Appendix A](appendix-a-keyboard-reference.md).
+The **Aa** button in Read view opens the reading controls: the width of the column, serif or sans, line spacing, and a sepia page. **Focus** hides the toolbar and tabs so only the page remains. Every file you open starts in Read view, and a new document starts in the editing view you used last; **Open files in Read view** in the Settings dialog turns that off. MD Studio remembers where you stopped in each file. Rest the pointer on a link to another note to see the start of that note, and on a footnote reference to see the footnote. A heading shows a small **#** that copies a Markdown link to its section, and a front matter block shows as a card with the title, tags and fields. The keys for reading are in [Appendix A](appendix-a-keyboard-reference.md).
 
 Switching views only hides a pane. Both editors keep running, so switching is
 instant, and a pane you bring back is already up to date with what you typed
@@ -130,8 +131,9 @@ in the other.
 On a narrow screen such as a phone, split view stacks the two panes, source
 above and formatted below.
 
-The view MD Studio starts in is a setting, **Default view mode**. If you
-mostly write in one pane, set it there and you will rarely touch the switch.
+The view MD Studio starts in is a setting, **Default view mode**, and it is
+Read view unless you change it. If you mostly write in one pane, set it
+there and you will rarely touch the switch.
 
 ## What "synced" means
 
@@ -270,7 +272,7 @@ scroll*, *Open the sample document*, *Go to start screen* and *Print*.
 
 **Settings** in the toolbar, or **Ctrl+,**, opens a short dialog. **Theme** is
 **Match system**, **Light** or **Dark**. **Default view mode** is **Split**,
-**Text** or **Visual**, the view MD Studio opens in. **Text size** is
+**Text**, **Visual** or **Read** (the default), the view MD Studio opens in. **Text size** is
 **Small**, **Medium** or **Large** and applies to both panes.
 
 Three checkboxes follow. **Wrap long lines in the Markdown pane** and **Show

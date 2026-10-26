@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Files open in Read view.** Files opened from disk, by drop, from the
+  recent list, from the folder or by a link now open in Read view, and so
+  does the app. A new document opens for editing. In Read view an **Edit**
+  button (where Save is while editing) switches to the editing layout used
+  last (split, Markdown or visual), which MD Studio remembers. Settings saved
+  before this change move to it once; **Open files in Read view** and
+  **Default view mode** in Settings change it back, and stay as chosen.
+  The "Read-only" badge is gone: the Edit button says the same.
+
 - **Keyboard and links, fixed.** Space presses a focused fold or copy button
   in Read view; Ctrl shortcuts work on Russian, Greek and AZERTY layouts;
   the image lightbox blocks the app's keys and swipes like a dialog; one

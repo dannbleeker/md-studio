@@ -123,6 +123,9 @@ export function restoreDocumentHandle(): Promise<void> {
 
 export async function newDocument(): Promise<void> {
   useStore.getState().loadDocument(createDocument(), null);
+  // There is nothing to read in a new document: it opens for editing.
+  const { viewMode, settings, setViewMode } = useStore.getState();
+  if (viewMode === 'read') setViewMode(settings.editMode);
 }
 
 /**
@@ -195,7 +198,6 @@ export async function openRecent(entry: RecentEntry): Promise<void> {
   // snapshot: nothing to fall back to.
   if (entry.markdown) {
     openSnapshot(entry.markdown, entry.fileName, false);
-    readIfAsked();
   }
 }
 
@@ -313,6 +315,7 @@ export async function clearRecents(): Promise<void> {
 function openSnapshot(markdown: string, fileName: string, remember = true): void {
   if (showOpenTab({ handleId: null, fileName, markdown })) return;
   useStore.getState().loadDocument(createDocument(markdown, fileName), null, null, remember);
+  readIfAsked();
 }
 
 /**

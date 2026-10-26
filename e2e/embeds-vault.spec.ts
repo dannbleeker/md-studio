@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
-import { textContent, textPane, visualPane } from './helpers';
+import { edit, textContent, textPane, visualPane } from './helpers';
 
 /*
  * Obsidian embeds resolved from a real folder. The vaults live in the
@@ -222,6 +222,7 @@ test('a vault note shows its images, pdf, audio and transcluded section', async 
   await queueVault(page, 'vault-a', 'Notes/Daily/n.md');
 
   await page.getByRole('button', { name: 'Open file…' }).click();
+  await edit(page);
   await expect(visualPane(page).locator('h1')).toHaveText('Daily');
 
   // No folder yet: the notice, with its button, and labelled placeholders.
@@ -287,6 +288,7 @@ test('pasting a PNG saves Pasted image <14 digits>.png where app.json says and l
   );
   await queueVault(page, 'vault-p', 'Notes/Daily/n.md');
   await page.getByRole('button', { name: 'Open file…' }).click();
+  await edit(page);
   await expect(visualPane(page).locator('h1')).toHaveText('Paste here');
 
   // The folder is chosen through the palette command, as without a banner.

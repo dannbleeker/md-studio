@@ -18,6 +18,7 @@ export function Toolbar() {
   const linkedScroll = useStore((s) => s.settings.linkedScroll);
   const showOutline = useStore((s) => s.settings.showOutline);
   const showFolder = useStore((s) => s.settings.showFolder);
+  const editMode = useStore((s) => s.settings.editMode);
   const { canBack, canForward } = useNavHistory();
   const { setViewMode, updateSettings, setScreen } = useStore.getState();
   const { setSettingsOpen, setPaletteOpen, setExportOpen, setReaderOpen, setFocusMode } =
@@ -56,7 +57,6 @@ export function Toolbar() {
         ) : null}
         <span className="file-name" title={fileName}>
           {fileName}
-          {viewMode === 'read' ? <span className="read-badge">{t('toolbar.readOnly')}</span> : null}
           {dirty ? (
             <span className="dirty-dot" role="img" aria-label={t('toolbar.unsaved')}>
               ●
@@ -73,7 +73,16 @@ export function Toolbar() {
           {t('toolbar.open')}
         </button>
         {/* Read view changes nothing, so there is nothing to save from it. */}
-        {viewMode === 'read' ? null : (
+        {viewMode === 'read' ? (
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => setViewMode(editMode)}
+            title={t('toolbar.editTitle')}
+          >
+            {t('toolbar.edit')}
+          </button>
+        ) : (
           <button type="button" className="btn btn-primary" onClick={() => void saveDocument()}>
             {t('toolbar.save')}
           </button>

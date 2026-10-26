@@ -3,6 +3,8 @@ import type { LinkStyle } from '@/domain/vaultConfig';
 import { isLocale, type LocalePreference } from '@/i18n/locales';
 
 export type ViewMode = 'split' | 'text' | 'visual' | 'read';
+/** The view modes that edit: every one but Read view. */
+export type EditMode = Exclude<ViewMode, 'read'>;
 export type ThemePreference = 'system' | 'light' | 'dark';
 export type FontSize = 'small' | 'medium' | 'large';
 export type ReadWidth = 'narrow' | 'medium' | 'wide';
@@ -14,6 +16,8 @@ export type Settings = {
   theme: ThemePreference;
   linkedScroll: boolean;
   defaultViewMode: ViewMode;
+  /** The editing layout last used, which Edit returns to from Read view. */
+  editMode: EditMode;
   showOutline: boolean;
   /** The folder panel (notes of the opened folder, links to this note) beside the editors. */
   showFolder: boolean;
@@ -54,7 +58,8 @@ type AttachmentRules = 'vault' | 'images';
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
   linkedScroll: true,
-  defaultViewMode: 'split',
+  defaultViewMode: 'read',
+  editMode: 'split',
   showOutline: false,
   showFolder: false,
   language: 'system',
@@ -67,14 +72,15 @@ export const DEFAULT_SETTINGS: Settings = {
   exportFrontMatter: false,
   linkStyle: 'auto',
   attachmentRules: 'vault',
-  openInReadView: false,
+  openInReadView: true,
   readWidth: 'medium',
   readFont: 'sans',
   readSpacing: 'normal',
   readTheme: 'match',
 };
 
-const VIEW_MODES: readonly ViewMode[] = ['split', 'text', 'visual', 'read'];
+export const EDIT_MODES: readonly EditMode[] = ['split', 'text', 'visual'];
+const VIEW_MODES: readonly ViewMode[] = [...EDIT_MODES, 'read'];
 const THEMES: readonly ThemePreference[] = ['system', 'light', 'dark'];
 export const FONT_SIZES: readonly FontSize[] = ['small', 'medium', 'large'];
 const EXPORT_FORMATS: readonly ExportFormat[] = ['html', 'pdf', 'docx', 'txt'];
@@ -93,10 +99,16 @@ const bool = (value: unknown, fallback: boolean) => (typeof value === 'boolean' 
 /** Accepts whatever storage held and keeps only well-typed fields. */
 export function sanitizeSettings(raw: Record<string, unknown>): Settings {
   const d = DEFAULT_SETTINGS;
+  // Settings saved before Read view became the default have no editMode. They move to Read
+  // view once (files open in it, and so does the app); the editing layout they started in is
+  // kept as the one Edit returns to. Saved again, they carry editMode and stay as chosen.
+  const earlier = Object.keys(raw).length > 0 && !('editMode' in raw);
+  const startMode = oneOf(VIEW_MODES, raw.defaultViewMode, d.defaultViewMode);
   return {
     theme: oneOf(THEMES, raw.theme, d.theme),
     linkedScroll: bool(raw.linkedScroll, d.linkedScroll),
-    defaultViewMode: oneOf(VIEW_MODES, raw.defaultViewMode, d.defaultViewMode),
+    defaultViewMode: earlier ? 'read' : startMode,
+    editMode: oneOf(EDIT_MODES, earlier ? raw.defaultViewMode : raw.editMode, d.editMode),
     showOutline: bool(raw.showOutline, d.showOutline),
     showFolder: bool(raw.showFolder, d.showFolder),
     language: raw.language === 'system' || isLocale(raw.language) ? raw.language : d.language,
@@ -109,7 +121,7 @@ export function sanitizeSettings(raw: Record<string, unknown>): Settings {
     exportFrontMatter: bool(raw.exportFrontMatter, d.exportFrontMatter),
     linkStyle: oneOf(LINK_STYLES, raw.linkStyle, d.linkStyle),
     attachmentRules: oneOf(ATTACHMENT_RULES, raw.attachmentRules, d.attachmentRules),
-    openInReadView: bool(raw.openInReadView, d.openInReadView),
+    openInReadView: earlier ? true : bool(raw.openInReadView, d.openInReadView),
     readWidth: oneOf(READ_WIDTHS, raw.readWidth, d.readWidth),
     readFont: oneOf(READ_FONTS, raw.readFont, d.readFont),
     readSpacing: oneOf(READ_SPACINGS, raw.readSpacing, d.readSpacing),

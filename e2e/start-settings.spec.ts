@@ -1,11 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { textContent, textPane, visualPane } from './helpers';
+import { edit, textContent, textPane, visualPane } from './helpers';
 
 test('the sample document opens, renders and is navigable from the palette', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('/');
   await page.getByRole('button', { name: 'Try the sample document' }).click();
+  await edit(page);
   await expect(visualPane(page).locator('h1')).toHaveText('Welcome to MD Studio');
   await expect(visualPane(page).locator('table')).toBeVisible();
   await expect(visualPane(page).locator('pre')).toBeVisible();

@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
-import { newDocument, setText, textContent, textPane, visualPane } from './helpers';
+import { edit, newDocument, setText, textContent, textPane, visualPane } from './helpers';
 
 test('text pane edits render in the visual pane', async ({ page }) => {
   await newDocument(page);
@@ -211,6 +211,8 @@ test('incremental visual updates match a full re-parse', async ({ page }) => {
   // A reload restores the same Markdown and renders it with one full parse.
   await page.waitForTimeout(400);
   await page.reload();
+  // The reloaded document shows in Read view, with its fold and link buttons.
+  await edit(page);
   await expect(visualPane(page).locator('h2')).toHaveCount(7);
   expect(await visualPane(page).innerHTML()).toBe(incremental);
 });

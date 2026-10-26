@@ -143,7 +143,8 @@ function initialState() {
     // and anyone who closed every tab (one blank tab left), see the start
     // screen instead of a blank editor.
     screen: (restored && !(tabs.length === 1 && isBlank(active)) ? 'editor' : 'start') as Screen,
-    viewMode: settings.defaultViewMode,
+    // Nothing to read in a blank document: it opens for editing.
+    viewMode: isBlank(active) ? settings.editMode : settings.defaultViewMode,
     settings,
     recents: storage.loadRecents(),
   };
@@ -278,7 +279,12 @@ export const useStore = create<State>()((set, get) => ({
       tabs: s.tabs.map((tab) => (tab.id === s.activeTabId ? { ...tab, view } : tab)),
     });
   },
-  setViewMode: (viewMode) => set({ viewMode }),
+  setViewMode: (viewMode) => {
+    set({ viewMode });
+    if (viewMode !== 'read' && get().settings.editMode !== viewMode) {
+      get().updateSettings({ editMode: viewMode });
+    }
+  },
   updateSettings: (patch) => {
     // Onto what is stored, not this window's copy: another window may have
     // changed a setting since, and writing the whole object would revert it.
