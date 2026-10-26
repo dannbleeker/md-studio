@@ -42,8 +42,8 @@
   },
   "coverage": {
     "lines": 84.96,
-    "statements": 83.19,
-    "functions": 75.44,
+    "statements": 83.18,
+    "functions": 75.39,
     "branches": 79.11
   },
   "bundle": {
@@ -219,7 +219,7 @@
     "words": 27591
   },
   "git": {
-    "commits": 188,
+    "commits": 190,
     "firstCommit": "2026-10-02",
     "lastCommit": "2026-10-26",
     "activeDays": 14
