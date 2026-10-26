@@ -115,6 +115,27 @@ describe('codeRanges', () => {
     expect(performance.now() - started).toBeLessThan(500);
   });
 
+  it('takes about twice as long for a table delimiter row twice as wide', {
+    tags: ['stress'],
+  }, () => {
+    // A row of many cells with a wide blank tail, under a header, so the delimiter pattern and
+    // the cell count both run on it. A pattern that backtracks would grow about four times.
+    const timeOf = (n: number): number => {
+      const md = `a | b\n|-${' |'.repeat(n)}${' '.repeat(n)}\n`;
+      const started = performance.now();
+      codeRanges(md);
+      return performance.now() - started;
+    };
+    timeOf(5_000);
+    let small = Number.POSITIVE_INFINITY;
+    let large = Number.POSITIVE_INFINITY;
+    for (let i = 0; i < 5; i++) {
+      small = Math.min(small, timeOf(20_000));
+      large = Math.min(large, timeOf(40_000));
+    }
+    expect(large / small).toBeLessThan(3);
+  });
+
   it('still reads a definition with padding as no text for a setext underline', () => {
     // A paragraph of definitions only is not a heading, so the dashes are a break.
     const spans = (md: string) => codeRanges(md).map((r) => md.slice(r.start, r.end));
