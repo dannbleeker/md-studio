@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { newDocument, setText, textContent, visualPane } from './helpers';
+import { edit, newDocument, setText, textContent, visualPane } from './helpers';
 
 test('first visit shows the start screen', async ({ page }) => {
   await page.goto('/');
@@ -13,6 +13,8 @@ test('the open document survives a reload', async ({ page }) => {
   await expect(visualPane(page).locator('h1')).toHaveText('Keep me');
   await page.waitForTimeout(400); // past the persistence debounce
   await page.reload();
+  // A document reopened after a reload shows in Read view.
+  await edit(page);
   await expect(visualPane(page).locator('h1')).toHaveText('Keep me');
   expect(await textContent(page)).toContain('after reload');
 });

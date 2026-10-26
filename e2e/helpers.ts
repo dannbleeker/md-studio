@@ -25,3 +25,9 @@ export async function textContent(page: Page): Promise<string> {
       .join('\n')
   );
 }
+
+/** Leaves Read view, where files open, for the editing layout last used. */
+export async function edit(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await textPane(page).waitFor();
+}

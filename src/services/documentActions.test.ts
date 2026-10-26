@@ -6,6 +6,7 @@ import { useUiStore } from '@/store/ui';
 import {
   checkDiskChanges,
   closeTab,
+  newDocument,
   openDroppedFile,
   openHandle,
   openRecent,
@@ -155,8 +156,21 @@ describe('Open files in Read view', () => {
   });
 
   it('leaves the view alone when it is off', async () => {
+    useStore.getState().updateSettings({ openInReadView: false });
     await openDroppedFile(new File(['# Hi'], 'hi.md'));
     expect(useStore.getState().viewMode).toBe('split');
+  });
+
+  it('is on by default', async () => {
+    await openDroppedFile(new File(['# Hi'], 'hi.md'));
+    expect(useStore.getState().viewMode).toBe('read');
+  });
+
+  it('opens a new document for editing, in the layout last used', async () => {
+    useStore.getState().setViewMode('text');
+    useStore.getState().setViewMode('read');
+    await newDocument();
+    expect(useStore.getState().viewMode).toBe('text');
   });
 });
 

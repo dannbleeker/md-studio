@@ -78,7 +78,12 @@ describe('store', () => {
     useStore.getState().updateSettings({ linkedScroll: false });
     localStorage.setItem(
       'md-studio:settings:v1',
-      JSON.stringify({ linkedScroll: false, theme: 'neon', defaultViewMode: 'text' })
+      JSON.stringify({
+        linkedScroll: false,
+        theme: 'neon',
+        defaultViewMode: 'text',
+        editMode: 'read',
+      })
     );
     resetStoreForTest();
     expect(useStore.getState().settings).toEqual({
@@ -89,7 +94,33 @@ describe('store', () => {
       showOutline: false,
       language: 'system',
     });
-    expect(useStore.getState().viewMode).toBe('text');
+    // A blank document opens for editing whatever the default view.
+    expect(useStore.getState().viewMode).toBe('split');
+  });
+
+  it('moves settings saved before Read view was the default to it, once', () => {
+    localStorage.setItem(
+      'md-studio:settings:v1',
+      JSON.stringify({ defaultViewMode: 'visual', openInReadView: false, fontSize: 'large' })
+    );
+    resetStoreForTest();
+    const { settings } = useStore.getState();
+    expect(settings).toMatchObject({
+      defaultViewMode: 'read',
+      openInReadView: true,
+      editMode: 'visual',
+      fontSize: 'large',
+    });
+    // Chosen again after the move, the choice stays.
+    useStore.getState().updateSettings({ openInReadView: false });
+    resetStoreForTest();
+    expect(useStore.getState().settings.openInReadView).toBe(false);
+  });
+
+  it('remembers the editing layout last used, not Read view', () => {
+    useStore.getState().setViewMode('text');
+    useStore.getState().setViewMode('read');
+    expect(useStore.getState().settings.editMode).toBe('text');
   });
 });
 

@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
-import { newDocument, setText, textContent, visualPane } from './helpers';
+import { edit, newDocument, setText, textContent, visualPane } from './helpers';
 
 /** Collects Content Security Policy violations reported on the page. */
 async function cspViolations(page: Page): Promise<string[]> {
@@ -96,6 +96,7 @@ test('a document too deeply nested to parse leaves the visual pane inert, not br
   // Stored that way, the document still opens after a reload.
   await page.waitForTimeout(600);
   await page.reload();
+  await edit(page);
   await expect(page.getByText(/nested too deeply for the visual pane/)).toBeVisible();
   expect(await textContent(page)).toBe(deep);
 
