@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
-import { newDocument, setText, visualPane } from './helpers';
+import { layout, newDocument, setText, visualPane } from './helpers';
 
 async function readView(page: Page, markdown: string) {
   await newDocument(page);
@@ -18,7 +18,7 @@ test('front matter shows as a card in Read view and as YAML elsewhere', async ({
   await expect(card.locator('.read-tag')).toHaveText(['#alpha', '#beta']);
   await expect(card.getByText('2026-10-21')).toBeVisible();
   await expect(pane.locator('pre.front-matter')).toBeHidden();
-  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  await layout(page, 'Visual');
   await expect(pane.locator('.read-card')).toHaveCount(0);
   await expect(pane.locator('pre.front-matter')).toBeVisible();
 });
@@ -113,7 +113,7 @@ test('reading keys scroll and step between headings', async ({ page }) => {
   await page.keyboard.press('G');
   await expect.poll(async () => (await top()) > 100).toBe(true);
   // Letters type nowhere in Read view: the source is untouched.
-  await page.getByRole('button', { name: 'Text', exact: true }).click();
+  await layout(page, 'Markdown');
   await expect(page.locator('.cm-content')).not.toContainText('jjj');
 });
 
@@ -136,7 +136,7 @@ test('math is typeset, in every view, and the source is left as written', async 
   // Prices are text, and the formula's own characters never became emphasis.
   await expect(pane.getByText('Price: $5 and $10.')).toBeVisible();
   await expect(pane.locator('em')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Text', exact: true }).click();
+  await layout(page, 'Markdown');
   expect((await page.locator('.cm-content').innerText()).replace(/ /g, ' ')).toContain(
     'Inline $a*b*c$ and $x_1 + y_2$.'
   );
@@ -152,7 +152,7 @@ test('a mermaid block is drawn as a diagram in Read view only', async ({ page })
   await diagram.click();
   await expect(page.locator('.lightbox')).toBeVisible();
   await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  await layout(page, 'Visual');
   await expect(pane.locator('.read-diagram')).toHaveCount(0);
   await expect(pane.locator('pre').first()).toBeVisible();
 });
@@ -179,12 +179,12 @@ test('jumping to a heading unfolds a fold that hides it', async ({ page }) => {
   await expect(pane.getByText('child text')).toBeVisible();
 });
 
-test('? lists the reading keys and Escape closes the list', async ({ page }) => {
+test('? lists the keyboard shortcuts and Escape closes the list', async ({ page }) => {
   await readView(page, 'Just text.');
   await expect(page.getByTestId('visual-editor').getByText('Just text.')).toBeVisible();
   await page.locator('body').click({ position: { x: 5, y: 300 } });
   await page.keyboard.press('?');
-  const dialog = page.getByRole('dialog', { name: 'Reading keys' });
+  const dialog = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText('Next heading')).toBeVisible();
   await page.keyboard.press('Escape');
@@ -192,7 +192,7 @@ test('? lists the reading keys and Escape closes the list', async ({ page }) => 
 
   // The palette lists it too.
   await page.keyboard.press('ControlOrMeta+K');
-  await page.getByRole('combobox', { name: 'Commands' }).fill('reading keyboard');
+  await page.getByRole('combobox', { name: 'Commands' }).fill('keyboard shortcuts');
   await page.keyboard.press('Enter');
   await expect(dialog).toBeVisible();
 });

@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
-import { newDocument, setText, textContent, visualPane } from './helpers';
+import { moreFormatting, newDocument, setText, textContent, visualPane } from './helpers';
 
 const toolbar = (page: Page) => page.getByRole('toolbar', { name: 'Formatting' });
 
@@ -46,6 +46,7 @@ test('inline formats toggle and show as pressed', async ({ page }) => {
   await toolbar(page)
     .getByRole('button', { name: /^Italic/ })
     .click();
+  await moreFormatting(page);
   await toolbar(page).getByRole('button', { name: 'Strikethrough' }).click();
   await expect.poll(() => textContent(page)).toMatch(/~~?\*italic\*~~?|\*~~italic~~\*/);
 });
@@ -71,6 +72,7 @@ test('links via the prompt', async ({ page }) => {
 
 test('inserts a table and a rule', async ({ page }) => {
   await selectWord(page, 'plain');
+  await moreFormatting(page);
   await toolbar(page).getByRole('button', { name: 'Insert table' }).click();
   await expect(visualPane(page).locator('table')).toBeVisible();
   await expect.poll(() => textContent(page)).toMatch(/\|.*\|\n\| *:?-+/);

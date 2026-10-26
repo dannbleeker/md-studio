@@ -311,6 +311,14 @@
 .format-btn:hover {
   background: var(--surface-2);
 }
+.format-btn[aria-expanded="true"] {
+  background: var(--surface-2);
+}
+.format-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+}
 .format-btn[aria-pressed="true"] {
   background: var(--accent-soft);
   border-color: var(--accent);

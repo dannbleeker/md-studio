@@ -45,13 +45,13 @@ You can also reorder tabs by dragging them.
 | Shortcut | Action |
 | --- | --- |
 | Ctrl+1 | **Split** view: Markdown source and formatted document side by side. |
-| Ctrl+2 | **Text** view: Markdown source only. |
+| Ctrl+2 | **Markdown** view: Markdown source only. |
 | Ctrl+3 | **Visual** view: formatted document only. |
 | Ctrl+4 | **Read** view: formatted document only, not editable, laid out for reading. |
 | Ctrl+Shift+O | Show or hide the **Outline**. |
 | Ctrl+, | Open **Settings**. |
 
-**Linked scroll** has no shortcut. Toggle it with the toolbar button, in Settings, or with *Toggle linked scroll* in the command palette.
+**Linked scroll** has no shortcut. Toggle it in Settings (**Scroll both panes together in split view**) or with *Toggle linked scroll* in the command palette. **?** shows every shortcut in the app, whenever no text is being typed.
 
 ## Reading
 

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { edit, newDocument, setText, textContent, visualPane } from './helpers';
+import { edit, menu, newDocument, setText, textContent, visualPane } from './helpers';
 
 test('first visit shows the start screen', async ({ page }) => {
   await page.goto('/');
@@ -87,7 +87,7 @@ test('documents open in tabs that keep their own content', async ({ page }) => {
   await setText(page, 'first doc');
   await expect(page.getByRole('tablist')).toHaveCount(0); // one document: no tab bar
 
-  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await menu(page, 'New document');
   const tabs = page.getByRole('tablist', { name: 'Open documents' });
   await expect(tabs.getByRole('tab')).toHaveCount(2);
   await expect.poll(() => textContent(page)).toBe('');
@@ -131,7 +131,7 @@ test('the start screen and back keeps a just-made visual edit and the scroll pos
   await page.keyboard.press('End');
   await page.keyboard.type('!');
   await page.getByRole('button', { name: 'MD Studio' }).click();
-  await page.getByRole('button', { name: /Continue/ }).click();
+  await page.getByRole('button', { name: /Pick up where you left off/ }).click();
   // Both panes are rebuilt from the store: the edit reached it.
   await expect(visualPane(page).locator('h1')).toHaveText('Long!');
 
@@ -142,7 +142,7 @@ test('the start screen and back keeps a just-made visual edit and the scroll pos
   const saved = await textScroller.evaluate((el) => el.scrollTop);
   expect(saved).toBeGreaterThan(1000);
   await page.getByRole('button', { name: 'MD Studio' }).click();
-  await page.getByRole('button', { name: /Continue/ }).click();
+  await page.getByRole('button', { name: /Pick up where you left off/ }).click();
   await expect(visualPane(page).locator('h1')).toHaveText('Long!');
   await expect.poll(() => textScroller.evaluate((el) => el.scrollTop)).toBeGreaterThan(saved - 5);
   expect(await textScroller.evaluate((el) => el.scrollTop)).toBeLessThan(saved + 5);
@@ -167,7 +167,7 @@ test('switching tabs returns to the same scroll position; tabs can be dragged', 
   };
   expect(saved.text).toBeGreaterThan(1000);
 
-  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await menu(page, 'New document');
   await setText(page, '# Short\n');
   const tabs = page.getByRole('tablist', { name: 'Open documents' });
   await tabs.getByRole('tab').first().click();
@@ -221,7 +221,7 @@ test('a .md file dropped on the Markdown pane opens in a tab without pasting its
 test('app shortcuts stay quiet while a dialog is open', async ({ page }) => {
   await newDocument(page);
   await setText(page, 'first');
-  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await menu(page, 'New document');
   const tabs = page.getByRole('tablist', { name: 'Open documents' });
   await expect(tabs.getByRole('tab')).toHaveCount(2);
   await page.keyboard.press('ControlOrMeta+,');

@@ -15,7 +15,7 @@ describe('SettingsDialog', () => {
     render(<SettingsDialog />);
     fireEvent.click(screen.getByRole('radio', { name: 'Dark' }));
     fireEvent.click(screen.getByRole('radio', { name: 'Visual' }));
-    fireEvent.click(screen.getByRole('checkbox', { name: /Link scrolling/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /Scroll both panes/ }));
     expect(useStore.getState().settings).toEqual({
       ...DEFAULT_SETTINGS,
       theme: 'dark',

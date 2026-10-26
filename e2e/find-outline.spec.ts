@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { newDocument, setText, textContent, textPane, visualPane } from './helpers';
+import { layout, newDocument, setText, textContent, textPane, visualPane } from './helpers';
 
 const DOC = '# Notes\n\nThe cat sat. A cat ran.\n\n## Cats\n\nCatalog of cats.\n';
 
@@ -31,7 +31,7 @@ test('find in the text pane: counts, steps through, replaces all', async ({ page
 test('find in the visual pane highlights matches and replaces', async ({ page }) => {
   await newDocument(page);
   await setText(page, DOC);
-  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  await layout(page, 'Visual');
   await page.keyboard.press('ControlOrMeta+F');
   await page.getByRole('searchbox', { name: 'Find' }).fill('cat');
   await expect(visualPane(page).locator('.ProseMirror-search-match')).toHaveCount(5);
@@ -101,7 +101,7 @@ test('the outline follows the visual pane in visual-only view', async ({ page })
   ).join('\n\n');
   await setText(page, doc);
   await expect(visualPane(page).locator('h2')).toHaveCount(30);
-  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  await layout(page, 'Visual');
   await page.getByRole('button', { name: 'Outline' }).click();
   const outline = page.getByRole('navigation', { name: 'Outline' });
   await expect(outline.getByRole('button')).toHaveCount(30);
@@ -140,7 +140,7 @@ test('Ctrl+H again from the other pane refocuses and retargets the find bar', as
 test('replacing in the visual pane keeps inline code and other marks', async ({ page }) => {
   await newDocument(page);
   await setText(page, 'x `foo` y and **foo** z\n');
-  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  await layout(page, 'Visual');
   await page.keyboard.press('ControlOrMeta+H');
   await page.getByRole('searchbox', { name: 'Find' }).fill('foo');
   await page.getByRole('textbox', { name: 'Replace with' }).fill('bar');

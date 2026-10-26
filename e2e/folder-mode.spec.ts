@@ -131,7 +131,8 @@ test('the filter finds a note by name, and links in Read view open other notes',
   await panel(page).getByRole('button', { name: 'Other/Gamma' }).click();
   await expect(visualPane(page).locator('h1')).toContainText('Gamma');
 
-  await page.getByRole('button', { name: 'Read', exact: true }).click();
+  // A note from the folder opens in Read view.
+  await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
   // The wikilink resolves through the folder, which the note found by itself.
   await visualPane(page).locator('.md-wikilink').click();
   await expect(visualPane(page).locator('h1')).toContainText('Alpha');
@@ -143,7 +144,8 @@ test('a link to a file that is not a note saves it from Read view', async ({ pag
   await page.getByRole('button', { name: 'Open folder', exact: true }).click();
   await panel(page).getByRole('searchbox', { name: 'Filter notes' }).fill('gam');
   await panel(page).getByRole('button', { name: 'Other/Gamma' }).click();
-  await page.getByRole('button', { name: 'Read', exact: true }).click();
+  // A note from the folder opens in Read view.
+  await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
   const download = page.waitForEvent('download');
   await visualPane(page).getByRole('link', { name: 'the sheet' }).click();
   expect((await download).suggestedFilename()).toBe('data.csv');
@@ -206,7 +208,8 @@ test.describe('on a phone', () => {
       .getByRole('button', { name: 'Close the side panel' })
       .click({ position: { x: 340, y: 400 } });
     await expect(drawer).toBeHidden();
-    await page.getByRole('button', { name: 'Folder', exact: true }).click();
+    await page.getByRole('button', { name: 'Menu', exact: true }).click();
+    await page.getByRole('menuitemradio', { name: 'Folder' }).click();
     await expect(drawer).toBeVisible();
 
     // Picking a note opens it and the drawer leaves.
@@ -216,7 +219,8 @@ test.describe('on a phone', () => {
     await expect(drawer).toBeHidden();
 
     // In Read view a link opens Alpha, and a swipe to the right goes back to Gamma.
-    await page.getByRole('button', { name: 'Read', exact: true }).click();
+    // A note from the folder opens in Read view.
+    await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
     // The Read view buttons still fit a 360px toolbar.
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       360
@@ -255,7 +259,8 @@ test('a note shown inside another typesets its formulas and callouts', async ({ 
   await page.getByRole('button', { name: 'Open folder', exact: true }).click();
   await panel(page).getByRole('searchbox', { name: 'Filter notes' }).fill('host');
   await panel(page).getByRole('button', { name: 'Other/Host' }).click();
-  await page.getByRole('button', { name: 'Read', exact: true }).click();
+  // A note from the folder opens in Read view.
+  await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
   const shown = visualPane(page).locator('.md-transclusion');
   await expect(shown.locator('blockquote.callout-warning .callout-title')).toHaveText('Careful');
   await expect(shown.locator('math')).toHaveCount(1);

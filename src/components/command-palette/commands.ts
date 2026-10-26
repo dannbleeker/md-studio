@@ -165,7 +165,7 @@ export const COMMANDS: readonly Command[] = [
     id: 'read-keys',
     editorOnly: true,
     label: 'cmd.readKeys',
-    run: () => ui().setReadKeysOpen(true),
+    run: () => ui().setShortcutsOpen(true),
   },
   {
     id: 'linked-scroll',

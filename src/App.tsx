@@ -8,6 +8,7 @@ import { SettingsDialog } from './components/settings/SettingsDialog';
 import { StartScreen } from './components/start/StartScreen';
 import { TabBar } from './components/tabs/TabBar';
 import { ToastHost } from './components/toast/ToastHost';
+import { FirstRunTip } from './components/toolbar/FirstRunTip';
 import { Toolbar } from './components/toolbar/Toolbar';
 import { LazyBoundary } from './components/ui/LazyBoundary';
 import { useFileDrop } from './hooks/useFileDrop';
@@ -36,8 +37,8 @@ const AttachmentBanner = lazy(() =>
 const ReaderDialog = lazy(() =>
   import('./components/settings/ReaderDialog').then((m) => ({ default: m.ReaderDialog }))
 );
-const ReadKeysDialog = lazy(() =>
-  import('./components/settings/ReadKeysDialog').then((m) => ({ default: m.ReadKeysDialog }))
+const ShortcutsDialog = lazy(() =>
+  import('./components/settings/ShortcutsDialog').then((m) => ({ default: m.ShortcutsDialog }))
 );
 const FolderPanel = lazy(() =>
   import('./components/folder/FolderPanel').then((m) => ({ default: m.FolderPanel }))
@@ -59,14 +60,14 @@ export function App() {
   const readerOpen = useUiStore((s) => s.readerOpen);
   // Loaded on the first open, then kept so closing it hands focus back as a dialog does.
   const [readerSeen, setReaderSeen] = useState(false);
-  const readKeysOpen = useUiStore((s) => s.readKeysOpen);
-  const [readKeysSeen, setReadKeysSeen] = useState(false);
+  const shortcutsOpen = useUiStore((s) => s.shortcutsOpen);
+  const [shortcutsSeen, setShortcutsSeen] = useState(false);
   useEffect(() => {
     if (readerOpen) setReaderSeen(true);
   }, [readerOpen]);
   useEffect(() => {
-    if (readKeysOpen) setReadKeysSeen(true);
-  }, [readKeysOpen]);
+    if (shortcutsOpen) setShortcutsSeen(true);
+  }, [shortcutsOpen]);
   useLocale();
   useTheme();
   useShortcuts();
@@ -127,6 +128,7 @@ export function App() {
                   <FindBar />
                 </LazyBoundary>
               ) : null}
+              <FirstRunTip />
               <LazyBoundary>
                 <AttachmentBanner />
               </LazyBoundary>
@@ -150,9 +152,9 @@ export function App() {
           <ReaderDialog />
         </LazyBoundary>
       ) : null}
-      {readKeysSeen ? (
+      {shortcutsSeen ? (
         <LazyBoundary>
-          <ReadKeysDialog />
+          <ShortcutsDialog />
         </LazyBoundary>
       ) : null}
       <ExportDialog />

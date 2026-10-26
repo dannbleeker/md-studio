@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
-import { edit, textContent, textPane, visualPane } from './helpers';
+import { edit, menu, textContent, textPane, visualPane } from './helpers';
 
 /*
  * Obsidian embeds resolved from a real folder. The vaults live in the
@@ -361,7 +361,7 @@ test('two tabs with the same embed in different vaults show different images', a
   await expect.poll(() => naturalWidth(image())).toBe(60);
 
   await queueVault(page, 'vault-two', 'Notes/n.md');
-  await page.getByRole('button', { name: 'Open', exact: true }).click();
+  await menu(page, 'Open file…');
   const tabs = page.getByRole('tablist', { name: 'Open documents' });
   await expect(tabs.getByRole('tab')).toHaveCount(2);
   await banner.getByRole('button', { name: 'Choose attachment folder' }).click();

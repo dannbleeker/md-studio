@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { inflateRawSync, inflateSync } from 'node:zlib';
 import { expect, test } from '@playwright/test';
-import { newDocument, setText } from './helpers';
+import { menu, newDocument, setText } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   // Use the download fallback so the browser's save dialog doesn't block the test.
@@ -20,7 +20,7 @@ for (const [label, fileName] of [
   test(`exports ${label}`, async ({ page }) => {
     await newDocument(page);
     await setText(page, '# Report\n\nSome **bold** text.\n\n| a | b |\n| - | - |\n| 1 | 2 |\n');
-    await page.getByRole('button', { name: 'Export', exact: true }).click();
+    await menu(page, 'Export…');
     const dialog = page.getByRole('dialog', { name: 'Export' });
     await dialog
       .getByRole('radio', { name: new RegExp(`^${label.replace(/[()]/g, '\\$&')}`) })
@@ -52,7 +52,7 @@ test('front matter is left out of exports unless the setting includes it', async
   await newDocument(page);
   await setText(page, '---\ntitle: Post\n---\n\n# Report\n\nBody text.\n');
   const exportText = async (include: boolean) => {
-    await page.getByRole('button', { name: 'Export', exact: true }).click();
+    await menu(page, 'Export…');
     const dialog = page.getByRole('dialog', { name: 'Export' });
     await dialog.getByRole('radio', { name: /^Plain text/ }).check();
     await dialog.getByRole('checkbox', { name: /front matter/ }).setChecked(include);
@@ -112,15 +112,16 @@ test('front matter is exported in every format once turned on in Settings', asyn
   await newDocument(page);
   await setText(page, '---\ntitle: Quarterly\nauthor: Dann\n---\n\n# Report\n\nBody text.\n');
 
-  await page.getByRole('button', { name: 'Settings' }).click();
+  await menu(page, 'Settings');
   const settings = page.getByRole('dialog', { name: 'Settings' });
+  await settings.getByText('More settings').click();
   const box = settings.getByRole('checkbox', { name: /front matter/ });
   await expect(box).not.toBeChecked();
   await box.check();
   await settings.getByRole('button', { name: 'Done' }).click();
 
   const exported = async (label: RegExp) => {
-    await page.getByRole('button', { name: 'Export', exact: true }).click();
+    await menu(page, 'Export…');
     const dialog = page.getByRole('dialog', { name: 'Export' });
     await dialog.getByRole('radio', { name: label }).check();
     // The dialog starts from the setting.
@@ -173,7 +174,7 @@ test('formulas and diagrams are typeset in HTML, Word and PDF exports', async ({
     ].join('\n')
   );
   const exported = async (label: RegExp) => {
-    await page.getByRole('button', { name: 'Export', exact: true }).click();
+    await menu(page, 'Export…');
     const dialog = page.getByRole('dialog', { name: 'Export' });
     await dialog.getByRole('radio', { name: label }).check();
     const download = page.waitForEvent('download');

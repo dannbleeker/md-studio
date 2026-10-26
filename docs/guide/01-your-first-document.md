@@ -108,15 +108,16 @@ browsers.
 document already has a file. Use it to make a copy under a new name or to put
 your work in a different folder. After a Save as, Save writes to the new file.
 
-There is no toolbar button for Save as. You find it in the command palette,
-which opens with **Ctrl+K** and holds the commands you need less often.
-[Chapter 2](02-anatomy-of-the-editor.md) introduces the palette.
+Save as is in the **☰** menu at the right of the toolbar, and in the command
+palette, which opens with **Ctrl+K** and holds every command.
+[Chapter 2](02-anatomy-of-the-editor.md) introduces both.
 
 ## Opening a file you already have
 
 The usual way is the file picker. Click **Open file…** on the start screen or
-**Open** in the toolbar, or press **Ctrl+O**, and choose a file. It opens with
-a short message, *Opened notes.md*. The picker looks for Markdown files with
+in the **☰** menu, or press **Ctrl+O**, and choose a file. It opens in Read
+view, as a page to read, with a short message, *Opened notes.md*. Press
+**Edit** to change it. The picker looks for Markdown files with
 the extensions `.md`, `.markdown`, `.mdown` and `.mkd`.
 
 If the folder is already open on your screen, dragging is quicker. Drag a

@@ -14,14 +14,14 @@ describe('StartScreen', () => {
     expect(screen.getByRole('button', { name: 'New document' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Open file…' })).toBeInTheDocument();
     expect(screen.getByText('Files you open or save appear here.')).toBeInTheDocument();
-    expect(screen.queryByText('Continue editing')).not.toBeInTheDocument();
+    expect(screen.queryByText('Pick up where you left off')).not.toBeInTheDocument();
   });
 
   it('continues the current document', () => {
     useStore.getState().loadDocument(createDocument('# Draft', 'draft.md'), null);
     useStore.getState().setScreen('start');
     render(<StartScreen />);
-    fireEvent.click(screen.getByRole('button', { name: /Continue editing/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Pick up where you left off/ }));
     expect(useStore.getState().screen).toBe('editor');
   });
 
@@ -80,7 +80,7 @@ describe('StartScreen', () => {
     useStore.getState().loadDocument(createDocument(), null);
     useStore.getState().setScreen('start');
     render(<StartScreen />);
-    fireEvent.click(screen.getByRole('button', { name: /Continue editing/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Pick up where you left off/ }));
     await waitFor(() => expect(useStore.getState().doc.fileName).toBe('draft.md'));
     expect(useStore.getState().screen).toBe('editor');
   });

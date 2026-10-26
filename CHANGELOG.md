@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+- **A simpler interface.** Nothing is gone; it is where you look for it.
+  - **Toolbar:** the file, then Edit (in Read view) or Save and Read (while
+    editing). A layout switch while editing (Split, Markdown, Visual; "Text"
+    is now called Markdown). Two small icons for the folder panel and the
+    outline, and a **☰** menu with New document, Open file, Open folder,
+    Save as, Export, Commands, Keyboard shortcuts, Settings and the user
+    guide. Linked scroll left the toolbar (it is in Settings and the
+    palette). On a phone the toolbar keeps only the file, Edit or Read, Save
+    and the menu; the layouts, panels, Back and Forward move into the menu.
+  - **Settings** come in sections (Appearance, Reading, Editing) with a line
+    of explanation where a name isn't enough; vault, privacy, export and
+    language settings fold away under **More settings**.
+  - **Start screen:** Open file and Open folder lead, with a hint each;
+    New document and the sample are links under them; the guide, the book
+    and the dashboard fold away under **Help and the book**.
+  - **Format toolbar:** text style, bold, italic, link, bulleted list and
+    quote show; **⋯** (More formatting) shows the rest. Strikethrough or
+    inline code already on the selection keep them in view.
+  - **Keyboard shortcuts:** **?** (whenever no text is being typed, in any
+    view) or the menu lists the app's shortcuts and Read view's keys.
+  - **A first-run tip** in Read view says how to start editing and where
+    every command is, until dismissed or until Edit is used.
+
 - **Files open in Read view.** Files opened from disk, by drop, from the
   recent list, from the folder or by a link now open in Read view, and so
   does the app. A new document opens for editing. In Read view an **Edit**

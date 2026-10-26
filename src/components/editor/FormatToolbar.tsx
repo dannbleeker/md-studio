@@ -15,7 +15,7 @@ import {
 } from '@milkdown/kit/preset/commonmark';
 import { insertTableCommand, toggleStrikethroughCommand } from '@milkdown/kit/preset/gfm';
 import { callCommand } from '@milkdown/kit/utils';
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import { forPlatform } from '@/domain/keys';
 import { t } from '@/i18n';
 import type { MessageKey } from '@/i18n/en';
@@ -92,10 +92,14 @@ function Button({
 
 /**
  * Formatting without keyboard shortcuts, above the visual pane. Buttons
- * show as pressed when the selection already has that formatting.
+ * show as pressed when the selection already has that formatting. The
+ * everyday ones show; the rest wait behind "More formatting".
  */
 export function FormatToolbar() {
   const f = useUiStore((s) => s.format);
+  const [opened, setMore] = useState(false);
+  // Formatting the selection already has stays in view, so it can be seen and turned off.
+  const more = opened || f.strike || f.code;
   return (
     <div className="format-toolbar" role="toolbar" aria-label={t('format.toolbar')}>
       <select
@@ -127,16 +131,6 @@ export function FormatToolbar() {
       >
         <i>I</i>
       </Button>
-      <Button
-        label="format.strike"
-        pressed={f.strike}
-        onRun={() => run(toggleStrikethroughCommand.key)}
-      >
-        <s>S</s>
-      </Button>
-      <Button label="format.code" pressed={f.code} onRun={() => run(toggleInlineCodeCommand.key)}>
-        <code>{'</>'}</code>
-      </Button>
       <Button label="format.link" pressed={f.link !== null} onRun={() => void editLink(f.link)}>
         🔗
       </Button>
@@ -144,21 +138,63 @@ export function FormatToolbar() {
       <Button label="format.bulletList" onRun={() => run(wrapInBulletListCommand.key)}>
         •≡
       </Button>
-      <Button label="format.orderedList" onRun={() => run(wrapInOrderedListCommand.key)}>
-        1≡
-      </Button>
       <Button label="format.quote" onRun={() => run(wrapInBlockquoteCommand.key)}>
         ❝
       </Button>
-      <Button label="format.codeBlock" onRun={() => run(createCodeBlockCommand.key)}>
-        {'{ }'}
-      </Button>
-      <Button label="format.table" onRun={() => run(insertTableCommand.key, { row: 3, col: 3 })}>
-        ▦
-      </Button>
-      <Button label="format.rule" onRun={() => run(insertHrCommand.key)}>
-        ―
-      </Button>
+      <button
+        type="button"
+        className="format-btn format-more"
+        aria-label={t('format.more')}
+        title={t('format.more')}
+        aria-expanded={more}
+        aria-controls="format-more"
+        // mousedown, not click: the visual pane keeps its selection and focus.
+        onMouseDown={(e) => {
+          e.preventDefault();
+          setMore(!opened);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setMore(!opened);
+          }
+        }}
+      >
+        ⋯
+      </button>
+      {more ? (
+        <span id="format-more" className="format-group">
+          <Button
+            label="format.strike"
+            pressed={f.strike}
+            onRun={() => run(toggleStrikethroughCommand.key)}
+          >
+            <s>S</s>
+          </Button>
+          <Button
+            label="format.code"
+            pressed={f.code}
+            onRun={() => run(toggleInlineCodeCommand.key)}
+          >
+            <code>{'</>'}</code>
+          </Button>
+          <Button label="format.orderedList" onRun={() => run(wrapInOrderedListCommand.key)}>
+            1≡
+          </Button>
+          <Button label="format.codeBlock" onRun={() => run(createCodeBlockCommand.key)}>
+            {'{ }'}
+          </Button>
+          <Button
+            label="format.table"
+            onRun={() => run(insertTableCommand.key, { row: 3, col: 3 })}
+          >
+            ▦
+          </Button>
+          <Button label="format.rule" onRun={() => run(insertHrCommand.key)}>
+            ―
+          </Button>
+        </span>
+      ) : null}
     </div>
   );
 }

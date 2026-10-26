@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
-import { newDocument, setText, textContent, visualPane } from './helpers';
+import { layout, menu, newDocument, setText, textContent, visualPane } from './helpers';
 
 test('the toolbar fits a 360 px phone without sideways scrolling', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 740 });
@@ -8,7 +8,7 @@ test('the toolbar fits a 360 px phone without sideways scrolling', async ({ page
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth
   );
   expect(overflow).toBeLessThanOrEqual(0);
-  await expect(page.getByRole('button', { name: 'Settings' })).toBeInViewport();
+  await expect(page.getByRole('button', { name: 'Menu', exact: true })).toBeInViewport();
 });
 
 test('the palette keeps the keyboard selection in view', async ({ page }) => {
@@ -60,7 +60,7 @@ test('a dialog taller than the window keeps its buttons in view', async ({ page 
 test('printing shows only the document, none of the app around it', async ({ page }) => {
   await newDocument(page);
   await setText(page, '# Heading\n\nText');
-  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await menu(page, 'New document');
   await page.getByRole('tab').first().click();
   await page.keyboard.press('ControlOrMeta+Shift+O');
   await page.keyboard.press('ControlOrMeta+F');
@@ -75,8 +75,8 @@ test('a dialog opened from the palette hands focus back to what opened the palet
   page,
 }) => {
   await newDocument(page);
-  const commands = page.getByRole('button', { name: 'Commands' });
-  await commands.click();
+  const commands = page.getByRole('button', { name: 'Menu', exact: true });
+  await menu(page, /Commands/);
   await page.keyboard.type('export…');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog', { name: /Export/ })).toBeVisible();
@@ -89,7 +89,7 @@ test('a dialog with a radio group starts on the checked option, so Space keeps i
   page,
 }) => {
   await newDocument(page);
-  await page.getByRole('button', { name: 'Export', exact: true }).click();
+  await menu(page, 'Export…');
   const dialog = page.getByRole('dialog', { name: 'Export' });
   const pdf = dialog.getByRole('radio', { name: /^PDF/ });
   await expect(pdf).toBeChecked();
@@ -101,7 +101,7 @@ test('a dialog with a radio group starts on the checked option, so Space keeps i
 test('the tab bar has no scrollbar of its own with a few tabs open', async ({ page }) => {
   await newDocument(page);
   await setText(page, 'Text');
-  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await menu(page, 'New document');
   const bar = page.locator('.tab-bar');
   await expect(bar).toBeVisible();
   const overflow = await bar.evaluate((el) => ({
@@ -121,7 +121,7 @@ test('Read view is not editable and links in it open', async ({ page }) => {
   const popup = page.waitForEvent('popup');
   await pane.getByRole('link', { name: 'site' }).click();
   expect((await popup).url()).toBe('https://example.com/x');
-  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  await layout(page, 'Visual');
   await expect(pane).toHaveAttribute('contenteditable', 'true');
 });
 
@@ -141,7 +141,7 @@ test('Read view cannot change the document', async ({ page }) => {
   await expect(page.getByRole('search')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Replace all' })).toHaveCount(0);
   await page.waitForTimeout(500);
-  await page.getByRole('button', { name: 'Text', exact: true }).click();
+  await layout(page, 'Markdown');
   expect(await textContent(page)).toBe(source);
 });
 
@@ -158,7 +158,7 @@ async function readView(page: Page, markdown: string) {
 test('Read view offers Edit instead of Save, back to the layout last used', async ({ page }) => {
   await newDocument(page);
   await setText(page, 'Hello');
-  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  await layout(page, 'Visual');
   await page.getByRole('button', { name: 'Read', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
@@ -173,11 +173,9 @@ test('a file opens in Read view, and a new document for editing', async ({ page 
   await page.goto('/');
   await page.getByRole('button', { name: 'Try the sample document' }).click();
   await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Read', exact: true })).toHaveAttribute(
-    'aria-pressed',
-    'true'
-  );
-  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('note')).toContainText('Press Edit');
+  await menu(page, 'New document');
   await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeVisible();
 });
 
@@ -195,7 +193,7 @@ test('headings fold in Read view, and code blocks get a copy button', async ({ p
   await expect(pane.getByText('text b')).toBeVisible();
 
   // Folds and copy buttons belong to Read view only.
-  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  await layout(page, 'Visual');
   await expect(pane.locator('.read-fold, .read-copy')).toHaveCount(0);
 });
 
@@ -220,7 +218,7 @@ test('a link to another note explains what is needed when no folder is chosen', 
 test('Ctrl+Z in Read view undoes nothing', async ({ page }) => {
   await newDocument(page);
   await setText(page, 'Hello');
-  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  await layout(page, 'Visual');
   await visualPane(page).getByText('Hello').click();
   await page.keyboard.press('End');
   await page.keyboard.type('X');
@@ -229,6 +227,6 @@ test('Ctrl+Z in Read view undoes nothing', async ({ page }) => {
   await visualPane(page).getByText('HelloX').click();
   await page.keyboard.press('ControlOrMeta+Z');
   await page.waitForTimeout(300);
-  await page.getByRole('button', { name: 'Text', exact: true }).click();
+  await layout(page, 'Markdown');
   expect((await textContent(page)).trim()).toBe('HelloX');
 });

@@ -448,7 +448,7 @@ Take the document you structured in the last chapter and add to it.
 6. Quote a sentence from a source, and put the source itself in a footnote.
 
 Then read the result in the Markdown pane alone (**Ctrl+2** in the installed app,
-or **Text** in the toolbar). If it still reads like a well-kept text file, the
+or **Markdown** in the toolbar). If it still reads like a well-kept text file, the
 formatting is doing its job.
 
 The next chapter is about where your documents live: files, folders, and keeping
