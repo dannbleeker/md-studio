@@ -66,9 +66,15 @@
 - [ ] Obsidian embeds, follow-ups (the first version is in the
       changelog; these are its known gaps):
   - [ ] Link autocomplete for `[[` and `![[`.
-  - [ ] Clickable wikilinks (open the note, or a tab for it).
-  - [ ] A vault browser (file tree, quick switcher).
-  - [ ] Heading and block link targets in the UI (`#Heading`, `#^id`).
+  - [x] Clickable wikilinks: in Read view a click (Ctrl+click while
+        editing) opens the note in a tab (`services/noteLinks.ts`), with
+        Back and Forward through the notes followed.
+  - [x] A vault browser: folder mode shows the folder as a tree with a
+        filter box and "Linked from" (`components/folder/FolderPanel.tsx`).
+  - [ ] A quick switcher (fuzzy-open a note of the folder by name).
+  - [x] Heading link targets: `[[Note#Heading]]` and `[text](note.md#heading)`
+        scroll to the heading after the note opens.
+  - [ ] Block link targets (`#^id`).
   - [ ] `%%comments%%`.
   - [ ] Edit an embed's size or target from the visual pane (today: in
         the Markdown pane).
@@ -100,9 +106,10 @@
         boundaries read `codeRanges`, so a fence left open in a quote or
         list item ends with it. `stripContainers` stays: the table-row and
         heading/break checks still need the line with its markers off.
-  - [ ] The `codeRegions.ts` table-row delimiter regex backtracks on a very
-        long line of pipes and spaces (about 2 s for 80 KB). Make it linear
-        by trimming the row first.
+  - [x] The `codeRegions.ts` table-row delimiter regex backtracked on a very
+        long line of pipes and spaces. It runs on the row with trailing
+        blanks trimmed (since the post-review bug hunt); a stress test now
+        checks that a delimiter row twice as wide takes about twice as long.
   - [x] **Pipe in a table cell next to a mark:** Milkdown's text handler
         returns text that ends in whitespace unescaped, so `| x \| y **z** |`
         was written with a bare pipe and the row gained a cell (plain
