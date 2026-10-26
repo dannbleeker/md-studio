@@ -44,6 +44,8 @@ test('opening a dropped file replaces the document and lists it as recent', asyn
     data.items.add(new File(['# Dropped\n\nhello'], 'dropped.md', { type: 'text/markdown' }));
     window.dispatchEvent(new DragEvent('drop', { dataTransfer: data, cancelable: true }));
   });
+  // A dropped file opens in Read view.
+  await edit(page);
   await expect(visualPane(page).locator('h1')).toHaveText('Dropped');
   await expect(page.getByText('dropped.md', { exact: true })).toBeVisible();
 
@@ -66,6 +68,7 @@ test('a dropped Windows-1252 file shows its letters, and downloads in its encodi
     data.items.add(new File([bytes], 'old.md', { type: 'text/markdown' }));
     window.dispatchEvent(new DragEvent('drop', { dataTransfer: data, cancelable: true }));
   });
+  await edit(page);
   await expect(visualPane(page).locator('h1')).toHaveText('Æble på');
 
   const downloadPromise = page.waitForEvent('download');
