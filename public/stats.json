@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-25",
+  "generatedAt": "2026-10-26",
   "version": "0.1.0",
   "code": [
     {
@@ -10,7 +10,7 @@
     {
       "category": "Unit tests",
       "files": 121,
-      "lines": 18993
+      "lines": 19014
     },
     {
       "category": "E2E tests",
@@ -35,16 +35,16 @@
   ],
   "tests": {
     "files": 117,
-    "total": 1495,
-    "passed": 1491,
-    "failed": 4,
+    "total": 1496,
+    "passed": 1493,
+    "failed": 3,
     "e2eSpecs": 17
   },
   "coverage": {
     "lines": 84.89,
     "statements": 83.07,
     "functions": 74.9,
-    "branches": 78.99
+    "branches": 79
   },
   "bundle": {
     "eagerGzipBytes": 486713,
@@ -219,9 +219,9 @@
     "words": 27398
   },
   "git": {
-    "commits": 181,
+    "commits": 183,
     "firstCommit": "2026-10-02",
-    "lastCommit": "2026-10-25",
-    "activeDays": 13
+    "lastCommit": "2026-10-26",
+    "activeDays": 14
   }
 }
