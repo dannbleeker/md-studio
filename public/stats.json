@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-26",
+  "generatedAt": "2026-11-02",
   "version": "0.1.0",
   "code": [
     {
@@ -36,8 +36,8 @@
   "tests": {
     "files": 120,
     "total": 1514,
-    "passed": 1514,
-    "failed": 0,
+    "passed": 1511,
+    "failed": 3,
     "e2eSpecs": 17
   },
   "coverage": {
@@ -219,9 +219,9 @@
     "words": 27591
   },
   "git": {
-    "commits": 190,
+    "commits": 192,
     "firstCommit": "2026-10-02",
-    "lastCommit": "2026-10-26",
-    "activeDays": 14
+    "lastCommit": "2026-11-01",
+    "activeDays": 15
   }
 }
