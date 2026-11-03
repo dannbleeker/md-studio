@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Biome 2.6.** `@biomejs/biome` 2.5.15 → 2.6.4, superseding Dependabot #79.
+  Biome 2.6 also formats Markdown and YAML, and that is what caused the 30
+  errors in #79. It would have rewritten the guide, the docs, the CI
+  workflows and the welcome document (`*italic*` → `_italic_`, padded
+  tables). `biome.json` now leaves `*.md`, `*.yml` and `*.yaml` out, as 2.5
+  did. One test string now uses a template literal.
+
 - **Dependencies.** The safe part of Dependabot #79: `docx` 9.15.1,
   `zustand` 5.0.16, `knip` 6.44.1, `vite` 8.3.5. `@biomejs/biome` 2.6 stays
   out for now, because it adds 30 lint errors and needs its own change.
