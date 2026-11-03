@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Dependencies.** The safe part of Dependabot #79: `docx` 9.15.1,
+  `zustand` 5.0.16, `knip` 6.44.1, `vite` 8.3.5. `@biomejs/biome` 2.6 stays
+  out for now, because it adds 30 lint errors and needs its own change.
+
 - **A simpler interface.** Nothing is gone; it is where you look for it.
   - **Toolbar:** the file, then Edit (in Read view) or Save and Read (while
     editing). A layout switch while editing (Split, Markdown, Visual; "Text"
