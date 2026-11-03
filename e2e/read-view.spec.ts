@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
-import { layout, newDocument, setText, visualPane } from './helpers';
+import { layout, newDocument, setText, textContent, visualPane } from './helpers';
 
 async function readView(page: Page, markdown: string) {
   await newDocument(page);
@@ -137,9 +137,7 @@ test('math is typeset, in every view, and the source is left as written', async 
   await expect(pane.getByText('Price: $5 and $10.')).toBeVisible();
   await expect(pane.locator('em')).toHaveCount(0);
   await layout(page, 'Markdown');
-  expect((await page.locator('.cm-content').innerText()).replace(/ /g, ' ')).toContain(
-    'Inline $a*b*c$ and $x_1 + y_2$.'
-  );
+  expect((await textContent(page)).replace(/ /g, ' ')).toContain('Inline $a*b*c$ and $x_1 + y_2$.');
 });
 
 test('a mermaid block is drawn as a diagram in Read view only', async ({ page }) => {

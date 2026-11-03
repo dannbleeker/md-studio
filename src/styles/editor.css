@@ -486,6 +486,14 @@
 .visual-doc .md-transclusion p {
   margin: 0.4em 0;
 }
+/* Mermaid diagram images (Read view). Kept above the more specific
+   .md-transclusion img rule so selector specificity only ascends
+   (noDescendingSpecificity); the rest of .read-diagram is further down. */
+.read-diagram img {
+  max-width: 100%;
+  height: auto;
+  cursor: zoom-in;
+}
 .visual-doc .md-transclusion img {
   max-width: 100%;
 }
@@ -948,11 +956,6 @@
   text-align: center;
   color: var(--text-muted);
   font-size: 0.875rem;
-}
-.read-diagram img {
-  max-width: 100%;
-  height: auto;
-  cursor: zoom-in;
 }
 .read-diagram.is-error {
   padding: 0.5rem 0.8rem;
