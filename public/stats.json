@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-03",
+  "generatedAt": "2026-11-09",
   "version": "0.1.0",
   "code": [
     {
@@ -36,14 +36,14 @@
   "tests": {
     "files": 120,
     "total": 1514,
-    "passed": 1514,
-    "failed": 0,
+    "passed": 1511,
+    "failed": 3,
     "e2eSpecs": 17
   },
   "coverage": {
     "lines": 84.96,
-    "statements": 83.18,
-    "functions": 75.39,
+    "statements": 83.19,
+    "functions": 75.44,
     "branches": 79.11
   },
   "bundle": {
@@ -219,9 +219,9 @@
     "words": 27591
   },
   "git": {
-    "commits": 198,
+    "commits": 201,
     "firstCommit": "2026-10-02",
-    "lastCommit": "2026-11-03",
-    "activeDays": 17
+    "lastCommit": "2026-11-09",
+    "activeDays": 19
   }
 }
