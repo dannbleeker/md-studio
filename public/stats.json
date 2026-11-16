@@ -36,15 +36,15 @@
   "tests": {
     "files": 120,
     "total": 1514,
-    "passed": 1514,
-    "failed": 0,
+    "passed": 1509,
+    "failed": 5,
     "e2eSpecs": 17
   },
   "coverage": {
-    "lines": 84.96,
-    "statements": 83.18,
+    "lines": 84.95,
+    "statements": 83.16,
     "functions": 75.39,
-    "branches": 79.11
+    "branches": 79.09
   },
   "bundle": {
     "eagerGzipBytes": 489021,
@@ -219,7 +219,7 @@
     "words": 27591
   },
   "git": {
-    "commits": 210,
+    "commits": 211,
     "firstCommit": "2026-10-02",
     "lastCommit": "2026-11-16",
     "activeDays": 21
