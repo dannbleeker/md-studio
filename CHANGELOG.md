@@ -7,7 +7,9 @@
   1.65.0, the minor/patch group (`docx` 9.15.2, `katex` 0.19.1, `marked`
   18.1.3, `mermaid` 12.3.0, `zustand` 5.1.0, Biome 2.6.6, `vite` 8.3.6 and
   dev tooling), `jsdom` 31 (tests only) and `entities` 9 (only
-  `decodeHTML` is used, and it is unchanged).
+  `decodeHTML` is used, and it is unchanged). The lockfile holds `marked` at
+  18.1.3: 18.2.0 drops an ordered list's start number, so a Word export
+  numbered "5." as "1." (`docx.test.ts` caught it).
 
 - **Milkdown 7.23.** `@milkdown/kit` 7.22.3 → 7.23.0, superseding
   Dependabot #83. Dependabot's lockfile resolved two copies of
