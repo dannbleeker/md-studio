@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- **Dependencies.** Dependabot #87, #88, #89 and #90, folded into one
+  change because each one's lockfile conflicted with the others: Playwright
+  1.65.0, the minor/patch group (`docx` 9.15.2, `katex` 0.19.1, `marked`
+  18.1.3, `mermaid` 12.3.0, `zustand` 5.1.0, Biome 2.6.6, `vite` 8.3.6 and
+  dev tooling), `jsdom` 31 (tests only) and `entities` 9 (only
+  `decodeHTML` is used, and it is unchanged). The lockfile holds `marked` at
+  18.1.3: 18.2.0 drops an ordered list's start number, so a Word export
+  numbered "5." as "1." (`docx.test.ts` caught it).
+
+- **Milkdown 7.23.** `@milkdown/kit` 7.22.3 → 7.23.0, superseding
+  Dependabot #83. Dependabot's lockfile resolved two copies of
+  `prosemirror-view` (1.42.6 and 1.42.9), so `EditorView` from Milkdown and
+  from our own imports were different types and `tsc` failed. Regenerated
+  with the repo's pnpm 10.28.0, which resolves a single copy; the
+  `@milkdown/transformer` patch still applies.
+
 - **Biome 2.6.** `@biomejs/biome` 2.5.15 → 2.6.4, superseding Dependabot #79.
   Biome 2.6 also formats Markdown and YAML, and that is what caused the 30
   errors in #79. It would have rewritten the guide, the docs, the CI
