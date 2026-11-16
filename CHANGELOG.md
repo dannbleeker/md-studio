@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Milkdown 7.23.** `@milkdown/kit` 7.22.3 → 7.23.0, superseding
+  Dependabot #83. Dependabot's lockfile resolved two copies of
+  `prosemirror-view` (1.42.6 and 1.42.9), so `EditorView` from Milkdown and
+  from our own imports were different types and `tsc` failed. Regenerated
+  with the repo's pnpm 10.28.0, which resolves a single copy; the
+  `@milkdown/transformer` patch still applies.
+
 - **Biome 2.6.** `@biomejs/biome` 2.5.15 → 2.6.4, superseding Dependabot #79.
   Biome 2.6 also formats Markdown and YAML, and that is what caused the 30
   errors in #79. It would have rewritten the guide, the docs, the CI
