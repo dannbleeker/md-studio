@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Security advisories.** `glob` 11.1.0 (GHSA-3g3m-2fjr-6pw4, via
+  `vite-plugin-pwa` > `workbox-build`) and `minimatch` 10.2.6
+  (GHSA-g3hv-75wg-m249, via `@stryker-mutator/core`) are forced to `glob`
+  ^14.0.2 and `minimatch` ^11.0.1 with `pnpm.overrides`. Both are build and
+  test tooling, so nothing shipped to users changes. `pnpm audit` is clean.
+  Drop the overrides once `workbox-build` and Stryker require the patched
+  versions themselves.
+
 - **Dependencies.** Dependabot #87, #88, #89 and #90, folded into one
   change because each one's lockfile conflicted with the others: Playwright
   1.65.0, the minor/patch group (`docx` 9.15.2, `katex` 0.19.1, `marked`
