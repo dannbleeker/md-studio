@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-20",
+  "generatedAt": "2026-11-23",
   "version": "0.1.0",
   "code": [
     {
@@ -44,7 +44,7 @@
     "lines": 84.96,
     "statements": 83.18,
     "functions": 75.39,
-    "branches": 79.11
+    "branches": 79.09
   },
   "bundle": {
     "eagerGzipBytes": 489021,
@@ -219,9 +219,9 @@
     "words": 27591
   },
   "git": {
-    "commits": 215,
+    "commits": 217,
     "firstCommit": "2026-10-02",
-    "lastCommit": "2026-11-20",
-    "activeDays": 22
+    "lastCommit": "2026-11-22",
+    "activeDays": 23
   }
 }
